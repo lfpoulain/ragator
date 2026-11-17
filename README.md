@@ -176,14 +176,16 @@ cd ragator
 **Mode local** (Ragator et les trois serveurs de modèles) :
 
 ```bash
-docker compose --profile local up -d --build
+docker compose --profile local pull && docker compose --profile local up -d
 ```
 
 **Mode OpenRouter seul** (Ragator, sans serveurs de modèles ni carte graphique) :
 
 ```bash
-docker compose up -d --build
+docker compose pull && docker compose up -d
 ```
+
+Les images sont publiées sur ghcr.io ([`ragator`](https://github.com/lfpoulain/ragator/pkgs/container/ragator), [`ragator-juge`](https://github.com/lfpoulain/ragator/pkgs/container/ragator-juge)) à chaque mise à jour de `main`. Pour les construire depuis le code : `docker compose up -d --build` (avec ou sans `--profile local`).
 
 Ouvrez <http://localhost:3210> (ou `http://<adresse-du-serveur>:3210`). Aucune variable d'environnement, aucun fichier de configuration : tout se règle dans l'interface.
 
@@ -193,9 +195,8 @@ L'image `ragator` contient tout le reste : PostgreSQL 17 avec ParadeDB (recherch
 <summary>Sans Docker Compose (<code>docker run</code>, Portainer…), mode OpenRouter</summary>
 
 ```bash
-docker build -t ragator https://github.com/lfpoulain/ragator.git
 docker run -d --name ragator --restart unless-stopped --shm-size 1g \
-  -p 3210:3210 -v /chemin/vers/ragator:/data ragator
+  -p 3210:3210 -v /chemin/vers/ragator:/data ghcr.io/lfpoulain/ragator:latest
 ```
 
 `/data` doit être sur un vrai disque : un dossier en mémoire vive serait perdu au redémarrage, et le conteneur refuse d'y créer la base. Pour le mode local, préférez Compose, ou pointez Ragator vers des serveurs de modèles existants (voir [Modèles sur une autre machine](#la-stack-locale)).
@@ -284,7 +285,7 @@ docker exec -i ragator pg_restore -U ragator -d ragator --clean --if-exists --no
 docker restart ragator
 
 # Mise à jour de Ragator : les données sont conservées, les migrations s'appliquent seules
-git pull && docker compose --profile local up -d --build    # ou sans --profile local
+docker compose --profile local pull && docker compose --profile local up -d    # ou sans --profile local
 ```
 
 ## Sécurité

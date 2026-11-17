@@ -1,8 +1,12 @@
 # Ragator. Deux façons de le lancer, la même instance et les mêmes données :
 #
-#   docker compose --profile local up -d --build   mode local : tous les modèles sur cette machine
-#                                                  (carte NVIDIA de 16 Go ou plus), aucune clé, rien ne sort
-#   docker compose up -d --build                   Ragator seul : mode OpenRouter (clé), sans carte graphique
+#   docker compose --profile local pull && docker compose --profile local up -d
+#                                    mode local : tous les modèles sur cette machine
+#                                    (carte NVIDIA de 16 Go ou plus), aucune clé, rien ne sort
+#   docker compose pull && docker compose up -d
+#                                    Ragator seul : mode OpenRouter (clé), sans carte graphique
+#
+# Images publiées sur ghcr.io ; « up -d --build » les construit plutôt depuis ce dépôt.
 #
 # Puis http://localhost:3210 → onglet Réglages : choisir le mode (et saisir le jeton Hugging Face ou la clé
 # OpenRouter). Aucune variable d'environnement à passer.
@@ -19,7 +23,7 @@ x-gpu: &gpu
 services:
   ragator:
     build: .
-    image: ragator
+    image: ghcr.io/lfpoulain/ragator:latest
     container_name: ragator
     restart: unless-stopped
     ports:
@@ -65,7 +69,7 @@ services:
     <<: *gpu
     profiles: [local]
     build: ./docker/juge
-    image: ragator-juge
+    image: ghcr.io/lfpoulain/ragator-juge:latest
     restart: unless-stopped
     volumes:
       - ragator-models:/models
