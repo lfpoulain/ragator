@@ -120,7 +120,7 @@ async function videosToEmbed(pool: Pool): Promise<VideoToEmbed[]> {
  */
 export async function embedPending(pool: Pool, options: EmbedOptions = {}): Promise<EmbedResult> {
   const embedder = options.embedder ?? embeddingFromConfig();
-  if (!embedder) throw new Error('clé OpenRouter absente : rien à encoder');
+  if (!embedder) throw new Error('aucun encodeur (mode à choisir dans Réglages) : rien à encoder');
   // Taille et nombre de lots à la fois : ceux du mode (`embedding`, voir config.ts).
   const settings = getConfig().embedding;
   const batchSize = options.batchSize ?? settings?.batchSize ?? 64;

@@ -646,7 +646,7 @@ export async function repondre(pool: Pool, input: AnswerInput, options: AnswerOp
   let issue: string | null = null;
   try {
     if (routed.general && gathered.windows.length > 0) {
-      if (!judge) return extractive('question générale sans juge JEV (clé OpenRouter absente) : réponse extractive');
+      if (!judge) return extractive('question générale sans juge (aucun mode choisi, ou clé absente) : réponse extractive');
       // Vidéo déjà retenue par le parcours chronologique : le juge ne la rejuge pas.
       const decided: RelevanceJudge | null = scan ? { model: judge.model, judge: async (_q, videos) => videos.map(() => scan.relevance) } : null;
       ({ raw, issue } = await answerByVideo(

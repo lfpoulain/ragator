@@ -179,6 +179,21 @@ a.cite:hover { background: var(--accent); color: #fff; }
 .settings .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
 .settings input[type=password], .settings input[type=text] { flex: 1; min-width: 200px; border: 1px solid var(--line); background: var(--panel-2); border-radius: 10px; padding: 7px 12px; font: inherit; color: inherit; }
 .settings .state { margin-top: 8px; }
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+@media (max-width: 560px) { .modes { grid-template-columns: 1fr; } }
+.mode { display: block; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; cursor: pointer; background: var(--panel-2); }
+.mode:hover { border-color: var(--line-2); }
+.mode.on { border-color: var(--accent); background: var(--accent-soft); }
+.mode input { margin: 0 6px 0 0; accent-color: var(--accent); }
+.mode strong { font-size: 14.5px; }
+.mode .hint { display: block; margin-top: 4px; font-size: 13px; }
+.servers { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.servers li { display: flex; gap: 8px; align-items: baseline; font-size: 13.5px; flex-wrap: wrap; }
+.servers li .name { min-width: 170px; font-weight: 600; }
+.servers li .hint { font-size: 12.5px; }
+.settings details { margin-top: 12px; }
+.settings details summary { cursor: pointer; color: var(--muted); font-size: 13.5px; }
+.settings details .row label { min-width: 90px; font-size: 13px; color: var(--muted); }
 .notice { background: var(--warn-soft); color: var(--warn); border-radius: var(--radius); padding: 10px 14px; margin: 10px 0 0; font-size: 13.5px; }
 .notice a { color: inherit; font-weight: 600; }
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
@@ -247,7 +262,7 @@ a.cite:hover { background: var(--accent); color: #fff; }
       <h1 id="search-title">Que voulez-vous retrouver&nbsp;?</h1>
       <p>Posez une question sur les vidéos : la réponse cite l’instant exact qui la prouve.</p>
     </div>
-    <p class="notice" id="setup-notice" hidden>Aucune clé OpenRouter : seule la recherche par mots fonctionne. <a href="#reglages">Ajouter une clé</a></p>
+    <p class="notice" id="setup-notice" hidden><span id="setup-text">Aucun modèle configuré : seule la recherche par mots fonctionne.</span> <a href="#reglages">Réglages</a></p>
     <div id="thread" aria-live="polite"></div>
     <div class="dock">
       <form id="ask" class="composer">
@@ -343,8 +358,42 @@ a.cite:hover { background: var(--accent); color: #fff; }
   <section id="settings" class="view settings" hidden aria-labelledby="settings-title">
     <h1 id="settings-title" class="sr">Réglages</h1>
     <div class="card">
+      <h2>Modèles</h2>
+      <p class="hint">Où tournent les trois modèles de Ragator : réponses, vecteurs et tri des vidéos. Le même index sert aux deux modes : on passe de l’un à l’autre sans réindexer.</p>
+      <div class="modes" role="radiogroup" aria-label="Mode">
+        <label class="mode" id="mode-local-card"><input type="radio" name="mode" value="local"><strong>Local</strong>
+          <span class="hint">Tout sur cette machine : Qwen 3.5 9B, juge Aplomb et pplx-embed, sur une carte NVIDIA de 16 Go ou plus. Aucune clé, rien ne sort. Lancé par <code>docker compose --profile local up -d</code>.</span></label>
+        <label class="mode" id="mode-or-card"><input type="radio" name="mode" value="openrouter"><strong>OpenRouter</strong>
+          <span class="hint">Les modèles par l’API d’OpenRouter (gpt-6-luna, JEV, pplx-embed), avec une clé payante. Aucune carte graphique, réponses plus rapides.</span></label>
+      </div>
+    </div>
+    <div class="card" id="local-card" hidden>
+      <h2>Serveurs locaux</h2>
+      <p class="hint">Au premier démarrage, chaque serveur télécharge son modèle (~17 Go en tout), puis le charge : comptez plusieurs minutes.</p>
+      <ul class="servers" id="servers"></ul>
+      <div class="row"><button type="button" class="btn ghost" id="servers-refresh">Actualiser</button></div>
+      <h2 style="margin-top:16px">Jeton Hugging Face</h2>
+      <p class="hint">Le juge Aplomb est sous licence : acceptez-la sur <a href="https://huggingface.co/empiriolabsai/aplomb-1" target="_blank" rel="noopener">huggingface.co/empiriolabsai/aplomb-1</a>, puis collez un jeton de lecture de ce compte (<a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">huggingface.co/settings/tokens</a>). Il ne sert qu’au premier téléchargement.</p>
+      <div class="state hint" id="hf-state"></div>
+      <form class="row" id="hf-form">
+        <label for="hf" class="sr">Jeton Hugging Face</label>
+        <input type="password" id="hf" placeholder="hf_…" autocomplete="off" spellcheck="false">
+        <button class="btn primary">Enregistrer</button>
+      </form>
+      <details>
+        <summary>Serveurs sur une autre machine</summary>
+        <p class="hint">Par défaut, les services <code>llm</code>, <code>embed</code> et <code>juge</code> de la pile Docker. Pour un PC à carte graphique qui sert un NAS, par exemple, donnez leurs adresses. Laissez vide pour revenir au défaut.</p>
+        <form id="urls-form">
+          <div class="row"><label for="url-llm">LLM</label><input type="text" id="url-llm" spellcheck="false"></div>
+          <div class="row"><label for="url-embed">Vecteurs</label><input type="text" id="url-embed" spellcheck="false"></div>
+          <div class="row"><label for="url-judge">Juge</label><input type="text" id="url-judge" spellcheck="false"></div>
+          <div class="row"><button class="btn">Enregistrer</button></div>
+        </form>
+      </details>
+    </div>
+    <div class="card" id="or-card" hidden>
       <h2>Clé OpenRouter</h2>
-      <p class="hint">Une seule clé pour les trois modèles (réponses, vecteurs, tri des vidéos). Elle est vérifiée auprès d’OpenRouter puis enregistrée dans la base, jamais renvoyée à la page. Créez-en une sur <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>.</p>
+      <p class="hint">Une seule clé pour les trois modèles. Elle est vérifiée auprès d’OpenRouter puis enregistrée dans la base, jamais renvoyée à la page. Créez-en une sur <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>.</p>
       <div class="state hint" id="key-state"></div>
       <form class="row" id="key-form">
         <label for="key" class="sr">Clé OpenRouter</label>
@@ -352,9 +401,7 @@ a.cite:hover { background: var(--accent); color: #fff; }
         <button class="btn primary">Enregistrer</button>
         <button type="button" class="btn ghost" id="key-clear" hidden>Retirer</button>
       </form>
-    </div>
-    <div class="card">
-      <h2>Modèle des réponses</h2>
+      <h2 style="margin-top:16px">Modèle des réponses</h2>
       <p class="hint">Modèle OpenRouter qui analyse la question et rédige la réponse. Il doit accepter la sortie JSON imposée (<em>structured outputs</em>). Laissez vide pour le modèle par défaut.</p>
       <form class="row" id="model-form">
         <label for="model" class="sr">Modèle</label>
@@ -959,7 +1006,17 @@ api('/api/collections').then((r) => {
   showCorpus();
 }).catch(() => {});
 /* ---------- Réglages ---------- */
+const SERVER_NAMES = { llm: 'Qwen 3.5 9B (réponses)', embedding: 'pplx-embed (vecteurs)', judge: 'Aplomb (juge)' };
+const SERVER_BADGES = { ready: ['ok', 'prêt'], loading: ['warn', 'en préparation'], needs_token: ['warn', 'jeton attendu'], down: ['err', 'injoignable'], error: ['err', 'erreur'] };
+let settingsState = null;
+let serversTimer = 0;
 function showSettings(st) {
+  settingsState = st;
+  for (const input of document.querySelectorAll('input[name=mode]')) input.checked = input.value === st.mode;
+  $('mode-local-card').classList.toggle('on', st.mode === 'local');
+  $('mode-or-card').classList.toggle('on', st.mode === 'openrouter');
+  $('local-card').hidden = st.mode !== 'local';
+  $('or-card').hidden = st.mode !== 'openrouter';
   const k = st.openrouterKey;
   $('key-state').textContent = k.set
     ? 'Clé enregistrée (' + k.hint + ')' + (k.source === 'environnement' ? ', lue dans la configuration du serveur.' : '.')
@@ -967,9 +1024,34 @@ function showSettings(st) {
   $('key-clear').hidden = !(k.set && k.source === 'interface');
   $('model').placeholder = st.defaultLlmModel;
   $('model').value = st.llmModel === st.defaultLlmModel ? '' : st.llmModel;
+  $('hf-state').textContent = st.local.hfToken.set ? 'Jeton enregistré (' + st.local.hfToken.hint + ').' : 'Aucun jeton.';
+  const urls = [['url-llm', 'llmUrl', 'llm'], ['url-embed', 'embeddingUrl', 'embedding'], ['url-judge', 'judgeUrl', 'judge']];
+  for (const [id, key, def] of urls) { $(id).placeholder = st.local.defaults[def]; $(id).value = st.local[key] === st.local.defaults[def] ? '' : st.local[key]; }
   $('pw-state').textContent = st.password.set ? 'Mot de passe défini.' : 'Aucun mot de passe.';
   $('pw-clear').hidden = !(st.password.set && st.password.source === 'interface');
-  $('setup-notice').hidden = k.set;
+  const missing = st.mode === null ? 'Aucun mode choisi (local ou OpenRouter) : seule la recherche par mots fonctionne.'
+    : st.mode === 'openrouter' && !k.set ? 'Mode OpenRouter sans clé : seule la recherche par mots fonctionne.' : '';
+  $('setup-text').textContent = missing;
+  $('setup-notice').hidden = !missing;
+  if (st.mode === 'local' && !$('settings').hidden) loadServers();
+}
+async function loadServers() {
+  clearTimeout(serversTimer);
+  const list = $('servers');
+  if (!list.children.length) list.textContent = 'Vérification des serveurs…';
+  try {
+    const status = await api('/api/settings/local');
+    list.replaceChildren(...Object.entries(SERVER_NAMES).map(([key, name]) => {
+      const s = status[key];
+      const [cls, label] = SERVER_BADGES[s.state] || SERVER_BADGES.error;
+      const li = document.createElement('li');
+      const span = (c, t) => { const x = document.createElement('span'); x.className = c; x.textContent = t; return x; };
+      li.append(span('name', name), span('badge ' + cls, label), span('hint', s.state === 'ready' ? '' : s.message));
+      return li;
+    }));
+    // Téléchargement ou chargement en cours : suivi tant que l'onglet est ouvert.
+    if (Object.values(status).some((s) => s.state === 'loading') && !$('settings').hidden) serversTimer = setTimeout(loadServers, 5000);
+  } catch (err) { list.textContent = err.message; }
 }
 async function loadSettings() {
   try { showSettings(await api('/api/settings')); } catch (err) { $('settings-msg').textContent = err.message; }
@@ -982,6 +1064,14 @@ async function saveSetting(patch, done) {
     msg.textContent = done;
   } catch (err) { msg.textContent = 'Refusé : ' + err.message; }
 }
+for (const input of document.querySelectorAll('input[name=mode]')) {
+  input.onchange = () => saveSetting({ mode: input.value }, input.value === 'local'
+    ? 'Mode local enregistré. L’état des serveurs s’affiche ci-dessous.'
+    : 'Mode OpenRouter enregistré.' + (settingsState && settingsState.openrouterKey.set ? '' : ' Collez une clé ci-dessous.'));
+}
+$('servers-refresh').onclick = loadServers;
+$('hf-form').onsubmit = (e) => { e.preventDefault(); const v = $('hf').value.trim(); if (!v) return; $('hf').value = ''; saveSetting({ hfToken: v }, 'Jeton enregistré et transmis au juge : Aplomb se télécharge.'); };
+$('urls-form').onsubmit = (e) => { e.preventDefault(); saveSetting({ localLlmUrl: $('url-llm').value.trim(), localEmbeddingUrl: $('url-embed').value.trim(), localJudgeUrl: $('url-judge').value.trim() }, 'Adresses enregistrées.'); };
 $('key-form').onsubmit = (e) => { e.preventDefault(); const v = $('key').value.trim(); if (!v) return; $('key').value = ''; saveSetting({ openrouterKey: v }, 'Clé enregistrée. L’index se met à jour dans l’onglet Administration.'); };
 $('key-clear').onclick = () => saveSetting({ openrouterKey: '' }, 'Clé retirée.');
 $('model-form').onsubmit = (e) => { e.preventDefault(); saveSetting({ llmModel: $('model').value.trim() }, 'Modèle enregistré.'); };

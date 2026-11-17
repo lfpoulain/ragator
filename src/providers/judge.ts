@@ -48,6 +48,32 @@ export const JUDGE_CRITERIA = {
   },
 };
 
+/**
+ * Critères du juge local (Aplomb) : ceux de JEV, plus stricts sur les verbes d'action. Aplomb laisse
+ * passer les simples mentions bien plus que JEV (précision 9 à 21 % sur « quand utilisent-ils… »).
+ * Exemples sur d'autres sujets que ceux du jeu d'évaluation, pour ne pas biaiser la mesure.
+ */
+export const JUDGE_CRITERIA_LOCAL = {
+  true: {
+    what:
+      'The excerpts show exactly what the question asks for, following its verb. For use, test, build, make or do: the action is actually performed in this video, on screen or described as being done now. For talk about: they genuinely discuss the subject, even briefly or in a sponsored segment.',
+    examples: [
+      ...JUDGE_CRITERIA.true.examples,
+      'question « Quand utilisent-ils une scie circulaire ? » ; excerpt « PLAN : un homme découpe le panneau de contreplaqué à la scie circulaire. »',
+    ],
+  },
+  false: {
+    what:
+      'For use, test, build, make or do, any of these is NOT enough: the thing is only named, recommended, bought, unboxed, sponsored, planned for later, recalled from another video, or merely visible in the background. Also false: the word has another meaning, or it is a call to action such as « abonnez-vous ».',
+    examples: [
+      ...JUDGE_CRITERIA.false.examples,
+      'question « Quand utilisent-ils une scie circulaire ? » ; excerpt « On a reçu une nouvelle scie circulaire, on la testera dans une prochaine vidéo. »',
+      'question « Quand utilisent-ils une perceuse à colonne ? » ; excerpt « PLAN : l’atelier, avec la perceuse à colonne posée au fond, pendant qu’ils parlent du projet. »',
+      'question « Quand peignent-ils ? » ; excerpt « Comme on l’avait fait dans la vidéo sur le meuble, on avait peint en blanc. »',
+    ],
+  },
+};
+
 /** Extraits envoyés au juge au plus par vidéo (le coût et la latence suivent la longueur). */
 const MAX_VIDEO_CHARS = 6000;
 const TIMEOUT_MS = 30_000;
@@ -63,6 +89,7 @@ interface DecisionEndpoint {
   model: string;
   url: string;
   headers: Record<string, string>;
+  /** Corps de la requête : JEV prend l'état en objet ; d1 local, en texte. */
   body: (question: string, video: { title: string; text: string }) => Record<string, unknown>;
   parallel: number;
   retryDelaysMs: number[];
@@ -98,6 +125,7 @@ function decisionJudge(endpoint: DecisionEndpoint): RelevanceJudge {
 }
 
 const QUESTIONS = { decision: { type: 'noul', instructions: JUDGE_QUESTION, criteria: JUDGE_CRITERIA } };
+const QUESTIONS_LOCAL = { decision: { type: 'noul', instructions: JUDGE_QUESTION, criteria: JUDGE_CRITERIA_LOCAL } };
 
 interface JudgeOptions {
   baseUrl: string;
@@ -120,13 +148,35 @@ export function jevJudge(options: JudgeOptions & { apiKey: string; model: string
   });
 }
 
+/**
+ * Juge local : tout serveur de décision sur la machine qui répond sur `POST /v1/systemone` au format
+ * de JEV (Aplomb 1, docker/juge ; essayés aussi : Liquid d1-3B, Clef-flash, servis par
+ * llama.cpp). Mêmes questions et critères que JEV ; l'état est un texte (champs nommés comme ceux que
+ * cite la question). Une décision à la fois : la carte est partagée avec le LLM, et le parallèle
+ * n'apporte rien (mesuré sur llama.cpp : 1,5 décision/s seul comme à 4).
+ */
+export function localJudge(options: JudgeOptions): RelevanceJudge {
+  return decisionJudge({
+    label: 'juge local',
+    model: 'local',
+    url: `${options.baseUrl.replace(/\/+$/, '')}/v1/systemone`,
+    headers: {},
+    body: (question, video) => ({
+      state: `question: ${question}\nvideo_title: ${video.title}\nexcerpts:\n${clip(video.text)}`,
+      questions: QUESTIONS_LOCAL,
+    }),
+    parallel: options.parallel ?? 1,
+    retryDelaysMs: options.retryDelaysMs ?? RETRY_DELAYS_MS,
+  });
+}
+
 let shared: { key: string; judge: RelevanceJudge } | null = null;
 
-/** Juge configuré (JEV), ou `null` sans clé OpenRouter. Une instance par configuration : ses compteurs couvrent le processus. */
+/** Juge configuré (`config.judge` : JEV ou juge local), ou `null` sans clé OpenRouter. Une instance par configuration : ses compteurs couvrent le processus. */
 export function judgeFromConfig(): RelevanceJudge | null {
   const { judge } = getConfig();
   if (!judge) return null;
-  const key = `${judge.baseUrl}|${judge.apiKey}`;
-  if (shared?.key !== key) shared = { key, judge: jevJudge(judge) };
+  const key = `${judge.kind}|${judge.baseUrl}|${judge.apiKey}`;
+  if (shared?.key !== key) shared = { key, judge: judge.kind === 'jev' ? jevJudge(judge) : localJudge(judge) };
   return shared.judge;
 }

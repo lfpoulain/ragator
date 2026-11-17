@@ -35,7 +35,7 @@ export async function updateCorpus(
   options: {
     dir?: string;
     llm: LlmClient | null;
-    /** Encodeur des vecteurs ; défaut : configuration (clé OpenRouter), `null` : étape sautée. */
+    /** Encodeur des vecteurs ; défaut : configuration (mode local ou OpenRouter), `null` : étape sautée. */
     embedder?: EmbeddingClient | null;
     log?: (line: string) => void;
   },
@@ -79,7 +79,7 @@ export async function updateCorpus(
       }
     }
   } else {
-    report.notes.push('vecteurs sautés : pas de clé OpenRouter');
+    report.notes.push('vecteurs sautés : aucun encodeur (mode à choisir dans Réglages)');
   }
   return report;
 }

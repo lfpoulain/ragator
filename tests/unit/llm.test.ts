@@ -6,15 +6,18 @@ import { answerSchema, buildWritePrompt, parseWritten, promptLine, renderPassage
 const schema = { name: 's', schema: { type: 'object' } };
 
 describe('configuration', () => {
-  it('sans clé : aucun modèle, l’outil reste utilisable', () => {
-    expect(loadConfig({})).toMatchObject({ llm: null, embedding: null, judge: null });
+  it('aucun mode choisi : aucun modèle, l’outil reste utilisable', () => {
+    expect(loadConfig({})).toMatchObject({ mode: null, llm: null, embedding: null, judge: null });
+    // Mode OpenRouter choisi, mais sans clé : pareil.
+    expect(loadConfig({}, { mode: 'openrouter' })).toMatchObject({ mode: 'openrouter', llm: null, embedding: null, judge: null });
   });
 
   it('mode openrouter avec clé : luna, pplx-embed-v1-4b et JEV au seuil 0,3, une seule clé', () => {
     const config = loadConfig({ OPENROUTER_API_KEY: 'sk-or-test' });
     expect(config.llm).toMatchObject({ model: 'openai/gpt-6-luna', apiKey: 'sk-or-test', parallel: 16, contextTokens: 32_768, proof: false });
     expect(config.embedding).toMatchObject({ model: EMBEDDING_MODEL, apiKey: 'sk-or-test', batchSize: 64, parallel: 4 });
-    expect(config.judge).toMatchObject({ model: 'typesafe/jev-1.13', apiKey: 'sk-or-test', parallel: 32, threshold: 0.3 });
+    expect(config.mode).toBe('openrouter');
+    expect(config.judge).toMatchObject({ kind: 'jev', model: 'typesafe/jev-1.13', apiKey: 'sk-or-test', parallel: 32, threshold: 0.3 });
     expect(loadConfig({ OPENROUTER_API_KEY: 'k', JUDGE_THRESHOLD: '0.5' }).judge!.threshold).toBe(0.5);
     expect(() => loadConfig({ OPENROUTER_API_KEY: 'k', JUDGE_THRESHOLD: '2' })).toThrow('JUDGE_THRESHOLD');
   });
@@ -33,6 +36,34 @@ describe('configuration', () => {
     expect(config.embedding).toBeNull();
     expect(config.llm).not.toBeNull();
     expect(config.judge).not.toBeNull();
+    expect(loadConfig({ RAGATOR_MODE: 'local', RAGATOR_SANS_VECTEURS: '1' }).embedding).toBeNull();
+  });
+
+  it('mode local : serveurs de la pile Docker, sans clé, réglages des petits modèles', () => {
+    const config = loadConfig({}, { mode: 'local' });
+    expect(config.mode).toBe('local');
+    expect(config.llm).toMatchObject({ baseUrl: 'http://llm:8080/v1', model: 'qwen3.5-9b', parallel: 8, contextTokens: 10_240, proof: true, speculate: false });
+    // Même encodeur que le mode OpenRouter : la même base sert aux deux.
+    expect(config.embedding).toMatchObject({ baseUrl: 'http://embed:8080/v1', model: EMBEDDING_MODEL, batchSize: 16, parallel: 1 });
+    // Aplomb note environ 0,1 plus haut que JEV : seuil par défaut 0,4.
+    expect(config.judge).toMatchObject({ kind: 'local', label: 'Aplomb', baseUrl: 'http://juge:8000', parallel: 1, threshold: 0.4 });
+    // Une clé OpenRouter enregistrée ne change rien au mode local.
+    expect(loadConfig({ OPENROUTER_API_KEY: 'k' }, { mode: 'local', openrouterKey: 'k' }).llm!.model).toBe('qwen3.5-9b');
+  });
+
+  it('mode local : adresses réglables (autre machine), places et contexte ; budget = contexte ÷ places', () => {
+    const config = loadConfig(
+      { RAGATOR_MODE: 'local', LOCAL_LLM_URL: 'http://127.0.0.1:8080/v1', LOCAL_LLM_PARALLEL: '4', LOCAL_LLM_CONTEXT: '65536', JUDGE_THRESHOLD: '0.5' },
+      { localEmbeddingUrl: 'http://192.0.2.7:8081/v1', localJudgeUrl: 'http://192.0.2.7:8000' },
+    );
+    expect(config.llm).toMatchObject({ baseUrl: 'http://127.0.0.1:8080/v1', parallel: 4, contextTokens: 16_384 });
+    expect(config.embedding!.baseUrl).toBe('http://192.0.2.7:8081/v1');
+    expect(config.judge).toMatchObject({ baseUrl: 'http://192.0.2.7:8000', threshold: 0.5 });
+    // Le réglage de l'interface prime sur l'environnement.
+    expect(loadConfig({ RAGATOR_MODE: 'local', LOCAL_LLM_URL: 'http://a/v1' }, { localLlmUrl: 'http://b/v1' }).llm!.baseUrl).toBe('http://b/v1');
+    expect(loadConfig({ RAGATOR_MODE: 'openrouter', OPENROUTER_API_KEY: 'k' }, { mode: 'local' }).mode).toBe('local');
+    expect(() => loadConfig({ RAGATOR_MODE: 'local', LOCAL_LLM_PARALLEL: '0' })).toThrow('LOCAL_LLM_PARALLEL');
+    expect(() => loadConfig({ RAGATOR_MODE: 'cloud' })).toThrow('RAGATOR_MODE');
   });
 
   it('réglages enregistrés depuis l’interface : ils priment sur l’environnement', () => {

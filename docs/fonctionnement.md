@@ -6,10 +6,24 @@ une constante du code.
 Pour une vue d'ensemble des chemins que peut prendre une question, avec des exemples, voir
 [mecaniques-de-recherche.md](mecaniques-de-recherche.md).
 
-Les modèles passent tous par OpenRouter : gpt-6-luna (analyse et rédaction),
-`typesafe/jev-1.13` (juge de pertinence, questions générales) et `perplexity/pplx-embed-v1-4b`
-(vecteurs). La clé, le modèle de réponse et le mot de passe se règlent dans l'interface web,
-onglet « Réglages » ; les réglages de bas niveau sont réunis dans `loadConfig` (`src/config.ts`).
+Deux modes, choisis dans l'interface web (onglet « Réglages »), suivent exactement le même chemin
+avec des modèles différents :
+
+| Rôle | Mode local (sur la machine) | Mode OpenRouter (API) |
+|---|---|---|
+| Analyse et rédaction | Qwen 3.5 9B (llama-server, carte graphique) | gpt-6-luna |
+| Juge de pertinence (questions générales) | Aplomb 1 en 4 bits (carte graphique), seuil 0,4 | `typesafe/jev-1.13`, seuil 0,3 |
+| Vecteurs | pplx-embed-v1-4b en GGUF Q8 (llama-server, processeur) | `perplexity/pplx-embed-v1-4b` |
+
+Le texte ci-dessous cite surtout les modèles OpenRouter (luna, JEV) ; en mode local, Qwen et Aplomb
+tiennent les mêmes rôles. Les vecteurs viennent du même encodeur dans les deux modes (à un cosinus de
+0,98-0,99 près) : un index construit dans un mode sert tel quel dans l'autre. Seuls quelques réglages
+changent, tous réunis dans `loadConfig` (`src/config.ts`) :
+- le parallélisme et le contexte, ceux de llama-server (8 places, 81 920 tokens partagés) ;
+- des délais plus longs, et pas de rédaction lancée par anticipation (la carte est partagée) ;
+- le seuil du juge (0,4, car Aplomb note plus haut) ;
+- la preuve recopiée mot pour mot avant chaque affirmation. Dans les questions générales, elle sert
+  au rédacteur à revérifier chaque vidéo retenue par le juge (§3.5).
 
 ## 1. Le corpus d'entrée
 
@@ -230,8 +244,12 @@ doit repérer 40 vidéos dans un long contexte en oublie. D'où trois temps :
    repère (« exigences ») et le code la ramène à une forme du corpus (alias, correction
    orthographique). Une vidéo dont le titre et les extraits ne la citent pas (paroles, plans ou texte à
    l'écran) n'est pas retirée, mais présentée à part, sous « éventuellement ».
+   En mode local, le rédacteur recopie d'abord la ligne qui répond (« preuve »), puis dit si elle
+   répond vraiment à la question prise au mot (« répond ») ; sinon la vidéo est écartée. Ce second
+   filtre rattrape les erreurs grossières d'Aplomb (précision 46 → 64 %) ; derrière JEV, il ne
+   faisait pas mieux qu'un seuil plus haut.
 
-Sans clé OpenRouter, une question générale répond en extractif.
+Sans juge (aucun mode choisi, ou mode OpenRouter sans clé), une question générale répond en extractif.
 
 ### 3.5 bis « La première / dernière fois qu'ils… » : parcours chronologique (`src/core/first-time.ts`)
 
@@ -281,7 +299,7 @@ chemin général, puis extractif pour les questions générales ; lot de rédact
   (`GET /api/collections`, champ `collection` de `/api/ask`), et sur chaque
   miniature un bouton « ≈ proches » : les vidéos les plus proches par leur vecteur
   (titre, description sans gabarit, plans ; `GET /api/videos/<id>/proches`), une
-  piste à explorer, jamais une preuve. Onglet *Réglages* : clé OpenRouter, modèle de réponse et mot de passe de l'interface
+  piste à explorer, jamais une preuve. Onglet *Réglages* : mode (local ou OpenRouter), état des serveurs locaux et jeton Hugging Face du juge, clé OpenRouter et modèle de réponse, mot de passe de l'interface
   (la configuration par `.env` reste possible pour la ligne de commande). Onglet *Administration* : dépôt de fichiers
   `video--<id>.json` (validés contre le schéma, nommés d'après leur identifiant,
   jamais d'après le nom envoyé), mise à jour du corpus en tâche de fond avec son

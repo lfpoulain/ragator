@@ -43,7 +43,7 @@ async function withDatabase(work: (pool: Pool) => Promise<number>): Promise<numb
   }
   const pool = getPool();
   try {
-    // Réglages enregistrés depuis l'interface (clé OpenRouter, modèle) ; ils priment sur .env.
+    // Réglages enregistrés depuis l'interface (mode, clé, modèle) ; ils priment sur .env.
     if (process.argv[2] !== 'db:migrate') await applyStoredSettings(pool);
     return await work(pool);
   } finally {
@@ -102,7 +102,7 @@ const commands: Record<string, (args: Args) => Promise<number>> = {
     withDatabase(async (pool) => {
       const llm = enrichLlmFromConfig();
       if (!llm || !(await llm.available())) {
-        console.error('LLM indisponible (clé OpenRouter absente) : rien à enrichir.');
+        console.error('Aucun modèle (mode à choisir dans Réglages) : rien à enrichir.');
         return 2;
       }
       const maxVideos = args.int('--videos');

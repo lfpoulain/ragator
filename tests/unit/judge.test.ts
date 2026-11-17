@@ -1,7 +1,7 @@
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { jevJudge, JUDGE_CRITERIA, JUDGE_QUESTION } from '../../src/providers/judge.js';
+import { jevJudge, localJudge, JUDGE_CRITERIA, JUDGE_CRITERIA_LOCAL, JUDGE_QUESTION } from '../../src/providers/judge.js';
 
 /** Faux endpoint Decisions : probabilité selon le texte, erreur 500 sur « panne », 503 au premier essai sur « instable ». */
 let server: Server;
@@ -21,6 +21,10 @@ beforeAll(async () => {
       if (text.includes('instable') && unstableCalls++ === 0) {
         res.statusCode = 503;
         res.end('{"error":"occupé"}');
+        return;
+      }
+      if (req.url === '/v1/systemone') {
+        res.end(JSON.stringify({ model: 'LiquidAI/d1-3B-GGUF:Q8_0', answers: { decision: { type: 'noul', noul: text.includes('chaton') ? 0.8 : 0.2 } } }));
         return;
       }
       if (!req.url?.endsWith('/alpha/decisions') || text.includes('panne')) {
@@ -55,6 +59,15 @@ describe('JEV (endpoint Decisions d’OpenRouter)', () => {
 
   it('une erreur HTTP remonte (la réponse devient extractive)', async () => {
     await expect(jevJudge({ apiKey: 'k', model: 'typesafe/jev-1.13', baseUrl, retryDelaysMs: [1] }).judge('panne', videos)).rejects.toThrow(/JEV HTTP 500/);
+  });
+
+  it('juge local (/v1/systemone) : mêmes questions et critères, état en texte, même réponse', async () => {
+    const local = baseUrl.replace(/\/api$/, '');
+    expect(await localJudge({ baseUrl: local }).judge('Quand parlent-ils de leur chat ?', videos)).toEqual([0.8, 0.2]);
+    const sent = bodies.find((b) => typeof b.state === 'string')!;
+    expect(sent).toMatchObject({ questions: { decision: { type: 'noul', instructions: JUDGE_QUESTION, criteria: JUDGE_CRITERIA_LOCAL } } });
+    expect(sent.state).toContain('question: Quand parlent-ils de leur chat ?\nvideo_title: Atelier\nexcerpts:\n[s1 14:37]');
+    expect(sent).not.toHaveProperty('model');
   });
 
   it('une saturation passagère (503) est réessayée', async () => {

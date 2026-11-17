@@ -1,5 +1,21 @@
-# Ragator : docker compose up -d --build   → http://localhost:3210
-# La clé OpenRouter et le mot de passe se règlent dans l'interface (onglet Réglages).
+# Ragator. Deux façons de le lancer, la même instance et les mêmes données :
+#
+#   docker compose --profile local up -d --build   mode local : tous les modèles sur cette machine
+#                                                  (carte NVIDIA de 16 Go ou plus), aucune clé, rien ne sort
+#   docker compose up -d --build                   Ragator seul : mode OpenRouter (clé), sans carte graphique
+#
+# Puis http://localhost:3210 → onglet Réglages : choisir le mode (et saisir le jeton Hugging Face ou la clé
+# OpenRouter). Aucune variable d'environnement à passer.
+
+x-gpu: &gpu
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+
 services:
   ragator:
     build: .
@@ -17,6 +33,55 @@ services:
     # Mémoire partagée de PostgreSQL : index vectoriels et requêtes parallèles.
     shm_size: 1gb
     stop_grace_period: 30s
+
+  # ── Mode local (profil « local ») : trois serveurs de modèles, joints par Ragator dans ce réseau ──────────
+  # Modèles téléchargés au premier démarrage dans le volume ragator-models (~17 Go), puis plus aucun accès
+  # extérieur. Places (-np) et contexte (-c) du LLM : Ragator suppose 8 et 81920 (voir README).
+
+  # Qwen 3.5 9B (tête MTP intégrée), réponses et enrichissement : carte graphique, ~11 Go.
+  llm:
+    <<: *gpu
+    profiles: [local]
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda-b11515
+    restart: unless-stopped
+    environment:
+      LLAMA_CACHE: /models/llama
+      # Qwen 3.5 réfléchit par défaut : coupé ici (Ragator l'en dispense aussi à chaque requête).
+      LLAMA_ARG_CHAT_TEMPLATE_KWARGS: '{"enable_thinking":false}'
+    # 8 requêtes à la fois sur un contexte partagé, cache en 8 bits ; sans vision (--no-mmproj) ni copie du
+    # modèle en RAM (--load-mode none). Décodage spéculatif par la tête MTP, sortie identique ; température 0 :
+    # réponses reproductibles. Cache des prompts limité à 1 Go : chaque question envoie d'autres extraits.
+    command: >
+      -hf unsloth/Qwen3.5-9B-MTP-GGUF:UD-Q4_K_XL --no-mmproj --alias qwen3.5-9b
+      --spec-type draft-mtp --spec-draft-n-max 3 --temp 0
+      -ngl 99 -c 81920 -np 8 --kv-unified -ctk q8_0 -ctv q8_0 --load-mode none --cache-ram 1024 --jinja
+      --host 0.0.0.0 --port 8080
+    volumes:
+      - ragator-models:/models
+
+  # Aplomb 1 en 4 bits, juge des questions générales : carte graphique, ~5,3 Go. Sous licence : jeton
+  # Hugging Face saisi dans Réglages (licence acceptée sur huggingface.co/empiriolabsai/aplomb-1).
+  juge:
+    <<: *gpu
+    profiles: [local]
+    build: ./docker/juge
+    image: ragator-juge
+    restart: unless-stopped
+    volumes:
+      - ragator-models:/models
+
+  # pplx-embed-v1-4b (vecteurs, le même encodeur que par OpenRouter) : processeur, ~1,5 Go de RAM.
+  embed:
+    profiles: [local]
+    image: ghcr.io/ggml-org/llama.cpp:server-b11515
+    restart: unless-stopped
+    environment:
+      LLAMA_CACHE: /models/llama
+    command: >
+      -hf seamon67/PPLX-Embed-v1-4B-GGUF:Q8_0 --embedding --pooling mean -c 8192 -ub 8192
+      --host 0.0.0.0 --port 8080
+    volumes:
+      - ragator-models:/models
 
   # Base seule, pour développer (npm run db:up) : jamais lancée par « docker compose up ».
   db:
@@ -39,4 +104,5 @@ services:
 
 volumes:
   ragator-data:
+  ragator-models:
   pgdata:

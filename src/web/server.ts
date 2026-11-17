@@ -9,8 +9,8 @@ import { MAX_HISTORY_TURNS, type Turn } from '../core/followup.js';
 import { channelStats, stats } from '../core/stats.js';
 import { listCollections, resolveCollection } from '../core/collections.js';
 import { nearbyVideos } from '../core/nearby-videos.js';
-import { getConfig, PROJECT_ROOT } from '../config.js';
-import { checkOpenRouterKey, publicSettings, saveSettings } from '../settings.js';
+import { getConfig, MODES, PROJECT_ROOT, type Mode } from '../config.js';
+import { checkOpenRouterKey, localStatus, publicSettings, saveSettings, type SettingKey } from '../settings.js';
 import { createAdmin } from './admin.js';
 
 /** Page de l'interface (recherche et administration), autonome : HTML, CSS et JS dans un seul fichier. */
@@ -145,8 +145,8 @@ function answerPayload(result: AnswerResult) {
 
 /**
  * Interface web : recherche (réponse citée, sources) et administration du
- * corpus (dépôt de vidéos, mise à jour, état de l'index) et réglages (clé
- * OpenRouter, modèle, mot de passe). Garde-fous : hôte vérifié (`hostAllowed`) ;
+ * corpus (dépôt de vidéos, mise à jour, état de l'index) et réglages
+ * (mode, clé, modèle, mot de passe). Garde-fous : hôte vérifié (`hostAllowed`) ;
  * mot de passe facultatif (réglages, HTTP Basic), exigé aussi en accès local ;
  * seule la sonde `/healthz` est publique ; POST en `application/json` seulement, qu'un
  * autre site ne peut envoyer sans preflight CORS, jamais accordé ; corps bornés ;
@@ -283,27 +283,36 @@ export function createWebServer(
           return send(res, started ? 202 : 409, started ? { started: true } : { error: 'une mise à jour est déjà en cours' });
         }
 
-        // Réglages : clé OpenRouter (vérifiée avant d'être enregistrée), modèle des réponses, mot de passe.
+        // Réglages : mode (local ou OpenRouter), clé OpenRouter (vérifiée avant d'être enregistrée), modèle
+        // des réponses, serveurs locaux et jeton Hugging Face du juge local, mot de passe.
         if (req.method === 'GET' && url.pathname === '/api/settings') return send(res, 200, publicSettings());
+        if (req.method === 'GET' && url.pathname === '/api/settings/local') return send(res, 200, await localStatus());
         if (req.method === 'POST' && url.pathname === '/api/settings') {
           const body = (await readJson(req)) as Record<string, unknown>;
           const text = (key: string) => (typeof body[key] === 'string' ? (body[key] as string).slice(0, 500) : undefined);
-          const openrouterKey = text('openrouterKey');
-          const llmModel = text('llmModel');
-          const newPassword = text('password');
-          if (openrouterKey) {
-            const refused = await checkOpenRouterKey(openrouterKey.trim());
+          const patch: Partial<Record<SettingKey, string>> = {};
+          for (const key of ['mode', 'openrouterKey', 'llmModel', 'password', 'localLlmUrl', 'localEmbeddingUrl', 'localJudgeUrl', 'hfToken'] as const) {
+            const value = text(key);
+            if (value !== undefined) patch[key] = value;
+          }
+          if (patch.mode && !MODES.includes(patch.mode.trim() as Mode)) return send(res, 400, { error: 'mode attendu : local ou openrouter' });
+          if (patch.openrouterKey?.trim()) {
+            const refused = await checkOpenRouterKey(patch.openrouterKey.trim());
             if (refused) return send(res, 400, { error: refused });
           }
-          if (llmModel && !/^[\w.-]+\/[\w.:-]+$/.test(llmModel.trim())) return send(res, 400, { error: 'modèle attendu sous la forme fournisseur/modèle' });
-          const hadKey = getConfig().llm !== null;
-          await saveSettings(pool, {
-            ...(openrouterKey === undefined ? {} : { openrouterKey }),
-            ...(llmModel === undefined ? {} : { llmModel }),
-            ...(newPassword === undefined ? {} : { password: newPassword }),
-          });
-          // Première clé : le corpus déjà déposé est enrichi et encodé sans attendre.
-          if (!hadKey && getConfig().llm !== null) admin.startUpdate();
+          if (patch.llmModel?.trim() && !/^[\w.-]+\/[\w.:-]+$/.test(patch.llmModel.trim())) return send(res, 400, { error: 'modèle attendu sous la forme fournisseur/modèle' });
+          for (const key of ['localLlmUrl', 'localEmbeddingUrl', 'localJudgeUrl'] as const) {
+            if (patch[key]?.trim() && !/^https?:\/\/[^\s/]+(\/\S*)?$/.test(patch[key]!.trim())) return send(res, 400, { error: 'adresse attendue sous la forme http://machine:port' });
+          }
+          if (patch.hfToken?.trim() && !/^hf_\w{20,}$/.test(patch.hfToken.trim())) return send(res, 400, { error: 'jeton Hugging Face attendu (hf_…)' });
+          const before = getConfig();
+          await saveSettings(pool, patch);
+          const after = getConfig();
+          // Modèles désormais disponibles (première clé, mode choisi ou changé) : le corpus déjà déposé est
+          // enrichi et encodé sans attendre.
+          if (after.llm !== null && (before.llm === null || before.mode !== after.mode)) admin.startUpdate();
+          // Nouveau jeton : transmis tout de suite au juge local (téléchargement d'Aplomb).
+          if (patch.hfToken?.trim() && after.mode === 'local') void localStatus().catch(() => {});
           return send(res, 200, publicSettings());
         }
         send(res, 404, { error: 'introuvable' });

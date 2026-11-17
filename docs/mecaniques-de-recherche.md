@@ -12,13 +12,14 @@ Ce document décrit chaque chemin :
 Le détail des composants (indexation, recherche hybride, base) est dans
 [fonctionnement.md](fonctionnement.md).
 
-Tous les modèles passent par OpenRouter :
+Les modèles tournent sur la machine (mode local) ou passent par OpenRouter, au choix dans l'onglet
+Réglages. Les chemins sont les mêmes ; les exemples ci-dessous nomment les modèles OpenRouter.
 
-| Rôle | Modèle |
-|---|---|
-| Analyse de la question et rédaction | gpt-6-luna |
-| Juge des vidéos (questions générales) | `typesafe/jev-1.13` (seuil 0,3) |
-| Vecteurs | `perplexity/pplx-embed-v1-4b` |
+| Rôle | Mode local | Mode OpenRouter |
+|---|---|---|
+| Analyse de la question et rédaction | Qwen 3.5 9B | gpt-6-luna |
+| Juge des vidéos (questions générales) | Aplomb 1 (seuil 0,4) | `typesafe/jev-1.13` (seuil 0,3) |
+| Vecteurs | pplx-embed-v1-4b (GGUF Q8) | `perplexity/pplx-embed-v1-4b` |
 
 Tous les chemins acceptent une **collection** (une chaîne YouTube, voir
 [fonctionnement.md](fonctionnement.md#31-collection-relance-et-aiguillage)) : chaque requête se
@@ -85,7 +86,7 @@ commande et le serveur MCP l'appellent tous.
    | sujet | l'objet d'une « première / dernière fois » (« scie circulaire ») | présent dans le corpus |
    | série | le nom d'une série que la question désigne par ses titres (« les vidéos de la régie/gaming room » → « régie », « gaming room ») | ramené aux vidéos dont le titre le contient (voir [Séries](#séries-nommées-par-la-question)) |
 
-   Sans LLM, c'est-à-dire en mode « Extraits seuls » ou sans clé OpenRouter, les règles décident seules.
+   Sans LLM, c'est-à-dire en mode « Extraits seuls » ou sans modèle configuré, les règles décident seules.
 
 ### Séries nommées par la question
 
