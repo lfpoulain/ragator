@@ -101,7 +101,7 @@ export interface SearchOptions {
 export const DEEP_LIMIT = 1000;
 const DEEP_CANDIDATES = 1000;
 
-/** Fusion RRF : poids mesurés sur le jeu d'évaluation. */
+/** Fusion RRF : poids mesurés sur un jeu de questions de référence. */
 const RRF_K = 60;
 const LEXICAL_WEIGHT = 40;
 const SEMANTIC_WEIGHT = 60;

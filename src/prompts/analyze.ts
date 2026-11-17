@@ -2,7 +2,7 @@
  * Analyse de la question par LLM, avant la recherche : route, question
  * générale ou précise, terme d'un décompte exact, mots-clés et extrait
  * hypothétique. Le modèle propose ; le code valide tout contre le corpus
- * (`src/core/analyze.ts`). Exemples génériques, jamais tirés du jeu d'évaluation.
+ * (`src/core/analyze.ts`). Exemples génériques, jamais tirés des questions de référence.
  */
 export const ANALYZE_PROMPT_VERSION = '9';
 

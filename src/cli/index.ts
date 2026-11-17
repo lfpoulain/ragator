@@ -200,7 +200,7 @@ ${list.length} question(s)${args.has('--echecs') ? ' en échec probable' : ''}.`
   web: (args) =>
     withDatabase(async (pool) => {
       const port = args.int('--port') ?? 3210;
-      // Dans un conteneur, l'écoute doit être ouverte (le port n'est publié que sur 127.0.0.1, voir docker-compose.yml).
+      // Dans le conteneur, WEB_HOST=0.0.0.0 : le port est publié par compose.yml (3210).
       const host = process.env.WEB_HOST || '127.0.0.1';
       // --mettre-a-jour : mise à jour du corpus au démarrage (conteneur tout-en-un), suivie dans l'administration.
       const server = createWebServer(pool, { updateOnStart: args.has('--mettre-a-jour') });

@@ -3,7 +3,7 @@
 -- `windows` (fenêtres de ~8 000 caractères), 683 fenêtres en attente coûtaient ~540 ms par lecture de
 -- l'index, soit 1,2 s par question (deux lectures) ; pg_search 0.25 ne vide ce tampon que lorsqu'il est
 -- plein. Une base restaurée par pg_restore n'en a pas (index construit d'un bloc) : d'où une recherche à
--- 0,7 s en octobre et à 3 s après une ingestion vidéo par vidéo (mesuré le 13 novembre 2026).
+-- 0,7 s, puis à 3 s après une ingestion vidéo par vidéo (mesuré).
 -- Ragator écrit peu et lit beaucoup : plus de tampon, chaque écriture donne un segment définitif, que
 -- les fusions d'arrière-plan regroupent.
 ALTER INDEX windows_search_idx SET (mutable_segment_rows = 0);

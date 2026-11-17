@@ -10,7 +10,7 @@
 
 /**
  * Poids de la i-ème meilleure fenêtre d'une vidéo : 1, 0,25, 0,06… Mesuré
- * sur le jeu d'évaluation : 0 (meilleure fenêtre seule), 0,1 et 0,25 se valent
+ * sur un jeu de questions de référence : 0 (meilleure fenêtre seule), 0,1 et 0,25 se valent
  * (61-62 %) ; 0,5 favorise trop les vidéos bavardes (60 %).
  */
 const DECAY = 0.25;

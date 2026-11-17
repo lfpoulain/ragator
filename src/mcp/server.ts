@@ -63,7 +63,7 @@ async function run(work: () => Promise<unknown>): Promise<CallToolResult> {
 }
 
 export function createRagatorServer(pool: Pool, options: { embedder?: EmbeddingClient | null } = {}): McpServer {
-  const server = new McpServer({ name: 'ragator', version: '0.2.0' });
+  const server = new McpServer({ name: 'ragator', version: '0.1.0' });
   const searchOptions = options.embedder === undefined ? {} : { embedder: options.embedder };
 
   server.registerTool(

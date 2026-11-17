@@ -51,7 +51,7 @@ export const JUDGE_CRITERIA = {
 /**
  * Critères du juge local (Aplomb) : ceux de JEV, plus stricts sur les verbes d'action. Aplomb laisse
  * passer les simples mentions bien plus que JEV (précision 9 à 21 % sur « quand utilisent-ils… »).
- * Exemples sur d'autres sujets que ceux du jeu d'évaluation, pour ne pas biaiser la mesure.
+ * Exemples sur d'autres sujets que ceux des questions de référence, pour ne pas biaiser la mesure.
  */
 export const JUDGE_CRITERIA_LOCAL = {
   true: {

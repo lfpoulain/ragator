@@ -1,8 +1,8 @@
 /**
  * Marques dont l'écriture varie dans le corpus (espaces, fautes de transcription) : alias → forme
  * canonique, à l'ingestion comme dans la question. Une marque toujours écrite pareil n'a pas besoin
- * d'y figurer. Relevé le 14 octobre 2026 sur les paroles, les plans et l'écran des 404 vidéos, à partir
- * des partenaires cités dans les descriptions. Changer la liste réingère le corpus (texte normalisé
+ * d'y figurer. Relevée sur les paroles, les plans et l'écran d'un corpus de chaîne de
+ * bricolage, à partir des partenaires cités dans les descriptions. Changer la liste réingère le corpus (texte normalisé
  * seulement : vecteurs et enrichissement sont conservés).
  */
 export const BRANDS_VERSION = '2';

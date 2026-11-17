@@ -65,7 +65,7 @@ Une seule instance de Ragator, une seule base. Le mode se choisit dans l'onglet 
 | Clé | aucune (un jeton Hugging Face, une fois, pour télécharger Aplomb) | clé OpenRouter payante |
 | Confidentialité | rien ne sort de la machine une fois les modèles téléchargés | questions et extraits envoyés à OpenRouter |
 | Coût | l'électricité | ~0,001 $ par question précise, ~0,02 $ par question générale, < 1 $ pour indexer 400 vidéos |
-| Vitesse | plus lent, surtout l'indexation (vecteurs sur le processeur) | plus rapide (~5 s par question précise) |
+| Vitesse | ~5 s par question précise sur une RTX 4090 ; indexation lente (~4 min par vidéo, vecteurs sur le processeur) | ~5 s par question précise ; indexation ~15 s par vidéo |
 
 Sans mode choisi, Ragator reste utilisable : recherche par mots et réponses faites des extraits trouvés, avec leurs liens horodatés.
 
@@ -199,7 +199,7 @@ docker run -d --name ragator --restart unless-stopped --shm-size 1g \
   -p 3210:3210 -v /chemin/vers/ragator:/data ghcr.io/lfpoulain/ragator:latest
 ```
 
-`/data` doit être sur un vrai disque : un dossier en mémoire vive serait perdu au redémarrage, et le conteneur refuse d'y créer la base. Pour le mode local, préférez Compose, ou pointez Ragator vers des serveurs de modèles existants (voir [Modèles sur une autre machine](#la-stack-locale)).
+`/data` doit être sur un vrai disque : un dossier en mémoire vive serait perdu au redémarrage, et le conteneur refuse d'y créer la base. Pour le mode local, préférez Compose, ou pointez Ragator vers des serveurs de modèles existants (voir [La stack locale](#la-stack-locale), « Modèles sur une autre machine »).
 
 </details>
 
@@ -212,7 +212,7 @@ docker run -d --name ragator --restart unless-stopped --shm-size 1g \
 3. **Administration** → déposez vos fichiers `video--<id>.json`. Ils sont vérifiés, puis indexés automatiquement.
 4. **Rechercher** → posez votre question.
 
-L'onglet Administration suit l'indexation en direct : vidéos ajoutées, passages enrichis, vecteurs calculés, et l'état de chaque vidéo. Une indexation interrompue (serveur de modèles pas encore prêt, crédit épuisé, redémarrage) reprend là où elle s'était arrêtée.
+L'onglet Administration suit l'indexation en direct : vidéos ajoutées, passages enrichis, vecteurs calculés, et l'état de chaque vidéo. Une indexation interrompue (serveur de modèles pas encore prêt, crédit épuisé, redémarrage) reprend là où elle s'était arrêtée. En mode local, comptez quelques minutes par vidéo : une grosse chaîne s'indexe en une nuit ou plus.
 
 ## Préparer les vidéos
 

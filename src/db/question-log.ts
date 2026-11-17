@@ -2,14 +2,14 @@ import type { Pool } from 'pg';
 import type { AnswerInput, AnswerResult } from '../core/answer.js';
 
 /**
- * Journal des questions posées (migration 0009) : interface web et ligne de commande, jamais l'éval.
- * Sert à repérer les vrais échecs pour en faire des questions d'éval (`npm run journal`).
+ * Journal des questions posées (migration 0009) : interface web et ligne de commande.
+ * Sert à repérer les vrais échecs (`npm run journal`).
  */
 export type QuestionOrigin = 'web' | 'cli';
 
 /**
  * Durée de conservation : au-delà, les questions sont effacées à chaque écriture (rapide : index sur
- * `asked_at`). Six mois suffisent pour repérer les échecs et en faire des questions d'éval.
+ * `asked_at`). Six mois suffisent pour repérer les échecs.
  */
 export const QUESTION_LOG_DAYS = 180;
 

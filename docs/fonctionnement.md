@@ -290,10 +290,10 @@ chemin général, puis extractif pour les questions générales ; lot de rédact
 
 ## 4. Les façades
 
-- **CLI** (`src/cli/`) : `ask`, `chat` (relances), `collections`, commandes
-  d'indexation ; `--collection` limite une question à une chaîne.
+- **CLI** (`src/cli/`) : `ask`, `chat` (relances), `collections`, `journal`, `stats`,
+  `update` et les commandes d'indexation ; `--collection` limite une question à une chaîne.
 - **Interface web** (`src/web/`) : page autonome sans dépendance
-  (`src/web/public/index.html`), servie sur 127.0.0.1. Onglet *Rechercher* :
+  (`src/web/public/index.html`), servie sur le port 3210 (127.0.0.1 hors conteneur). Onglet *Rechercher* :
   fil de conversation, citations cliquables à l'instant exact, vidéos citées
   avec leur miniature, sélecteur « Chaîne » dès que le corpus en compte deux
   (`GET /api/collections`, champ `collection` de `/api/ask`), et sur chaque

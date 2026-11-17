@@ -1,6 +1,6 @@
 -- Schéma prévu mais jamais branché : journal des questions (dont l'origine
--- n'admettait même pas l'interface web), questions d'éval en base (elles vivent
--- dans eval/*.json) et vue de recouvrement parole / plan. Les résultats d'éval
+-- n'admettait même pas l'interface web), questions de référence en base (elles vivent
+-- hors de la base) et vue de recouvrement parole / plan. Les résultats de mesure
 -- restent dans `eval_runs`.
 DROP VIEW IF EXISTS speech_visual_overlap;
 DROP TABLE IF EXISTS query_log;

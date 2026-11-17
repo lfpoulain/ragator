@@ -107,12 +107,17 @@ export function creditQuestion(question: string): CreditQuestion | null {
   return { roles: [...new Set(roles)] };
 }
 
-/** Noms de famille de la chaîne : « les Frères Poulain » ne désigne pas une personne créditée. */
-const NOT_A_PERSON = new Set(['poulain', 'freres', 'les', 'des', 'video', 'videos']);
+/** Mots qui ne désignent jamais une personne créditée. */
+const NOT_A_PERSON = new Set(['les', 'des', 'video', 'videos']);
 
-/** Mots de la question qui désignent une personne créditée (prénom ou nom, 3 lettres au moins). */
-export function namedPeople(question: string, creditedNames: Iterable<string>): string[] {
-  const asked = new Set(tokenizeText(question).tokens.filter((t) => t.length >= 3 && !NOT_A_PERSON.has(t)));
+/**
+ * Mots de la question qui désignent une personne créditée (prénom ou nom, 3 lettres au moins). Les mots
+ * du nom de la chaîne n'en font pas partie : une chaîne au nom de famille (« les Frères Martin ») ne
+ * désigne pas un membre crédité qui porte ce nom.
+ */
+export function namedPeople(question: string, creditedNames: Iterable<string>, channelNames: Iterable<string> = []): string[] {
+  const channelWords = new Set([...channelNames].flatMap((name) => tokenizeText(name.split(',')[0] ?? '').tokens));
+  const asked = new Set(tokenizeText(question).tokens.filter((t) => t.length >= 3 && !NOT_A_PERSON.has(t) && !channelWords.has(t)));
   const found = new Set<string>();
   for (const names of creditedNames) {
     // Seuls les mots à majuscule (ou @pseudo) sont des noms : « son premier montage pour Scilabus » n'en
@@ -148,8 +153,8 @@ export async function answerCredits(
   return readSnapshot(pool, async (db, versions) => {
     const params: unknown[] = [];
     const filters = `${videoIdSql(scope.videoId ?? undefined, params)} ${videoIdsSql(scope.videoIds ?? undefined, params)} ${collectionSql(scope.collection ?? undefined, params)}`;
-    const { rows } = await db.query<{ video_id: string; title: string; published_at: string | null; description_blocks: DescriptionBlock[] }>(
-      `SELECT v.video_id, v.title, v.published_at::text AS published_at, v.description_blocks
+    const { rows } = await db.query<{ video_id: string; title: string; channel: string | null; published_at: string | null; description_blocks: DescriptionBlock[] }>(
+      `SELECT v.video_id, v.title, v.channel, v.published_at::text AS published_at, v.description_blocks
        FROM videos v WHERE true ${filters}
        ORDER BY v.published_at NULLS LAST, v.video_id`,
       params,
@@ -164,7 +169,8 @@ export async function answerCredits(
         return line && line.roles.some((r) => asked.roles.includes(r)) ? [{ ...line, sourceId: block.id, text: block.text.trim() }] : [];
       }),
     }));
-    const people = namedPeople(question, videos.flatMap((v) => v.credits.map((c) => c.names)));
+    const channels = new Set(rows.map((row) => row.channel).filter((c): c is string => Boolean(c)));
+    const people = namedPeople(question, videos.flatMap((v) => v.credits.map((c) => c.names)), channels);
     const roleLabel = asked.roles.map((r) => ROLE_LABELS[r]).join(' ou ');
     const single = Boolean(scope.videoId) || (scope.videoIds?.length ?? 0) > 0;
 

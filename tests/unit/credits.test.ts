@@ -37,9 +37,12 @@ describe('crédits des descriptions', () => {
   });
 
   it('repère les personnes créditées nommées dans la question', () => {
-    const credited = ['Bruno Petit / Alice Martin', 'Jean Dupont', 'Chloé Durand (Studio C)'];
+    const credited = ['Bruno Petit / Alice Martin', 'Jean Dupont', 'Chloé Durand (Studio C)', 'Paul Martin'];
     expect(namedPeople('Quand Alice a monté la vidéo', credited)).toEqual(['alice']);
-    expect(namedPeople('Quelles vidéos des Frères Poulain ont été montées ?', credited)).toEqual([]);
+    // Le nom de la chaîne (« Les Frères Martin ») ne désigne pas les personnes créditées qui le portent.
+    const channel = ['Les Frères Martin, bricolage et électronique'];
+    expect(namedPeople('Quelles vidéos des Frères Martin ont été montées ?', credited, channel)).toEqual([]);
+    expect(namedPeople('Quelles vidéos des Frères Martin ont été montées ?', credited)).toEqual(['martin']);
     expect(namedPeople('les vidéos montées par Jean', credited)).toEqual(['jean']);
   });
 });
