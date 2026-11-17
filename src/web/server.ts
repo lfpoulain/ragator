@@ -1,0 +1,316 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import { join } from 'node:path';
+import type { Pool } from 'pg';
+import { logQuestion } from '../db/question-log.js';
+import { repondre, turnOf, type AnswerMode, type AnswerResult } from '../core/answer.js';
+import { MAX_HISTORY_TURNS, type Turn } from '../core/followup.js';
+import { channelStats, stats } from '../core/stats.js';
+import { listCollections, resolveCollection } from '../core/collections.js';
+import { nearbyVideos } from '../core/nearby-videos.js';
+import { getConfig, PROJECT_ROOT } from '../config.js';
+import { checkOpenRouterKey, publicSettings, saveSettings } from '../settings.js';
+import { createAdmin } from './admin.js';
+
+/** Page de l'interface (recherche et administration), autonome : HTML, CSS et JS dans un seul fichier. */
+const PAGE = join(PROJECT_ROOT, 'src', 'web', 'public', 'index.html');
+
+
+/** Corps accepté au plus : une question et son historique court ; un fichier de vidéo pour le dépôt. */
+const MAX_BODY_BYTES = 262_144;
+const MAX_UPLOAD_BYTES = 16 * 1024 * 1024;
+const MAX_QUESTION_CHARS = 1000;
+
+/**
+ * Questions traitées en même temps au plus : une question générale lance déjà
+ * des dizaines d'appels modèles en parallèle. Au-delà, 429 plutôt qu'une file.
+ */
+const MAX_CONCURRENT_ASKS = 4;
+
+function send(
+  res: ServerResponse,
+  status: number,
+  body: unknown,
+  type = 'application/json; charset=utf-8',
+  headers: Record<string, string> = {},
+): void {
+  res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...headers });
+  res.end(typeof body === 'string' ? body : JSON.stringify(body));
+}
+
+/** Erreur due à la requête elle-même : son code HTTP et son message sont rendus tels quels. */
+class HttpError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+/**
+ * Corps JSON borné : 413 au-delà de `limit` (annoncé ou constaté), 400 s'il
+ * est illisible. Un corps trop long est lu jusqu'au bout sans être gardé,
+ * pour que la réponse parvienne au client.
+ */
+function readJson(req: IncomingMessage, limit = MAX_BODY_BYTES): Promise<unknown> {
+  if (Number(req.headers['content-length'] ?? 0) > limit) return Promise.reject(new HttpError(413, 'requête trop longue'));
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length;
+      if (size <= limit) chunks.push(chunk);
+    });
+    req.on('error', reject);
+    // Client parti en cours d'envoi : sans cela, la question resterait comptée en cours.
+    req.on('close', () => {
+      if (!req.complete) reject(new HttpError(400, 'requête interrompue'));
+    });
+    req.on('end', () => {
+      if (size > limit) return reject(new HttpError(413, 'requête trop longue'));
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+      } catch {
+        reject(new HttpError(400, 'JSON illisible'));
+      }
+    });
+  });
+}
+
+const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
+
+/** Adresse IP en clair (v4, ou v6 entre crochets), avec ou sans port. */
+const IP_HOST = /^(\d{1,3}(\.\d{1,3}){3}|\[[0-9a-f:.]+\])(:\d+)?$/;
+
+/**
+ * Hôte de la requête, contre le rebinding DNS (un site tiers qui ferait pointer son nom vers ce
+ * serveur) : hôte local, adresse IP, nom déclaré dans `RAGATOR_HOSTS`, ou n'importe quel nom dès
+ * qu'un mot de passe protège l'interface (le site tiers ne le connaît pas).
+ */
+export function hostAllowed(host: string | undefined, allowed: readonly string[], protectedByPassword = false): boolean {
+  const value = (host ?? '').toLowerCase();
+  if (!value) return false;
+  if (LOCAL_HOST.test(value) || IP_HOST.test(value) || protectedByPassword) return true;
+  return allowed.includes(value) || allowed.includes(value.replace(/:\d+$/, ''));
+}
+
+const digest = (text: string) => createHash('sha256').update(text).digest();
+
+/** Mot de passe HTTP Basic (nom d'utilisateur libre), comparé en temps constant. */
+export function passwordOk(header: string | undefined, password: string): boolean {
+  const match = /^Basic\s+(.+)$/i.exec(header ?? '');
+  if (!match) return false;
+  const decoded = Buffer.from(match[1]!, 'base64').toString('utf8');
+  const given = decoded.slice(decoded.indexOf(':') + 1);
+  return timingSafeEqual(digest(given), digest(password));
+}
+
+/** Historique renvoyé par la page : seules des références (question, vidéos), jamais des preuves. */
+function parseHistory(raw: unknown): Turn[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((t): t is { question: string; videoIds: unknown } => typeof (t as { question?: unknown })?.question === 'string')
+    .map((t) => ({
+      question: t.question.slice(0, MAX_QUESTION_CHARS),
+      videoIds: Array.isArray(t.videoIds) ? t.videoIds.filter((v): v is string => typeof v === 'string' && /^[A-Za-z0-9_-]{11}$/.test(v)) : [],
+    }))
+    .slice(-MAX_HISTORY_TURNS);
+}
+
+/** Réponse envoyée à la page : ce qu'elle affiche, et la référence du tour pour la relance suivante. */
+function answerPayload(result: AnswerResult) {
+  return {
+    question: result.question,
+    resolvedQuestion: result.resolvedQuestion,
+    route: result.route,
+    mode: result.mode,
+    // Qui a aiguillé : l'analyse LLM ou les règles seules.
+    analysis: result.analysis ? { source: result.analysis.source } : null,
+    answer: result.answer,
+    refused: result.refused,
+    claims: result.claims,
+    sources: result.sources,
+    degradedReason: result.degradedReason,
+    model: result.model,
+    // Qui a jugé les vidéos d'une question générale (affiché seulement si des affirmations portent une probabilité).
+    judge: getConfig().judge?.label ?? 'JEV',
+    // Comment les preuves ont été trouvées : recherche classée (vecteurs ou mots) ou lecture du corpus.
+    retrieval: result.retrieval,
+    timings: result.timings,
+    turn: turnOf(result),
+  };
+}
+
+/**
+ * Interface web : recherche (réponse citée, sources) et administration du
+ * corpus (dépôt de vidéos, mise à jour, état de l'index) et réglages (clé
+ * OpenRouter, modèle, mot de passe). Garde-fous : hôte vérifié (`hostAllowed`) ;
+ * mot de passe facultatif (réglages, HTTP Basic), exigé aussi en accès local ;
+ * seule la sonde `/healthz` est publique ; POST en `application/json` seulement, qu'un
+ * autre site ne peut envoyer sans preflight CORS, jamais accordé ; corps bornés ;
+ * questions simultanées bornées (`MAX_CONCURRENT_ASKS`).
+ * `updateOnStart` : lance une mise à jour du corpus au démarrage (conteneur).
+ */
+export function createWebServer(
+  pool: Pool,
+  options: { updateOnStart?: boolean; corpusDir?: string; hosts?: string[]; password?: string | null } = {},
+): Server {
+  const admin = createAdmin(pool, options.corpusDir === undefined ? {} : { corpusDir: options.corpusDir });
+  // Lus à chaque requête : les réglages changent sans redémarrage.
+  const hostsNow = () => options.hosts ?? getConfig().web.hosts;
+  const passwordNow = () => (options.password !== undefined ? options.password : getConfig().web.password);
+  if (options.updateOnStart) admin.startUpdate();
+  let asking = 0;
+  return createServer((req, res) => {
+    void (async () => {
+      try {
+        const password = passwordNow();
+        if (!hostAllowed(req.headers.host, hostsNow(), password !== null)) {
+          return send(res, 403, { error: "nom d'hôte refusé : ouvrir l'interface par son adresse IP, puis définir un mot de passe dans Réglages" });
+        }
+        const url = new URL(req.url ?? '/', 'http://localhost');
+        if (req.method === 'GET' && url.pathname === '/healthz') {
+          // Sonde publique : jamais le détail de l'erreur de la base.
+          const ok = await pool.query('SELECT 1').then(() => true, () => false);
+          return send(res, ok ? 200 : 503, { ok });
+        }
+        if (password && !passwordOk(req.headers.authorization, password)) {
+          res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="Ragator", charset="UTF-8"', 'Content-Type': 'text/plain; charset=utf-8' });
+          return res.end('Mot de passe requis.');
+        }
+        if (req.method === 'POST' && !(req.headers['content-type'] ?? '').startsWith('application/json')) {
+          return send(res, 415, { error: 'JSON attendu' });
+        }
+        if (req.method === 'GET' && url.pathname === '/') return send(res, 200, readFileSync(PAGE, 'utf8'), 'text/html; charset=utf-8');
+        if (req.method === 'GET' && url.pathname === '/api/stats') return send(res, 200, (await stats(pool)).data);
+        if (req.method === 'GET' && url.pathname === '/api/collections') return send(res, 200, { collections: await listCollections(pool) });
+        // Vidéos proches d'une vidéo, par leur vecteur (?limit=8, ?collection=…).
+        const nearby = req.method === 'GET' ? /^\/api\/videos\/([A-Za-z0-9_-]{11})\/proches$/.exec(url.pathname) : null;
+        if (nearby) {
+          const wanted = url.searchParams.get('collection');
+          let collection: string | null = null;
+          if (wanted) {
+            try {
+              collection = await resolveCollection(pool, wanted);
+            } catch (err) {
+              return send(res, 400, { error: err instanceof Error ? err.message : String(err) });
+            }
+          }
+          const limit = Number(url.searchParams.get('limit') ?? '') || undefined;
+          const result = await nearbyVideos(pool, nearby[1]!, { ...(limit === undefined ? {} : { limit }), collection });
+          return result ? send(res, 200, result) : send(res, 404, { error: 'vidéo inconnue' });
+        }
+
+        // Question : réponse complète (/api/ask) ou au fil de l'eau (/api/ask/stream, une ligne JSON par
+        // étape, puis la réponse complète ; X-Accel-Buffering : un proxy nginx ne la retient pas).
+        if (req.method === 'POST' && (url.pathname === '/api/ask' || url.pathname === '/api/ask/stream')) {
+          if (asking >= MAX_CONCURRENT_ASKS) {
+            return send(res, 429, { error: 'trop de questions en cours : réessayer dans un instant' }, undefined, { 'Retry-After': '5' });
+          }
+          asking += 1;
+          try {
+            const body = (await readJson(req)) as { question?: unknown; mode?: unknown; history?: unknown; collection?: unknown };
+            const question = typeof body.question === 'string' ? body.question.trim().slice(0, MAX_QUESTION_CHARS) : '';
+            if (!question) return send(res, 400, { error: 'question vide' });
+            const mode: AnswerMode = body.mode === 'court' || body.mode === 'extractif' ? body.mode : 'détaillé';
+            // Collection : une chaîne du corpus, ou toutes (absente ou vide).
+            let collection: string | undefined;
+            if (typeof body.collection === 'string' && body.collection !== '') {
+              try {
+                collection = await resolveCollection(pool, body.collection);
+              } catch (err) {
+                return send(res, 400, { error: err instanceof Error ? err.message : String(err) });
+              }
+            }
+            const input = { question, mode, history: parseHistory(body.history), ...(collection ? { collection } : {}) };
+            if (url.pathname === '/api/ask') {
+              try {
+                const result = await repondre(pool, input);
+                void logQuestion(pool, 'web', input, { result });
+                return send(res, 200, answerPayload(result));
+              } catch (err) {
+                void logQuestion(pool, 'web', input, { error: err });
+                throw err;
+              }
+            }
+            res.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'X-Accel-Buffering': 'no' });
+            const emit = (event: unknown) => {
+              if (!res.writableEnded) res.write(`${JSON.stringify(event)}\n`);
+            };
+            try {
+              const result = await repondre(pool, input, { onProgress: (progress) => emit({ type: 'progrès', ...progress }) });
+              void logQuestion(pool, 'web', input, { result });
+              emit({ type: 'résultat', data: answerPayload(result) });
+            } catch (err) {
+              void logQuestion(pool, 'web', input, { error: err });
+              emit({ type: 'erreur', error: err instanceof Error ? err.message : String(err) });
+            }
+            return res.end();
+          } finally {
+            asking -= 1;
+          }
+        }
+
+        // Administration du corpus.
+        if (req.method === 'GET' && url.pathname === '/api/admin/status') {
+          // Bilan d'une chaîne (?collection=…) ou de tout le corpus, plus un bilan par chaîne.
+          const wanted = url.searchParams.get('collection');
+          let collection: string | null = null;
+          if (wanted) {
+            try {
+              collection = await resolveCollection(pool, wanted);
+            } catch (err) {
+              return send(res, 400, { error: err instanceof Error ? err.message : String(err) });
+            }
+          }
+          return send(res, 200, {
+            job: admin.job,
+            corpus: await admin.corpusState(),
+            stats: (await stats(pool, { collection })).data,
+            channels: await channelStats(pool),
+          });
+        }
+        if (req.method === 'GET' && url.pathname === '/api/admin/videos') return send(res, 200, { videos: await admin.listVideos() });
+        if (req.method === 'POST' && url.pathname === '/api/admin/upload') {
+          const body = (await readJson(req, MAX_UPLOAD_BYTES)) as { name?: unknown; content?: unknown };
+          if (typeof body.content !== 'string') return send(res, 400, { error: 'contenu du fichier attendu' });
+          return send(res, 200, admin.saveUpload(typeof body.name === 'string' ? body.name.slice(0, 200) : 'fichier', body.content));
+        }
+        if (req.method === 'POST' && url.pathname === '/api/admin/update') {
+          const started = admin.startUpdate();
+          return send(res, started ? 202 : 409, started ? { started: true } : { error: 'une mise à jour est déjà en cours' });
+        }
+
+        // Réglages : clé OpenRouter (vérifiée avant d'être enregistrée), modèle des réponses, mot de passe.
+        if (req.method === 'GET' && url.pathname === '/api/settings') return send(res, 200, publicSettings());
+        if (req.method === 'POST' && url.pathname === '/api/settings') {
+          const body = (await readJson(req)) as Record<string, unknown>;
+          const text = (key: string) => (typeof body[key] === 'string' ? (body[key] as string).slice(0, 500) : undefined);
+          const openrouterKey = text('openrouterKey');
+          const llmModel = text('llmModel');
+          const newPassword = text('password');
+          if (openrouterKey) {
+            const refused = await checkOpenRouterKey(openrouterKey.trim());
+            if (refused) return send(res, 400, { error: refused });
+          }
+          if (llmModel && !/^[\w.-]+\/[\w.:-]+$/.test(llmModel.trim())) return send(res, 400, { error: 'modèle attendu sous la forme fournisseur/modèle' });
+          const hadKey = getConfig().llm !== null;
+          await saveSettings(pool, {
+            ...(openrouterKey === undefined ? {} : { openrouterKey }),
+            ...(llmModel === undefined ? {} : { llmModel }),
+            ...(newPassword === undefined ? {} : { password: newPassword }),
+          });
+          // Première clé : le corpus déjà déposé est enrichi et encodé sans attendre.
+          if (!hadKey && getConfig().llm !== null) admin.startUpdate();
+          return send(res, 200, publicSettings());
+        }
+        send(res, 404, { error: 'introuvable' });
+      } catch (err) {
+        if (err instanceof HttpError) return send(res, err.status, { error: err.message }, undefined, err.status === 413 ? { Connection: 'close' } : {});
+        send(res, 500, { error: err instanceof Error ? err.message : String(err) });
+      }
+    })();
+  });
+}

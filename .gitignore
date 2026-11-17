@@ -1,0 +1,28 @@
+# Dépendances
+node_modules/
+
+# Secrets et configuration locale
+.env
+.env.*
+!.env.example
+
+# Données : vidéos, sorties, journaux (jamais versionnés)
+/corpus/
+/outputs/
+/logs/
+*.log
+
+# Espace de développement personnel (évaluation, essais, archives)
+/dev/
+
+# Éditeurs, outils et système
+.claude/
+.kilo/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.7z
+*.zip
+*.bundle
+coverage/

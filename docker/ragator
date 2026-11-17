@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Ligne de commande dans le conteneur : docker exec -it ragator ragator ask "question"
+# Serveur MCP en stdio :                docker exec -i ragator ragator mcp
+set -euo pipefail
+cd /app
+if [ "${1:-}" = "mcp" ]; then
+  exec gosu postgres node --import tsx src/mcp/stdio.ts
+fi
+exec gosu postgres node --import tsx src/cli/index.ts "$@"

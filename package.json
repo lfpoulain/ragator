@@ -1,0 +1,45 @@
+{
+  "name": "ragator",
+  "version": "0.1.0",
+  "description": "Posez vos questions à une chaîne YouTube : réponses citées à l’instant près, depuis une interface web, la ligne de commande ou un client MCP.",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.2.0"
+  },
+  "scripts": {
+    "db:up": "docker compose --profile dev up -d --wait db",
+    "db:down": "docker compose --profile dev stop db",
+    "db:migrate": "tsx src/cli/index.ts db:migrate",
+    "update": "tsx src/cli/index.ts update",
+    "ingest": "tsx src/cli/index.ts ingest",
+    "enrich": "tsx src/cli/index.ts enrich",
+    "embed": "tsx src/cli/index.ts embed",
+    "stats": "tsx src/cli/index.ts stats",
+    "collections": "tsx src/cli/index.ts collections",
+    "journal": "tsx src/cli/index.ts journal",
+    "ask": "tsx src/cli/index.ts ask",
+    "chat": "tsx src/cli/index.ts chat",
+    "web": "tsx src/cli/index.ts web",
+    "mcp": "node --import tsx src/mcp/stdio.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "tsc --noEmit && vitest run"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.1.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "pg": "^8.16.3",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.2.0",
+    "@types/node": "^24.5.2",
+    "@types/pg": "^8.15.5",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.2",
+    "vitest": "^5.0.1"
+  },
+  "license": "MIT"
+}

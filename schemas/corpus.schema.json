@@ -1,0 +1,348 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "2.0"
+    },
+    "videoId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{11}$"
+    },
+    "contentHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "promptVersion": {
+          "type": "string"
+        },
+        "fps": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "mediaResolution": {
+          "type": "string"
+        },
+        "chunkSeconds": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "transcriptionSource": {
+          "type": "string",
+          "const": "gemini_video"
+        },
+        "timestampAccuracy": {
+          "type": "string",
+          "const": "model_estimated_seconds"
+        },
+        "speakerScope": {
+          "type": "string",
+          "const": "chunk"
+        }
+      },
+      "required": [
+        "runId",
+        "model",
+        "promptVersion",
+        "fps",
+        "mediaResolution",
+        "chunkSeconds",
+        "transcriptionSource",
+        "timestampAccuracy",
+        "speakerScope"
+      ],
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "channel": {
+          "type": ["string", "null"]
+        },
+        "publicationDate": {
+          "type": ["string", "null"]
+        },
+        "durationSeconds": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": ["title", "url", "channel", "publicationDate", "durationSeconds"],
+      "additionalProperties": false
+    },
+    "publicStats": {
+      "type": "object",
+      "properties": {
+        "views": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "likes": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "comments": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": ["views", "likes", "comments"],
+      "additionalProperties": false
+    },
+    "youtubeDescription": {
+      "type": "string"
+    },
+    "transcript": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "speaker": {
+            "type": "string",
+            "minLength": 1
+          },
+          "timestamp": {
+            "type": "string",
+            "minLength": 1
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "endTimestamp": {
+            "type": "string",
+            "minLength": 1
+          },
+          "chunkIndex": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "id": {
+            "type": "string",
+            "description": "Identifiant unique dans la vidéo, préfixé par videoId suivi de : (vérifié à l'ingestion)."
+          },
+          "startSeconds": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "endSeconds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "speakerId": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["speaker", "timestamp", "text", "id", "startSeconds", "endSeconds", "speakerId"],
+        "additionalProperties": false
+      }
+    },
+    "visualSegments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "minLength": 1
+          },
+          "endTimestamp": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "visualDescription": {
+            "type": "string",
+            "minLength": 1
+          },
+          "screenText": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "uncertainties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "chunkIndex": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "id": {
+            "type": "string",
+            "description": "Identifiant unique dans la vidéo, préfixé par videoId suivi de : (vérifié à l'ingestion)."
+          },
+          "startSeconds": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "endSeconds": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "timestamp",
+          "endTimestamp",
+          "title",
+          "visualDescription",
+          "screenText",
+          "id",
+          "startSeconds",
+          "endSeconds"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "quality": {
+      "type": "object",
+      "properties": {
+        "reviewRequired": {
+          "type": "boolean"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "visualCoverageRatio": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "visualGaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "startSeconds": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "endSeconds": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": ["startSeconds", "endSeconds"],
+            "additionalProperties": false
+          }
+        },
+        "inaudibleEntries": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingSpeechEndTimes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "visualUncertainties": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "reviewRequired",
+        "warnings",
+        "visualCoverageRatio",
+        "visualGaps",
+        "inaudibleEntries",
+        "missingSpeechEndTimes",
+        "visualUncertainties"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "videoId",
+    "contentHash",
+    "generatedAt",
+    "provenance",
+    "source",
+    "publicStats",
+    "youtubeDescription",
+    "transcript",
+    "visualSegments",
+    "quality"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

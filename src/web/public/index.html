@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ragator</title>
+<style>
+:root {
+  --bg: #f5f4f0; --panel: #ffffff; --panel-2: #fbfaf7; --text: #1b1b1d; --muted: #6b6a70; --line: #e4e1da; --line-2: #d6d2c8;
+  --accent: #d2452f; --accent-2: #b8391f; --accent-soft: #fbe8e3; --ok: #1f8a4c; --ok-soft: #e3f4ea; --warn: #9a6a12; --warn-soft: #fbf2df;
+  --err: #b42318; --err-soft: #fde9e7; --chip: #efede7; --shadow: 0 1px 2px rgba(20, 18, 12, .06), 0 4px 16px rgba(20, 18, 12, .05);
+  --radius: 14px; --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121214; --panel: #1b1b1f; --panel-2: #202025; --text: #ececef; --muted: #9c9ca5; --line: #2c2c32; --line-2: #3a3a42;
+    --accent: #ff7a5f; --accent-2: #ff9a85; --accent-soft: #3a2019; --ok: #4cc27f; --ok-soft: #173424; --warn: #e6b04f; --warn-soft: #33281a;
+    --err: #ff8a7a; --err-soft: #3a1c19; --chip: #28282e; --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 16px rgba(0, 0, 0, .25);
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15.5px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; }
+a { color: var(--accent); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+kbd { font: 11px var(--mono); border: 1px solid var(--line-2); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; }
+
+/* En-tête */
+header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.bar { max-width: 1080px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; gap: 16px; }
+.brand { display: flex; align-items: baseline; gap: 10px; flex: 1; min-width: 0; }
+.brand b { font-size: 20px; letter-spacing: -.02em; }
+.brand b span { color: var(--accent); }
+.brand small { color: var(--muted); font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+nav { display: flex; flex-shrink: 0; background: var(--chip); border-radius: 999px; padding: 3px; }
+nav a { text-decoration: none; color: var(--muted); padding: 6px 16px; border-radius: 999px; font-size: 14px; font-weight: 500; }
+nav a.on { background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
+
+main { flex: 1; width: 100%; max-width: 1080px; margin: 0 auto; padding: 24px 20px 32px; }
+.view[hidden] { display: none; }
+
+/* Recherche : accueil */
+.hero { text-align: center; padding: 56px 0 24px; }
+.hero h1 { font-size: 32px; letter-spacing: -.02em; margin: 0 0 8px; }
+.hero p { color: var(--muted); margin: 0; }
+.examples { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 18px; }
+.examples button { display: inline-flex; align-items: baseline; gap: 8px; border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 6px 14px; cursor: pointer; font-size: 14px; color: var(--text); text-align: left; }
+.examples button small { font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); }
+.examples button:hover { border-color: var(--accent); }
+.examples button:hover small { color: var(--accent); }
+
+/* Zone de saisie : dans l'accueil, puis ancrée en bas de l'écran une fois le fil commencé. */
+.composer { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); padding: 8px 8px 8px 12px; display: flex; flex-direction: column; gap: 6px; }
+.composer:focus-within { border-color: var(--line-2); }
+.composer textarea { border: 0; background: transparent; resize: none; height: 46px; max-height: 180px; padding: 8px 4px 2px; outline: none; font-size: 16px; line-height: 1.5; }
+.composer .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.seg { display: inline-flex; background: var(--chip); border-radius: 10px; padding: 3px; }
+.seg label { cursor: pointer; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg span { display: block; padding: 3px 11px; border-radius: 8px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.seg input:checked + span { background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
+.seg input:focus-visible + span { outline: 2px solid var(--accent); }
+.spacer { flex: 1; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 7px 14px; cursor: pointer; font-weight: 500; white-space: nowrap; }
+.btn:hover { border-color: var(--line-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--accent-2); }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+.btn.ghost:hover { color: var(--text); background: var(--chip); }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.hint { color: var(--muted); font-size: 12.5px; }
+.chan select { background: var(--chip); border: 0; border-radius: 10px; padding: 5px 10px; font-size: 13px; color: var(--text); max-width: 220px; }
+.kbd-hint { white-space: nowrap; }
+#reset .short { display: none; }
+@media (max-width: 560px) {
+  .composer .row .spacer { display: none; }
+  .seg span { padding: 3px 9px; font-size: 12.5px; }
+  .chan { flex: 1 1 140px; min-width: 0; }
+  .chan select { width: 100%; max-width: none; }
+  #reset { padding: 7px 11px; }
+  #reset .long { display: none; }
+  #reset .short { display: inline; }
+}
+@media (hover: none) { .kbd-hint { display: none; } }
+#reset { display: none; }
+#search.started #reset { display: inline-block; }
+#search.started .kbd-hint { display: none; }
+#search.started .hero { display: none; }
+#search.started .examples { display: none; }
+#search.started .dock { position: sticky; bottom: 0; padding: 14px 0 12px; background: linear-gradient(to bottom, transparent, var(--bg) 14px); }
+.dock { margin-top: 8px; }
+
+/* Fil de questions et réponses */
+.turn { margin: 8px 0 26px; scroll-margin-top: 72px; }
+.q { font-size: 19px; font-weight: 600; letter-spacing: -.01em; margin: 0 0 4px; }
+.q small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; margin-top: 10px; }
+.answer p { margin: 0 0 10px; }
+.answer ul { margin: 0; padding-left: 20px; }
+.answer li { margin: 8px 0; }
+.answer li::marker { color: var(--accent); }
+.unsure { margin-top: 14px; background: var(--warn-soft); border-radius: 12px; padding: 8px 14px 10px; }
+.unsure h4 { margin: 4px 0; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--warn); }
+a.cite { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; text-decoration: none; font-size: 12.5px; font-variant-numeric: tabular-nums; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 1px 9px; margin: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: 1px; }
+a.cite:hover { background: var(--accent); color: #fff; }
+.warn { margin-top: 10px; font-size: 13px; color: var(--warn); background: var(--warn-soft); border-radius: 8px; padding: 6px 10px; }
+.failed { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.failed .warn { margin: 0; flex: 1; }
+
+/* Une ligne par vidéo : vignette, titre, ce qu'elle dit, instants cités. */
+.answer ul.vlist { list-style: none; padding: 0; margin: 2px 0 0; }
+.vrow { display: grid; grid-template-columns: 136px minmax(0, 1fr); gap: 14px; align-items: start; padding: 10px; margin: 0 -10px; border-radius: 12px; }
+.vrow:hover { background: color-mix(in srgb, var(--chip) 55%, transparent); }
+.vthumb { position: relative; display: block; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; background: var(--chip); }
+.vthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vthumb b, .thumb b { position: absolute; right: 5px; bottom: 5px; background: rgba(0, 0, 0, .78); color: #fff; font-size: 11.5px; font-weight: 600; border-radius: 5px; padding: 0 5px; font-variant-numeric: tabular-nums; }
+.vhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin-bottom: 2px; }
+.vhead a { color: var(--text); font-weight: 600; text-decoration: none; line-height: 1.35; }
+.vhead a:hover { color: var(--accent); }
+.vhead small { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.vtext { font-size: 14.5px; }
+.vtext .badge { vertical-align: 1px; }
+.linkbtn { border: 0; background: none; color: var(--muted); font-size: 12.5px; padding: 0; cursor: pointer; }
+.linkbtn:hover { color: var(--accent); }
+.vtools { margin-top: 2px; }
+@media (max-width: 560px) { .vrow { grid-template-columns: 96px minmax(0, 1fr); gap: 10px; } .vtext { font-size: 14px; } }
+
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.meta span + span::before { content: "·"; margin: 0 8px; }
+.meta .spacer { min-width: 12px; }
+.loading { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+.partial { margin: 12px 0 0; opacity: .85; }
+.partial li { margin: 4px 0; }
+.dots { display: inline-flex; gap: 4px; }
+.dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 1s infinite ease-in-out; }
+.dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes pulse { 0%, 80%, 100% { opacity: .25; transform: scale(.8); } 40% { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .dots i { animation: none; opacity: .7; } }
+
+.sources h3, .nearby h3 { font-size: 13px; color: var(--muted); font-weight: 600; margin: 18px 0 10px; letter-spacing: .02em; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.vid { display: block; text-decoration: none; color: inherit; background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; height: 100%; }
+.vid:hover { border-color: var(--line-2); }
+.thumb { position: relative; aspect-ratio: 16 / 9; background: var(--chip); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vid div.t { padding: 8px 10px 10px; font-size: 13px; line-height: 1.35; }
+.vid div.t strong { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 600; }
+.vid div.t small { color: var(--muted); }
+.vidwrap { position: relative; }
+.near { position: absolute; top: 6px; left: 6px; border: 0; border-radius: 6px; background: rgba(0, 0, 0, .66); color: #fff; font-size: 11.5px; font-weight: 600; padding: 2px 7px; cursor: pointer; opacity: 0; transition: opacity .15s; }
+.vidwrap:hover .near, .near:focus-visible { opacity: 1; }
+@media (hover: none) { .near { opacity: .85; } }
+.nearby h3 { display: flex; align-items: center; gap: 8px; }
+.nearby h3 button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 0 4px; }
+.more { margin-top: 10px; }
+
+/* Administration */
+.adminbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; }
+.adminbar h2 { font-size: 16px; margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adminbar select, .tablebar select { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 6px 10px; max-width: 100%; }
+.health { display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line-2); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; margin-bottom: 16px; }
+.health.ok { border-left-color: var(--ok); }
+.health.warn { border-left-color: var(--warn); }
+.health.err { border-left-color: var(--err); background: color-mix(in srgb, var(--err-soft) 45%, var(--panel)); }
+.health .htext { flex: 1; min-width: 220px; }
+.health strong { display: block; font-size: 15px; }
+.health .hint { display: block; font-size: 13px; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); min-width: 0; }
+.stat small { display: block; color: var(--muted); font-size: 12.5px; }
+.stat b { display: block; font-size: clamp(17px, 4.4vw, 22px); letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.stat em { display: block; font-style: normal; font-size: 12px; color: var(--muted); }
+.table tr.pick { cursor: pointer; }
+.table tr.pick:hover td { background: var(--panel-2); }
+.table tr.pick.on td { background: var(--accent-soft); }
+.settings { max-width: 640px; }
+.settings .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.settings input[type=password], .settings input[type=text] { flex: 1; min-width: 200px; border: 1px solid var(--line); background: var(--panel-2); border-radius: 10px; padding: 7px 12px; font: inherit; color: inherit; }
+.settings .state { margin-top: 8px; }
+.notice { background: var(--warn-soft); color: var(--warn); border-radius: var(--radius); padding: 10px 14px; margin: 10px 0 0; font-size: 13.5px; }
+.notice a { color: inherit; font-weight: 600; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+@media (max-width: 800px) { .cols { grid-template-columns: 1fr; } }
+.card h2 { font-size: 16px; margin: 0 0 4px; }
+.card > p.hint { margin: 0 0 12px; }
+.drop { border: 2px dashed var(--line-2); border-radius: 12px; padding: 18px 16px; text-align: center; cursor: pointer; color: var(--muted); background: var(--panel-2); font-size: 14px; }
+.drop.over { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.drop strong { color: var(--text); display: block; }
+.uploads { list-style: none; padding: 0; margin: 12px 0 0; display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow: auto; }
+.uploads:empty { display: none; }
+.uploads li { display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
+.uploads li .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uploads li .issues { display: block; color: var(--err); font-size: 12px; white-space: normal; }
+.badge { font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+.badge.ok { background: var(--ok-soft); color: var(--ok); }
+.badge.warn { background: var(--warn-soft); color: var(--warn); }
+.badge.err { background: var(--err-soft); color: var(--err); }
+.badge.idle { background: var(--chip); color: var(--muted); }
+.jobhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0 10px; }
+.log { background: #111114; color: #d7d7de; font: 12px/1.55 var(--mono); border-radius: 10px; padding: 10px 12px; height: 220px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+.log[hidden] { display: none; }
+.tablebar { display: flex; gap: 10px; align-items: center; margin: 4px 0 12px; flex-wrap: wrap; }
+.tablebar input { flex: 1; min-width: 180px; border: 1px solid var(--line); background: var(--panel-2); border-radius: 10px; padding: 7px 12px; }
+.table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.table th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.table th.num { text-align: right; }
+.table td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table td.nowrap { white-space: nowrap; }
+.table img { width: 64px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 6px; display: block; background: var(--chip); }
+.table a { color: var(--text); text-decoration: none; font-weight: 500; }
+.table a:hover { color: var(--accent); }
+.meter { width: 70px; height: 6px; background: var(--chip); border-radius: 99px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 6px; }
+.meter i { display: block; height: 100%; background: var(--ok); }
+.scroll { overflow-x: auto; }
+.empty { color: var(--muted); text-align: center; padding: 18px 0 8px; }
+@media (max-width: 640px) {
+  .table .opt { display: none; }
+  .hero { padding: 32px 0 18px; } .hero h1 { font-size: 26px; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .card { padding: 16px; }
+}
+@media (max-width: 460px) {
+  .bar { padding: 10px 16px; gap: 10px; } main { padding: 18px 16px 24px; }
+  .brand small { display: none; }
+  nav a { padding: 6px 12px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="brand"><b>Rag<span>ator</span></b><small id="corpus">Corpus</small></div>
+    <nav aria-label="Sections">
+      <a href="#recherche" id="tab-search" class="on">Rechercher</a>
+      <a href="#admin" id="tab-admin">Administration</a>
+      <a href="#reglages" id="tab-settings">Réglages</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section id="search" class="view" aria-labelledby="search-title">
+    <div class="hero">
+      <h1 id="search-title">Que voulez-vous retrouver&nbsp;?</h1>
+      <p>Posez une question sur les vidéos : la réponse cite l’instant exact qui la prouve.</p>
+    </div>
+    <p class="notice" id="setup-notice" hidden>Aucune clé OpenRouter : seule la recherche par mots fonctionne. <a href="#reglages">Ajouter une clé</a></p>
+    <div id="thread" aria-live="polite"></div>
+    <div class="dock">
+      <form id="ask" class="composer">
+        <label for="question" class="sr">Question</label>
+        <textarea id="question" rows="1" placeholder="Ex. : quand utilisent-ils une imprimante 3D ?" required></textarea>
+        <div class="row">
+          <div class="seg" role="radiogroup" aria-label="Forme de la réponse">
+            <label title="Réponse rédigée, avec les instants cités"><input type="radio" name="mode" value="détaillé" checked><span>Détaillée</span></label>
+            <label title="Réponse rédigée en quelques lignes"><input type="radio" name="mode" value="court"><span>Courte</span></label>
+            <label title="Ni analyse ni rédaction par un LLM : aiguillage par règles, extraits bruts"><input type="radio" name="mode" value="extractif"><span>Extraits, sans LLM</span></label>
+          </div>
+          <label class="chan" id="chan-wrap" hidden><span class="sr">Chaîne</span><select id="collection"><option value="">Toutes les chaînes</option></select></label>
+          <span class="spacer"></span>
+          <span class="hint kbd-hint"><kbd>Entrée</kbd> envoyer · <kbd>Maj</kbd>+<kbd>Entrée</kbd> à la ligne</span>
+          <button type="button" class="btn ghost" id="reset" title="Effacer le fil et repartir de zéro" aria-label="Nouveau fil"><span class="long">Nouveau fil</span><span class="short" aria-hidden="true">↺</span></button>
+          <button class="btn primary" id="send">Demander</button>
+        </div>
+      </form>
+      <div class="examples" id="examples"></div>
+    </div>
+  </section>
+
+  <section id="admin" class="view" hidden aria-labelledby="admin-title">
+    <h1 id="admin-title" class="sr">Administration</h1>
+    <div class="adminbar">
+      <h2 id="admin-scope">Tout le corpus</h2>
+      <label id="admin-chan-wrap" hidden><span class="sr">Chaîne</span><select id="admin-collection"><option value="">Toutes les chaînes</option></select></label>
+    </div>
+    <div class="health" id="health" role="status">
+      <div class="htext"><strong id="health-title">État de l’index…</strong><span class="hint" id="health-sub"></span></div>
+      <button class="btn" id="update">Mettre à jour l’index</button>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="card" id="channels-card" style="margin-top:16px" hidden>
+      <h2>Par chaîne</h2>
+      <p class="hint">Cliquez une chaîne pour n’afficher que ses chiffres et ses vidéos ; recliquez pour revenir à tout le corpus.</p>
+      <div class="scroll">
+        <table class="table">
+          <thead><tr><th>Chaîne</th><th class="num">Vidéos</th><th class="num opt">Durée</th><th class="opt">Période</th><th class="num opt">Extraits</th><th>Enrichissement</th><th>Vecteurs</th></tr></thead>
+          <tbody id="channels"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="cols">
+      <div class="card">
+        <h2>Ajouter des vidéos</h2>
+        <p class="hint">Un fichier <code>video--&lt;id&gt;.json</code> par vidéo (format <code>schemas/corpus.schema.json</code>), vérifié avant d’être ajouté. Mettez ensuite l’index à jour.</p>
+        <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choisir des fichiers JSON">
+          <strong>Déposez vos fichiers ici</strong>ou cliquez pour les choisir
+        </div>
+        <input type="file" id="files" accept=".json,application/json" multiple hidden>
+        <ul class="uploads" id="uploads"></ul>
+      </div>
+      <div class="card">
+        <h2>Journal de mise à jour</h2>
+        <p class="hint">Ingestion des fichiers nouveaux ou modifiés, enrichissement des passages par le LLM, puis vecteurs. Rien n’est refait pour ce qui est déjà à jour.</p>
+        <div class="jobhead">
+          <span class="badge idle" id="jobstate">inactive</span>
+          <span class="hint" id="corpusinfo"></span>
+        </div>
+        <p class="hint" id="nolog">Aucune mise à jour lancée depuis le démarrage du serveur.</p>
+        <div class="log" id="log" aria-live="polite" hidden></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2>Vidéos indexées</h2>
+      <div class="tablebar">
+        <label for="filter" class="sr">Filtrer</label>
+        <input id="filter" type="search" placeholder="Filtrer par titre, identifiant ou date…">
+        <div class="seg" role="radiogroup" aria-label="Vidéos affichées">
+          <label><input type="radio" name="vstate" value="all" checked><span>Toutes</span></label>
+          <label title="Passages pas encore enrichis ou vecteurs manquants"><input type="radio" name="vstate" value="todo"><span id="todo-label">À compléter</span></label>
+        </div>
+        <label><span class="sr">Trier</span><select id="sort">
+          <option value="recent">Plus récentes</option>
+          <option value="old">Plus anciennes</option>
+          <option value="long">Plus longues</option>
+          <option value="entries">Plus d’extraits</option>
+        </select></label>
+        <span class="hint" id="count"></span>
+      </div>
+      <div class="scroll">
+        <table class="table">
+          <thead><tr><th></th><th>Vidéo</th><th class="opt" id="th-chan" hidden>Chaîne</th><th class="opt">Date</th><th class="num opt">Durée</th><th class="num">Extraits</th><th>Enrichissement</th><th>Vecteurs</th></tr></thead>
+          <tbody id="videos"></tbody>
+        </table>
+      </div>
+      <p class="empty" id="novideos" hidden>Aucune vidéo ne correspond.</p>
+      <button class="btn more" id="moreVideos" hidden>Afficher plus</button>
+    </div>
+  </section>
+
+  <section id="settings" class="view settings" hidden aria-labelledby="settings-title">
+    <h1 id="settings-title" class="sr">Réglages</h1>
+    <div class="card">
+      <h2>Clé OpenRouter</h2>
+      <p class="hint">Une seule clé pour les trois modèles (réponses, vecteurs, tri des vidéos). Elle est vérifiée auprès d’OpenRouter puis enregistrée dans la base, jamais renvoyée à la page. Créez-en une sur <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>.</p>
+      <div class="state hint" id="key-state"></div>
+      <form class="row" id="key-form">
+        <label for="key" class="sr">Clé OpenRouter</label>
+        <input type="password" id="key" placeholder="sk-or-v1-…" autocomplete="off" spellcheck="false">
+        <button class="btn primary">Enregistrer</button>
+        <button type="button" class="btn ghost" id="key-clear" hidden>Retirer</button>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Modèle des réponses</h2>
+      <p class="hint">Modèle OpenRouter qui analyse la question et rédige la réponse. Il doit accepter la sortie JSON imposée (<em>structured outputs</em>). Laissez vide pour le modèle par défaut.</p>
+      <form class="row" id="model-form">
+        <label for="model" class="sr">Modèle</label>
+        <input type="text" id="model" autocomplete="off" spellcheck="false">
+        <button class="btn">Enregistrer</button>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Mot de passe de l’interface</h2>
+      <p class="hint">Indispensable dès que Ragator est joignable depuis le réseau : sans lui, toute personne qui y accède peut poser des questions, ajouter des vidéos et changer ces réglages. Le navigateur le demande (nom d’utilisateur libre).</p>
+      <div class="state hint" id="pw-state"></div>
+      <form class="row" id="pw-form">
+        <label for="pw" class="sr">Nouveau mot de passe</label>
+        <input type="password" id="pw" placeholder="Nouveau mot de passe" autocomplete="new-password">
+        <button class="btn">Enregistrer</button>
+        <button type="button" class="btn ghost" id="pw-clear" hidden>Retirer</button>
+      </form>
+    </div>
+    <p class="hint" id="settings-msg" role="status" style="margin-top:12px"></p>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
+const thumb = (videoId) => 'https://i.ytimg.com/vi/' + encodeURIComponent(videoId) + '/mqdefault.jpg';
+const watch = (videoId) => 'https://www.youtube.com/watch?v=' + encodeURIComponent(videoId);
+const ts = (s) => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = String(s % 60).padStart(2, '0'); return h ? h + ':' + String(m).padStart(2, '0') + ':' + x : m + ':' + x; };
+const num = (n) => Number(n).toLocaleString('fr-FR');
+const plural = (n, word) => num(n) + ' ' + word + (n > 1 ? 's' : '');
+const shorten = (text, n) => (text.length > n ? text.slice(0, n) + '…' : text);
+const newTab = (a) => { a.target = '_blank'; a.rel = 'noopener'; return a; };
+async function api(path, body) {
+  const response = await fetch(path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || response.statusText);
+  return data;
+}
+
+/* ---------- Onglets ---------- */
+const VIEWS = [['search', 'tab-search', ''], ['admin', 'tab-admin', '#admin'], ['settings', 'tab-settings', '#reglages']];
+function route() {
+  const current = VIEWS.find(([, , hash]) => hash && location.hash === hash) || VIEWS[0];
+  const changed = $(current[0]).hidden;
+  for (const [view, tab] of VIEWS) {
+    const on = view === current[0];
+    $(view).hidden = !on; $(tab).classList.toggle('on', on); $(tab).setAttribute('aria-current', on ? 'page' : 'false');
+  }
+  if (changed) window.scrollTo(0, 0);
+  if (current[0] === 'admin') refreshAdmin(true);
+  else if (current[0] === 'settings') loadSettings();
+  else $('question').focus();
+}
+window.addEventListener('hashchange', route);
+
+/* ---------- Recherche ---------- */
+// Un exemple par chemin de recherche, pour montrer ce que l'outil sait faire.
+const EXAMPLES = [
+  ['Précise', 'Quelle colle utilisent-ils pour le bois ?'],
+  ['Générale', 'Quand utilisent-ils une imprimante 3D ?'],
+  ['Première fois', 'La première fois qu’ils utilisent une imprimante 3D résine'],
+  ['Décompte', 'Toutes les vidéos où on parle de Raspberry Pi'],
+];
+let history = [];
+for (const [kind, q] of EXAMPLES) {
+  const b = el('button'); b.type = 'button'; b.append(el('small', null, kind), q); b.onclick = () => ask(q); $('examples').append(b);
+}
+try { const saved = localStorage.getItem('ragator-mode'); if (saved) document.querySelector('input[name=mode][value="' + saved + '"]')?.click(); } catch {}
+document.querySelectorAll('input[name=mode]').forEach((r) => r.addEventListener('change', () => { try { localStorage.setItem('ragator-mode', r.value); } catch {} }));
+
+// Références « [id @ mm:ss] » et liens bruts de la réponse.
+const REF = /\[([A-Za-z0-9_-]{11}(?::[tvd]\d{5})?)(?: @ ([\d:]+)[^\]]*)?\]|https?:\/\/\S+/g;
+function urlVideo(u) {
+  try {
+    const x = new URL(u); const host = x.hostname.replace(/^(www|m)\./, '');
+    if (host === 'youtube.com') return x.searchParams.get('v');
+    if (host === 'youtu.be') return x.pathname.slice(1, 12) || null;
+  } catch {}
+  return null;
+}
+function urlTime(u) { try { const t = new URL(u).searchParams.get('t'); return t ? parseInt(t, 10) : null; } catch { return null; } }
+/** Vidéos qu'une ligne cite, par ses références et ses liens YouTube. */
+function videosIn(text, urls = []) {
+  const set = new Set();
+  for (const m of text.matchAll(REF)) { const v = m[0].startsWith('http') ? urlVideo(m[0]) : m[1].slice(0, 11); if (v) set.add(v); }
+  for (const u of urls) { const v = urlVideo(u); if (v) set.add(v); }
+  return set;
+}
+/** Pastille vers un instant ; `compact` : l'instant seul (la vidéo est déjà nommée à côté). */
+function citePill(href, label, title) { const a = newTab(el('a', 'cite', '▶ ' + label)); a.href = href; if (title) a.title = title; return a; }
+function urlPill(u, label) { const t = urlTime(u); return citePill(u, label || (t !== null ? ts(t) : 'ouvrir')); }
+function linkify(text, byId, compact) {
+  const frag = document.createDocumentFragment();
+  let last = 0;
+  for (const m of text.matchAll(REF)) {
+    frag.append(text.slice(last, m.index));
+    last = m.index + m[0].length;
+    if (m[0].startsWith('http')) {
+      if (urlVideo(m[0])) { frag.append(urlPill(m[0])); continue; }
+      const a = newTab(el('a', null, shorten(m[0].replace(/^https?:\/\/(www\.)?/, ''), 48))); a.href = m[0]; a.title = m[0]; frag.append(a); continue;
+    }
+    const s = byId.get(m[1]);
+    const name = s ? shorten(s.title, 34) : m[1].slice(0, 11);
+    const label = compact ? (m[2] || name) : name + (m[2] ? ' · ' + m[2] : '');
+    frag.append(citePill(s ? s.link : watch(m[1].slice(0, 11)), label, s ? s.title + (s.publishedAt ? ' (' + s.publishedAt + ')' : '') : ''));
+  }
+  frag.append(text.slice(last));
+  return frag;
+}
+
+// Réponse découpée en blocs : paragraphes, puces (avec leurs liens en ligne suivante), section « à vérifier ».
+function parseAnswer(text) {
+  const blocks = [];
+  for (const line of text.split('\n')) {
+    const last = blocks[blocks.length - 1];
+    if (!line.trim()) { blocks.push({ kind: 'gap' }); continue; }
+    if (/^Pertinence incertaine/.test(line)) { blocks.push({ kind: 'unsure' }); continue; }
+    if (/^\s+https?:\/\/\S+\s*$/.test(line) && (last?.kind === 'li' || last?.kind === 'p')) { last.urls.push(line.trim()); continue; }
+    if (/^\s*-\s+/.test(line)) { blocks.push({ kind: 'li', text: line.replace(/^\s*-\s+/, ''), urls: [] }); continue; }
+    blocks.push({ kind: 'p', text: line, urls: [] });
+  }
+  return blocks;
+}
+
+// Ligne du décompte exact (src/core/exhaustive.ts) : date, titre, extraits, première mention.
+const COUNT = /^(.+?) — « (.+) » : (\d+) extrait\(s\) \((\d+) parole\(s\), (\d+) plan\(s\)\) — première mention à ([\d:]+)( — à relire)?\s*$/;
+
+/** Une ligne par vidéo : vignette à l'instant cité, titre, puis ce que la vidéo en dit. */
+function videoRow(item, videoId, ctx) {
+  const s = ctx.byVideo.get(videoId);
+  const count = COUNT.exec(item.text);
+  let first = item.urls[0] || null, said = null;
+  if (!first) for (const m of item.text.matchAll(REF)) { if (!m[0].startsWith('http')) { first = ctx.byId.get(m[1])?.link || null; said = m[2] || null; if (first) break; } }
+  first ||= s?.link || watch(videoId);
+  const t0 = urlTime(first) ?? s?.startS ?? null;
+  const title = count ? count[2] : s?.title || videoId;
+  const li = el('li', 'vrow');
+  const th = newTab(el('a', 'vthumb')); th.href = first; th.setAttribute('aria-label', title + (t0 !== null ? ', à ' + ts(t0) : ''));
+  const img = el('img'); img.loading = 'lazy'; img.alt = ''; img.src = thumb(videoId); th.append(img);
+  // Le lien démarre un peu avant l'instant cité : la vignette affiche l'instant, comme la pastille.
+  const shownAt = count ? count[6] : said || (t0 !== null ? ts(t0) : null);
+  if (shownAt) th.append(el('b', null, shownAt));
+  const body = el('div');
+  const head = el('div', 'vhead'); const a = newTab(el('a', null, title)); a.href = first; head.append(a);
+  const date = count ? count[1] : s?.publishedAt; if (date) head.append(el('small', null, date));
+  const text = el('div', 'vtext');
+  if (count) {
+    text.append(plural(+count[3], 'extrait') + ' (' + plural(+count[4], 'parole') + ', ' + plural(+count[5], 'plan') + ') · première mention ', urlPill(first, count[6]));
+    if (count[7]) text.append(' ', el('span', 'badge warn', 'à relire'));
+  } else {
+    text.append(linkify(item.text, ctx.byId, true));
+    for (const u of item.urls) text.append(' ', urlPill(u));
+  }
+  body.append(head, text);
+  if (ctx.nearBox) {
+    const tools = el('div', 'vtools'); const near = el('button', 'linkbtn', '≈ vidéos proches'); near.type = 'button';
+    near.onclick = () => showNearby(ctx.nearBox, videoId, title); tools.append(near); body.append(tools);
+  }
+  li.append(th, body);
+  return li;
+}
+function plainItem(item, ctx, tag = 'li') {
+  const node = el(tag);
+  node.append(linkify(item.text, ctx.byId, ctx.single));
+  for (const u of item.urls) node.append(' ', urlPill(u));
+  return node;
+}
+/** Remplit une liste : en lignes de vidéos si chaque puce parle d'une seule vidéo, toutes différentes. */
+function fillList(ul, items, ctx, perItem = false) {
+  const ids = items.map((it) => { const set = videosIn(it.text, it.urls); return set.size === 1 ? [...set][0] : null; });
+  const rows = perItem ? null : items.length >= 2 && ids.every(Boolean) && new Set(ids).size === ids.length;
+  items.forEach((it, i) => {
+    const asRow = perItem ? Boolean(ids[i]) : rows;
+    ul.append(asRow ? videoRow(it, ids[i], ctx) : plainItem(it, ctx));
+    if (asRow) ctx.rowVideos.add(ids[i]);
+  });
+  if (rows || (perItem && ids.some(Boolean))) ul.classList.add('vlist');
+}
+function renderBlocks(target, blocks, ctx) {
+  let host = target, ul = null, items = [];
+  const close = () => { if (ul) fillList(ul, items, ctx); ul = null; items = []; };
+  for (const b of blocks) {
+    if (b.kind === 'li') { if (!ul) { ul = el('ul'); host.append(ul); } items.push(b); continue; }
+    close();
+    if (b.kind === 'unsure') { host = el('div', 'unsure'); host.append(el('h4', null, 'À vérifier : pertinence incertaine')); target.append(host); }
+    else if (b.kind === 'p') host.append(plainItem(b, ctx, 'p'));
+  }
+  close();
+}
+function contextOf(sources, nearBox) {
+  const byId = new Map(); const byVideo = new Map();
+  for (const s of sources) { for (const id of s.sourceIds) byId.set(id, s); if (!byVideo.has(s.videoId)) byVideo.set(s.videoId, s); }
+  return { byId, byVideo, single: byVideo.size === 1, nearBox, rowVideos: new Set() };
+}
+
+// Carte de vidéo ; son bouton « ≈ proches » affiche dans `nearBox` les vidéos voisines par leur vecteur.
+function videoCard(s, nearBox) {
+  const wrap = el('div', 'vidwrap');
+  const a = newTab(el('a', 'vid')); a.href = s.link;
+  const t = el('div', 'thumb'); const img = el('img'); img.loading = 'lazy'; img.alt = ''; img.src = thumb(s.videoId); t.append(img);
+  if (s.startS !== null) t.append(el('b', null, ts(s.startS)));
+  const info = el('div', 't'); info.append(el('strong', null, s.title), el('small', null, s.publishedAt || 'date inconnue'));
+  a.append(t, info);
+  const near = el('button', 'near', '≈ proches'); near.type = 'button';
+  near.title = 'Vidéos proches'; near.setAttribute('aria-label', 'Vidéos proches de « ' + s.title + ' »');
+  near.onclick = () => showNearby(nearBox, s.videoId, s.title);
+  wrap.append(a, near); return wrap;
+}
+async function showNearby(box, videoId, title) {
+  box.textContent = '';
+  const h = el('h3', null, 'Proches de « ' + shorten(title, 60) + ' »');
+  const close = el('button', null, '×'); close.type = 'button'; close.title = 'Fermer'; close.setAttribute('aria-label', 'Fermer'); close.onclick = () => { box.textContent = ''; };
+  h.append(close); box.append(h);
+  const status = el('p', 'hint', 'Recherche des vidéos proches…'); box.append(status);
+  box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  try {
+    const data = await api('/api/videos/' + encodeURIComponent(videoId) + '/proches');
+    if (!data.ready) { status.textContent = 'Cette vidéo n’a pas encore de vecteur : lancer la mise à jour (Administration).'; return; }
+    if (!data.videos.length) { status.textContent = 'Aucune autre vidéo encodée.'; return; }
+    status.remove();
+    const grid = el('div', 'grid');
+    for (const v of data.videos) grid.append(videoCard({ ...v, startS: null }, box));
+    box.append(grid);
+  } catch (err) { status.textContent = 'Erreur : ' + err.message; }
+}
+
+/** Vignettes des vidéos citées que les lignes de vidéos ne montrent pas déjà. */
+function renderSources(box, list, nearBox) {
+  if (!list.length) return;
+  const wrap = el('div', 'sources');
+  wrap.append(el('h3', null, plural(list.length, 'vidéo') + ' citée' + (list.length > 1 ? 's' : '')));
+  const grid = el('div', 'grid');
+  const LIMIT = 12;
+  const card = (s) => videoCard(s, nearBox);
+  list.slice(0, LIMIT).forEach((s) => grid.append(card(s)));
+  wrap.append(grid);
+  if (list.length > LIMIT) {
+    const more = el('button', 'btn more', 'Afficher les ' + list.length + ' vidéos');
+    more.type = 'button';
+    more.onclick = () => { list.slice(LIMIT).forEach((s) => grid.append(card(s))); more.remove(); };
+    wrap.append(more);
+  }
+  box.append(wrap);
+}
+
+/** Texte à copier : chaque référence devient « titre @ instant — lien ». */
+function answerText(data, byId) {
+  return data.answer.replace(REF, (m0, id, t) => {
+    if (m0.startsWith('http')) return m0;
+    const s = byId.get(id);
+    return s ? '(' + s.title + (t ? ' @ ' + t : '') + ' — ' + s.link + ')' : m0;
+  });
+}
+
+function renderAnswer(box, data) {
+  box.textContent = '';
+  const nearBox = el('div', 'nearby');
+  const ctx = contextOf(data.sources, nearBox);
+  const answer = el('div', 'answer');
+  renderBlocks(answer, parseAnswer(data.answer), ctx);
+  box.append(answer);
+  if (data.degradedReason) box.append(el('div', 'warn', '⚠ ' + data.degradedReason));
+  const rest = [...ctx.byVideo.values()].filter((s) => !ctx.rowVideos.has(s.videoId));
+  if (data.route !== 'lister' || rest.length <= 60) renderSources(box, rest, nearBox);
+  box.append(nearBox);
+  // Ce qui a réellement servi : qui a aiguillé la question, qui a produit la réponse, où l'on a cherché.
+  const meta = el('div', 'meta');
+  const short = (model) => String(model).replace(/^.*\//, '');
+  const routed = data.analysis?.source === 'llm' ? 'analyse par LLM' : 'aiguillage par règles';
+  const produced =
+    data.route === 'lister' ? 'décompte exact, sans LLM'
+    : data.route === 'clarifier' ? 'demande de précision'
+    : data.model ? 'rédigé par ' + short(data.model)
+    : 'extraits bruts, sans LLM';
+  const RETRIEVAL = {
+    vecteurs: 'mots + vecteurs',
+    mots: 'mots seuls',
+    corpus: 'lecture exhaustive du corpus',
+    chronologique: 'lecture du corpus, puis juge moment par moment',
+    'série': 'vidéos de la série lues en entier',
+  };
+  const parts = [produced, RETRIEVAL[data.retrieval], data.claims?.some((c) => c.relevance !== undefined) ? 'vidéos triées par ' + (data.judge || 'JEV') : null, (data.timings.totalMs / 1000).toFixed(1).replace('.', ',') + ' s'];
+  for (const p of parts) if (p) meta.append(el('span', null, p));
+  meta.title = routed + (data.model ? ' (' + short(data.model) + ')' : '');
+  meta.append(el('div', 'spacer'));
+  const copy = el('button', 'linkbtn', 'Copier la réponse'); copy.type = 'button';
+  copy.onclick = async () => {
+    try { await navigator.clipboard.writeText(answerText(data, ctx.byId)); copy.textContent = 'Copiée ✓'; }
+    catch { copy.textContent = 'Copie impossible'; }
+    setTimeout(() => { copy.textContent = 'Copier la réponse'; }, 1800);
+  };
+  meta.append(copy);
+  box.append(meta);
+}
+
+/** Question au fil de l'eau : une ligne JSON par étape, puis la réponse ; null si le serveur ne le propose pas. */
+async function askStream(payload, onProgress) {
+  const response = await fetch('/api/ask/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  if (response.status === 404) return null;
+  if (!response.ok || !response.body) { const data = await response.json().catch(() => ({})); throw new Error(data.error || response.statusText); }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '', result = null;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let cut;
+    while ((cut = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, cut).trim(); buffer = buffer.slice(cut + 1);
+      if (!line) continue;
+      const event = JSON.parse(line);
+      if (event.type === 'résultat') result = event.data;
+      else if (event.type === 'erreur') throw new Error(event.error);
+      else onProgress(event);
+    }
+  }
+  if (!result) throw new Error('réponse interrompue');
+  return result;
+}
+
+// Suit la réponse qui s'écrit, tant que le lecteur est resté en bas de la page.
+const atBottom = () => window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 160;
+function following(change) { const follow = atBottom(); change(); if (follow) window.scrollTo({ top: document.documentElement.scrollHeight }); }
+
+const STEPS = { analyse: 'Analyse de la question…', recherche: 'Recherche dans les vidéos…', réponse: 'Rédaction de la réponse…' };
+
+async function ask(question) {
+  $('search').classList.add('started');
+  const turn = el('div', 'turn');
+  const q = el('div', 'q', question);
+  const box = el('div', 'card');
+  const loading = el('div', 'loading'); const dots = el('span', 'dots'); dots.append(el('i'), el('i'), el('i'));
+  const label = el('span', null, 'Recherche dans les vidéos…'); loading.append(dots, label); box.append(loading);
+  turn.append(q, box); $('thread').append(turn);
+  turn.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const started = Date.now();
+  let step = 'Recherche dans les vidéos…';
+  const tick = () => { label.textContent = step + ' ' + Math.round((Date.now() - started) / 1000) + ' s'; };
+  const timer = setInterval(tick, 1000);
+  // Lignes déjà rédigées (questions générales), affichées avant la réponse finale qui les remplace, triée.
+  const partial = el('ul', 'partial'); let written = 0;
+  const onProgress = (event) => {
+    if (STEPS[event.étape]) step = STEPS[event.étape];
+    else if (event.étape === 'jugement') step = 'Tri de ' + event.vidéos + ' vidéos candidates…';
+    else if (event.étape === 'rédaction') step = 'Rédaction (' + plural(event.lots, 'lot') + ' de vidéos)…';
+    else if (event.étape === 'lignes') {
+      const items = parseAnswer(event.answer).filter((b) => b.kind === 'li');
+      following(() => { fillList(partial, items, contextOf(event.sources, null), true); if (!partial.isConnected) box.append(partial); });
+      written += items.length;
+      step = 'Rédaction : ' + plural(written, 'vidéo') + ' décrite' + (written > 1 ? 's' : '') + '…';
+    }
+    tick();
+  };
+  $('send').disabled = true;
+  try {
+    const payload = { question, mode: document.querySelector('input[name=mode]:checked').value, history, collection: $('collection').value || undefined };
+    const data = (await askStream(payload, onProgress)) ?? (await api('/api/ask', payload));
+    if (data.resolvedQuestion !== data.question) q.append(el('small', null, 'compris : ' + data.resolvedQuestion));
+    renderAnswer(box, data);
+    history = [...history, data.turn].slice(-5);
+  } catch (err) {
+    box.textContent = '';
+    const failed = el('div', 'failed'); failed.append(el('div', 'warn', 'Erreur : ' + err.message));
+    const retry = el('button', 'btn', 'Réessayer'); retry.type = 'button'; retry.onclick = () => { turn.remove(); ask(question); };
+    failed.append(retry); box.append(failed);
+  } finally {
+    clearInterval(timer); $('send').disabled = false; $('question').focus();
+  }
+}
+const grow = () => { const t = $('question'); t.style.height = 'auto'; t.style.height = Math.min(Math.max(t.scrollHeight, 46), 180) + 'px'; };
+$('question').addEventListener('input', grow);
+$('ask').onsubmit = (e) => { e.preventDefault(); const v = $('question').value.trim(); if (!v || $('send').disabled) return; $('question').value = ''; grow(); ask(v); };
+$('question').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('ask').requestSubmit(); } });
+$('reset').onclick = () => { history = []; $('thread').textContent = ''; $('search').classList.remove('started'); window.scrollTo(0, 0); $('question').focus(); };
+// « / » : revenir à la question depuis n'importe où dans la recherche.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || $('search').hidden) return;
+  if (e.target.closest?.('input, textarea, select, [contenteditable]')) return;
+  e.preventDefault(); $('question').focus();
+});
+
+/* ---------- Administration ---------- */
+let videos = [], shown = 50, polling = null, channels = [];
+const adminCollection = () => $('admin-collection').value;
+
+function statCard(label, value, sub) { const d = el('div', 'stat'); d.append(el('small', null, label), el('b', null, value)); if (sub) d.append(el('em', null, sub)); d.title = label + ' : ' + value + (sub ? ' — ' + sub : ''); return d; }
+function renderStats(s) {
+  const box = $('stats'); box.textContent = '';
+  const e = s.embeddings;
+  box.append(
+    statCard('Vidéos', num(s.videos), (s.dateRange.from || '?') + ' → ' + (s.dateRange.to || '?')),
+    statCard('Durée totale', Math.round(s.totalDurationS / 3600) + ' h', s.collection ? 'moy. ' + ts(s.videos ? s.totalDurationS / s.videos : 0) + ' par vidéo' : 'taille ' + (s.indexedBytes / 1024 / 1024 / 1024).toFixed(1).replace('.', ',') + ' Go'),
+    statCard('Extraits', num(s.entries.parole + s.entries.visuel), num(s.entries.parole) + ' paroles, ' + num(s.entries.visuel) + ' plans'),
+    statCard('Passages enrichis', num(s.chunks.enriched) + ' / ' + num(s.chunks.total), s.chunks.pendingEnrichment ? num(s.chunks.pendingEnrichment) + ' à enrichir' : 'à jour'),
+    statCard('Vecteurs', num(e.done), e.pending ? num(e.pending) + ' en attente' : (e.vectorIndex ? 'index à jour' : 'index absent')),
+    statCard('Vecteurs de vidéo', num(e.videos.done) + ' / ' + num(s.videos), e.videos.pending ? num(e.videos.pending) + ' en attente' : 'à jour'),
+  );
+  if (!s.collection) { stat = s; showCorpus(); }
+}
+
+// Date PostgreSQL (« 2026-10-19 15:02:11.1+00 ») en date lisible.
+function readableDate(value) {
+  if (!value) return '';
+  const d = new Date(String(value).replace(' ', 'T').replace(/([+-]\d\d)$/, '$1:00'));
+  return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
+}
+const JOB = { idle: ['inactive', 'idle'], running: ['en cours', 'warn'], done: ['terminée', 'ok'], error: ['erreur', 'err'] };
+const REFUSED = { credit: 'crédit OpenRouter épuisé', key: 'clé OpenRouter refusée' };
+/** Bandeau d'état : l'index est-il complet, une mise à jour tourne-t-elle, a-t-elle échoué, et pourquoi. */
+function renderHealth(s, job, corpus) {
+  const e = s.embeddings;
+  const todo = [];
+  if (corpus.notIngested.length) todo.push(plural(corpus.notIngested.length, 'fichier') + ' à ingérer');
+  if (s.chunks.pendingEnrichment) todo.push(plural(s.chunks.pendingEnrichment, 'passage') + ' à enrichir');
+  const vectors = e.pending + (e.videos?.pending || 0);
+  if (vectors) todo.push(plural(vectors, 'vecteur') + ' en attente');
+  if (!e.vectorIndex && e.done) todo.push('index vectoriel absent');
+  let cls, title, sub;
+  if (job.state === 'running') {
+    cls = 'warn'; title = 'Mise à jour en cours…';
+    sub = (job.log[job.log.length - 1] || '').replace(/^\[[^\]]*\]\s*/, '');
+  } else if (job.state === 'error') {
+    cls = 'err'; title = REFUSED[job.refused] ? 'Mise à jour arrêtée : ' + REFUSED[job.refused] : 'La dernière mise à jour a échoué';
+    sub = job.summary || '';
+  } else if (todo.length) {
+    cls = 'warn'; title = 'Index incomplet';
+    sub = todo.join(' · ') + ' — les vidéos concernées sont moins bien retrouvées.';
+  } else {
+    cls = 'ok'; title = 'Index à jour';
+    sub = e.lastAt ? 'Derniers vecteurs calculés le ' + readableDate(e.lastAt) + '.' : '';
+  }
+  $('health').className = 'health ' + cls;
+  $('health-title').textContent = title + (s.collection ? ' (' + (channels.find((c) => c.key === s.collection)?.name || s.collection) + ')' : '');
+  $('health-sub').textContent = sub;
+  const button = $('update');
+  button.disabled = job.state === 'running';
+  button.textContent = job.state === 'running' ? 'Mise à jour en cours…' : job.state === 'error' ? 'Relancer la mise à jour' : 'Mettre à jour l’index';
+  button.className = 'btn' + (cls === 'ok' ? '' : ' primary');
+}
+
+// Bilan par chaîne : une ligne par collection ; cliquer limite les chiffres et la liste à cette chaîne (recliquer : tout).
+function meterCell(done, total) {
+  const td = el('td', 'nowrap'); const meter = el('span', 'meter'); const fill = el('i');
+  fill.style.width = Math.round((total ? done / total : 0) * 100) + '%'; meter.append(fill);
+  td.append(meter, el('span', 'hint', num(done) + '/' + num(total))); return td;
+}
+function vectorCell(pending) { const td = el('td', 'nowrap'); td.append(el('span', 'badge ' + (pending ? 'warn' : 'ok'), pending ? num(pending) + ' en attente' : 'à jour')); return td; }
+function renderChannels(list) {
+  channels = list;
+  const select = $('admin-collection'); const current = select.value;
+  select.length = 1;
+  for (const c of list) select.append(new Option(c.name + ' (' + num(c.videos) + ')', c.key));
+  select.value = list.some((c) => c.key === current) ? current : '';
+  const many = list.length > 1;
+  $('admin-chan-wrap').hidden = !many; $('channels-card').hidden = !many; $('th-chan').hidden = !many;
+  const chosen = list.find((c) => c.key === select.value);
+  $('admin-scope').textContent = chosen ? chosen.channel : many ? 'Tout le corpus · ' + num(list.length) + ' chaînes' : (list[0]?.channel || 'Tout le corpus');
+  const body = $('channels'); body.textContent = '';
+  for (const c of list) {
+    const tr = el('tr', 'pick' + (c.key === select.value ? ' on' : ''));
+    tr.tabIndex = 0; tr.title = c.channel; tr.setAttribute('aria-pressed', String(c.key === select.value));
+    const toggle = () => { select.value = select.value === c.key ? '' : c.key; select.onchange(); };
+    tr.onclick = toggle; tr.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
+    const tdName = el('td', 'nowrap'); tdName.append(el('strong', null, c.name));
+    tr.append(tdName, el('td', 'num', num(c.videos)), el('td', 'num opt', Math.round(c.totalDurationS / 3600) + ' h'),
+      el('td', 'opt nowrap', (c.dateRange.from || '?') + ' → ' + (c.dateRange.to || '?')), el('td', 'num opt', num(c.entries)),
+      meterCell(c.chunks.enriched, c.chunks.total), vectorCell(c.pendingVectors));
+    body.append(tr);
+  }
+}
+$('admin-collection').onchange = () => {
+  try { localStorage.setItem('ragator-admin-collection', adminCollection()); } catch {}
+  shown = 50; renderChannels(channels); renderVideos(); refreshAdmin(false);
+};
+// Choix mémorisé : posé avant la première lecture, retiré par renderChannels si la chaîne n'existe plus.
+try { const saved = localStorage.getItem('ragator-admin-collection'); if (saved) { $('admin-collection').append(new Option(saved, saved)); $('admin-collection').value = saved; } } catch {}
+
+function renderJob(job, corpus) {
+  const [label, cls] = JOB[job.state] || JOB.idle;
+  // Refus du compte (crédit épuisé, clé refusée) : la cause dans le badge, le remède en infobulle et au journal.
+  const refused = job.state === 'error' && REFUSED[job.refused];
+  $('jobstate').textContent = refused || label; $('jobstate').className = 'badge ' + cls;
+  $('jobstate').title = job.state === 'error' && job.summary ? job.summary : '';
+  const when = job.finishedAt && job.state !== 'running' ? ' · terminée le ' + readableDate(job.finishedAt) : '';
+  $('corpusinfo').textContent = plural(corpus.files, 'fichier') + ' dans le dossier' + (corpus.notIngested.length ? ' · ' + corpus.notIngested.length + ' à ingérer' : '') + when;
+  const log = $('log');
+  log.hidden = !job.log.length; $('nolog').hidden = Boolean(job.log.length);
+  if (job.log.length) {
+    const bottom = log.scrollTop + log.clientHeight >= log.scrollHeight - 20;
+    log.textContent = job.log.join('\n') + (job.summary && job.state !== 'running' ? '\n\n→ ' + job.summary : '');
+    if (bottom) log.scrollTop = log.scrollHeight;
+  }
+}
+
+async function refreshAdmin(withVideos) {
+  try {
+    const wanted = adminCollection();
+    const data = await api('/api/admin/status' + (wanted ? '?collection=' + encodeURIComponent(wanted) : ''));
+    if (wanted !== adminCollection()) return; // choix changé pendant la requête : la suivante fait foi
+    renderChannels(data.channels); renderStats(data.stats); renderJob(data.job, data.corpus); renderHealth(data.stats, data.job, data.corpus);
+    const running = data.job.state === 'running';
+    clearTimeout(polling);
+    if (location.hash === '#admin') polling = setTimeout(() => refreshAdmin(!running && wasRunning), running ? 1500 : 10000);
+    if (withVideos || (wasRunning && !running)) await loadVideos();
+    wasRunning = running;
+  } catch (err) {
+    $('health').className = 'health err'; $('health-title').textContent = 'État de l’index illisible'; $('health-sub').textContent = err.message;
+  }
+}
+let wasRunning = false;
+
+const incomplete = (v) => v.enriched < v.chunks || v.pendingVectors > 0;
+const SORTS = {
+  recent: null, // ordre du serveur : les plus récentes d'abord
+  old: (a, b) => (a.publishedAt || '9999').localeCompare(b.publishedAt || '9999'),
+  long: (a, b) => (b.durationS || 0) - (a.durationS || 0),
+  entries: (a, b) => b.entries - a.entries,
+};
+async function loadVideos() { videos = (await api('/api/admin/videos')).videos; renderVideos(); }
+function renderVideos() {
+  const f = $('filter').value.trim().toLowerCase();
+  const only = adminCollection();
+  const state = document.querySelector('input[name=vstate]:checked').value;
+  const inChannel = only ? videos.filter((v) => v.collection === only) : videos;
+  const todo = inChannel.filter(incomplete).length;
+  $('todo-label').textContent = 'À compléter' + (todo ? ' (' + num(todo) + ')' : '');
+  let rows = state === 'todo' ? inChannel.filter(incomplete) : inChannel;
+  if (f) rows = rows.filter((v) => (v.title + ' ' + v.videoId + ' ' + (v.publishedAt || '')).toLowerCase().includes(f));
+  const sort = SORTS[$('sort').value];
+  if (sort) rows = [...rows].sort(sort);
+  $('count').textContent = plural(rows.length, 'vidéo');
+  $('novideos').hidden = rows.length > 0 || !videos.length;
+  const body = $('videos'); body.textContent = '';
+  for (const v of rows.slice(0, shown)) {
+    const tr = el('tr');
+    const img = el('img'); img.loading = 'lazy'; img.alt = ''; img.src = thumb(v.videoId);
+    const tdImg = el('td'); tdImg.append(img);
+    const a = newTab(el('a', null, v.title)); a.href = watch(v.videoId);
+    const tdTitle = el('td'); tdTitle.append(a);
+    const tdChan = el('td', 'opt nowrap', channels.find((c) => c.key === v.collection)?.name || v.collection); tdChan.hidden = channels.length < 2;
+    tr.append(tdImg, tdTitle, tdChan, el('td', 'opt nowrap', v.publishedAt || '—'), el('td', 'num opt', v.durationS ? ts(v.durationS) : '—'), el('td', 'num', num(v.entries)), meterCell(v.enriched, v.chunks), vectorCell(v.pendingVectors));
+    body.append(tr);
+  }
+  $('moreVideos').hidden = rows.length <= shown;
+}
+$('filter').addEventListener('input', () => { shown = 50; renderVideos(); });
+$('sort').onchange = () => { shown = 50; renderVideos(); };
+document.querySelectorAll('input[name=vstate]').forEach((r) => r.addEventListener('change', () => { shown = 50; renderVideos(); }));
+$('moreVideos').onclick = () => { shown += 100; renderVideos(); };
+
+async function upload(files) {
+  for (const file of files) {
+    const li = el('li'); const name = el('span', 'name', file.name); const badge = el('span', 'badge idle', 'vérification…');
+    li.append(badge, name); $('uploads').prepend(li);
+    try {
+      if (!/\.json$/i.test(file.name)) throw new Error('fichier .json attendu');
+      const result = await api('/api/admin/upload', { name: file.name, content: await file.text() });
+      if (result.ok) {
+        badge.textContent = result.status; badge.className = 'badge ' + (result.status === 'identique' ? 'idle' : 'ok');
+        name.textContent = result.title + ' (' + result.videoId + ')';
+      } else {
+        badge.textContent = 'refusé'; badge.className = 'badge err';
+        const issues = el('span', 'issues', (result.issues || []).join(' · ')); name.append(issues);
+      }
+    } catch (err) { badge.textContent = 'erreur'; badge.className = 'badge err'; name.append(el('span', 'issues', err.message)); }
+  }
+  refreshAdmin(false);
+}
+const drop = $('drop');
+drop.onclick = () => $('files').click();
+drop.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('files').click(); } };
+$('files').onchange = () => { upload([...$('files').files]); $('files').value = ''; };
+['dragenter', 'dragover'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', (e) => upload([...e.dataTransfer.files]));
+$('update').onclick = async () => {
+  $('update').disabled = true;
+  try { await api('/api/admin/update', {}); } catch (err) { $('health-sub').textContent = 'Erreur : ' + err.message; }
+  refreshAdmin(false);
+};
+
+// Collections : une par chaîne YouTube. Le choix n'apparaît qu'à partir de deux chaînes ; il est mémorisé.
+let stat = null;
+let collections = [];
+function showCorpus() {
+  const chosen = collections.find((c) => c.key === $('collection').value);
+  if (chosen) { $('corpus').textContent = chosen.name + ' · ' + num(chosen.videos) + ' vidéos'; return; }
+  const name = collections.length === 1 ? collections[0].name : collections.length > 1 ? num(collections.length) + ' chaînes' : 'Corpus';
+  const years = stat?.dateRange ? ' · ' + (stat.dateRange.from || '?').slice(0, 4) + '–' + (stat.dateRange.to || '?').slice(0, 4) : '';
+  $('corpus').textContent = name + (stat ? ' · ' + num(stat.videos) + ' vidéos' + years : '');
+}
+$('collection').onchange = () => { try { localStorage.setItem('ragator-collection', $('collection').value); } catch {} showCorpus(); };
+api('/api/stats').then((s) => { stat = s; showCorpus(); }).catch(() => {});
+api('/api/collections').then((r) => {
+  collections = r.collections;
+  const select = $('collection');
+  for (const c of collections) select.append(new Option(c.name + ' (' + num(c.videos) + ')', c.key));
+  try { const saved = localStorage.getItem('ragator-collection'); if (saved && collections.some((c) => c.key === saved)) select.value = saved; } catch {}
+  if (collections.length < 2) select.value = '';
+  $('chan-wrap').hidden = collections.length < 2;
+  showCorpus();
+}).catch(() => {});
+/* ---------- Réglages ---------- */
+function showSettings(st) {
+  const k = st.openrouterKey;
+  $('key-state').textContent = k.set
+    ? 'Clé enregistrée (' + k.hint + ')' + (k.source === 'environnement' ? ', lue dans la configuration du serveur.' : '.')
+    : 'Aucune clé : recherche par mots seulement, et réponses faites d’extraits.';
+  $('key-clear').hidden = !(k.set && k.source === 'interface');
+  $('model').placeholder = st.defaultLlmModel;
+  $('model').value = st.llmModel === st.defaultLlmModel ? '' : st.llmModel;
+  $('pw-state').textContent = st.password.set ? 'Mot de passe défini.' : 'Aucun mot de passe.';
+  $('pw-clear').hidden = !(st.password.set && st.password.source === 'interface');
+  $('setup-notice').hidden = k.set;
+}
+async function loadSettings() {
+  try { showSettings(await api('/api/settings')); } catch (err) { $('settings-msg').textContent = err.message; }
+}
+async function saveSetting(patch, done) {
+  const msg = $('settings-msg');
+  msg.textContent = 'Enregistrement…';
+  try {
+    showSettings(await api('/api/settings', patch));
+    msg.textContent = done;
+  } catch (err) { msg.textContent = 'Refusé : ' + err.message; }
+}
+$('key-form').onsubmit = (e) => { e.preventDefault(); const v = $('key').value.trim(); if (!v) return; $('key').value = ''; saveSetting({ openrouterKey: v }, 'Clé enregistrée. L’index se met à jour dans l’onglet Administration.'); };
+$('key-clear').onclick = () => saveSetting({ openrouterKey: '' }, 'Clé retirée.');
+$('model-form').onsubmit = (e) => { e.preventDefault(); saveSetting({ llmModel: $('model').value.trim() }, 'Modèle enregistré.'); };
+$('pw-form').onsubmit = (e) => { e.preventDefault(); const v = $('pw').value; if (!v) return; $('pw').value = ''; saveSetting({ password: v }, 'Mot de passe enregistré : le navigateur va le demander.'); };
+$('pw-clear').onclick = () => saveSetting({ password: '' }, 'Mot de passe retiré.');
+api('/api/settings').then(showSettings).catch(() => {});
+route();
+</script>
+</body>
+</html>

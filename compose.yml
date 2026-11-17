@@ -1,0 +1,42 @@
+# Ragator : docker compose up -d --build   → http://localhost:3210
+# La clé OpenRouter et le mot de passe se règlent dans l'interface (onglet Réglages).
+services:
+  ragator:
+    build: .
+    image: ragator
+    container_name: ragator
+    restart: unless-stopped
+    ports:
+      # Sur un serveur ou un NAS, l'interface est joignable depuis le réseau local : définir un mot de passe
+      # dans Réglages. Pour la garder sur cette machine seulement : '127.0.0.1:3210:3210'.
+      - '3210:3210'
+    volumes:
+      - ragator-data:/data
+      # Facultatif : un dossier de fichiers video--<id>.json (yt2md : son dossier outputs/), lu à chaque mise à jour.
+      # - ./corpus:/data/corpus
+    # Mémoire partagée de PostgreSQL : index vectoriels et requêtes parallèles.
+    shm_size: 1gb
+    stop_grace_period: 30s
+
+  # Base seule, pour développer (npm run db:up) : jamais lancée par « docker compose up ».
+  db:
+    profiles: [dev]
+    image: paradedb/paradedb:0.25.9-pg17
+    environment:
+      POSTGRES_USER: ragator
+      POSTGRES_PASSWORD: ragator
+      POSTGRES_DB: ragator
+    ports:
+      - '127.0.0.1:15432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    shm_size: 1gb
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ragator -d ragator']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  ragator-data:
+  pgdata:

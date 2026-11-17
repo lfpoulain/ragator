@@ -1,0 +1,3996 @@
+{
+  "schemaVersion": "2.0",
+  "videoId": "Gu8bnHQaG5s",
+  "contentHash": "c3472319d7e71802f5a330301994a8c59f8bc5a315c4669f674435ba5ce026c3",
+  "generatedAt": "2026-09-21T14:26:49.722Z",
+  "provenance": {
+    "runId": "db5b8569-9aff-4937-86d3-566c1fcb8a81",
+    "model": "gemini-3.8-flash",
+    "promptVersion": "corpus-v2.7",
+    "fps": 1,
+    "mediaResolution": "MEDIA_RESOLUTION_LOW",
+    "chunkSeconds": null,
+    "transcriptionSource": "gemini_video",
+    "timestampAccuracy": "model_estimated_seconds",
+    "speakerScope": "chunk"
+  },
+  "source": {
+    "title": "Les glacières sur batterie coûtent 1100 €. La nôtre : 54 €",
+    "url": "https://www.youtube.com/watch?v=Gu8bnHQaG5s",
+    "channel": "Les Freres Poulain, French DIY and Tech Explorers",
+    "publicationDate": "2026-08-13",
+    "durationSeconds": 831
+  },
+  "publicStats": {
+    "views": 126704,
+    "likes": 4143,
+    "comments": 204
+  },
+  "youtubeDescription": "Une glacière autonome coûte 1100 €. On a hacké la Lidl à 54 € pour la rendre autonome sur BATTERIE et connectée en Bluetooth, pour moins de 20 € de pièces.\nSi la vidéo t'a plu, partage la et ABONNE-TOI  💚\n\n🌱 *EN COLLABORATION COMMERCIALE AVEC NORDVPN*\nNordVPN, c'est nos lunettes de protection pour le numérique : chiffrement, changement d'IP, antivirus nouvelle génération ✅ 4 mois offerts sur les abonnements de 2 ans : https://nordvpn.com/poulain\nSans risque, garantie satisfait ou remboursé 30 jours !\n\n🚀 *TOUS NOS LIENS* (Twitch, Discord, Insta, Site, GitHub, TikTok…) :\n👉 https://liens.lfp.yt/\n\n❤️ *SOUTENIR LA CHAÎNE* (Hyper important !) :\n☕ Tipeee : https://lfp.yt/tip\n\n💻 *LE PROJET DU JOUR* :\n✔️ Le firmware ESP32 sur notre GitHub : https://github.com/lfpoulain\n✔️ L'interface Bluetooth de la glacière : https://glaciere.yt\n\n🖨️ *NOS FICHIERS 3D* :\n✔️ Makerworld LFPoulain : https://makerworld.com/fr/@LFPoulain\n✔️ Printables : https://www.printables.com/@lfpoulain_1309366\n✔️ Thingiverse : https://www.thingiverse.com/lfpoulain/designs\n\n🛒 *LES OUTILS & MATÉRIEL DE L'ÉPISODE* (Liens Affiliés*) :\n✔️ ESP32-H2 : https://amzn.to/4hpK5cR\n✔️ Convertisseur DC-DC 18-36 V vers 12 V 5 A : https://amzn.to/4zlLpnF\n✔️ Convertisseur DC-DC 8-30 V vers 5 V 3 A : https://amzn.to/3Slgjvs\n✔️ Convertisseur DC-DC 7-20 V vers 5 V Mini 560 : https://amzn.to/4fILVEj\n✔️ Capteur de courant INA219 : https://amzn.to/4yUwKiO\n✔️ Thermistance NTC 10 kΩ : https://amzn.to/4fJJcuo\n✔️ Batteries Parkside : https://amzn.to/4q4WRzN\n✔️ Connecteurs WAGO : https://amzn.to/4whfd1M\n✔️ Cosses électriques plates : https://amzn.to/3U1FlQJ\n✔️ Colle chaude noire : https://amzn.to/4wKD0Z5\n✔️ Filament PETG : https://amzn.to/4heBMjU\n\n🛒 *NOTRE SETUP HABITUEL* (Liens Affiliés*) :\nImprimantes 3D & Accessoires :\n✔️ Les Bambulab : https://lfp.yt/bambulab\n✔️ Le PLA Wanhao : https://lfp.yt/plawanhao\n\nDomotique & Électronique :\n✔️ Aliexpress : https://s.click.aliexpress.com/e/_Dn2TG8n\n✔️ Amazon : https://amzn.to/3Rirx0D\n✔️ Banggood : https://www.banggood.com/custlink/DD3H6EbrEf\n\nOutils de Bricolage :\n✔️ WOLFCRAFT : https://amzn.to/3c1vAZ4\n✔️ RYOBI : https://amzn.to/2AfNoOv\n\n🎬 *CRÉDITS* :\n\n- Écriture : Baptiste et Artus Poulain\n- Montage : Calypso Cordier\n- Animations 3D et montage additionnel : Artus Poulain\n- Cadre : Calypso Cordier\n- Post-production image, étalonnage effets visuels : Baptiste Poulain\n- Assistanat de production : Sébastien Lacheray\n- Mixage son : Seb Lacheray\n\nRestez inspirés et bienveillants les uns envers les autres ! Ensemble, on peut tout créer !\n\n*Les liens marqués comme \"Affiliés\" nous permettent de toucher une commission sur les achats, sans que cela ne vous coûte un centime.\n\n🎬 Chapitres :\n00:00 Défis Glacière 100% autonome \n00:45 La glacière Lidl Crivit \n01:18 NordVPN \n03:18 Test de puissance \n03:40 C'est quoi le module Peltier ? \n03:57 Batterie Parkside 20V \n05:08 Test des convertisseurs \n06:18 ESP32 & capteurs connectés \n07:12 Démontage du châssis \n08:52 Modélisation & Impression 3D \n09:28 Assemblage & câblage Wago \n12:29 Test final & App Bluetooth\n\n---\n\n#GlaciereConnectee #Parkside #GlaciereDIY #NordVPN",
+  "transcript": [
+    {
+      "speaker": "Voff",
+      "timestamp": "00:00",
+      "text": "Ouais, c'est l'été. Alors, on profite des pique-niques, et bien sûr,",
+      "endTimestamp": "00:03",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00001",
+      "startSeconds": 0,
+      "endSeconds": 3,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "00:03",
+      "text": "on sirote tous des boissons fraîches à la plage comme des bons babas.",
+      "endTimestamp": "00:06",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00002",
+      "startSeconds": 3,
+      "endSeconds": 6,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "00:06",
+      "text": "Sauf que pour profiter des boissons fraîches, il nous faut des glaciers.",
+      "endTimestamp": "00:08",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00003",
+      "startSeconds": 6,
+      "endSeconds": 8,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "00:08",
+      "text": "Non, pas ceux-là, des glacières.",
+      "endTimestamp": "00:09",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00004",
+      "startSeconds": 8,
+      "endSeconds": 9,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "00:10",
+      "text": "Ah oui, voilà. Et même si les glacières, elles fonctionnent sans eau, ça serait encore mieux si elles fonctionnaient sans accès direct à l'électricité.",
+      "endTimestamp": "00:15",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00005",
+      "startSeconds": 10,
+      "endSeconds": 15,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "00:15",
+      "text": "Grâce à une batterie.",
+      "endTimestamp": "00:16",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00006",
+      "startSeconds": 15,
+      "endSeconds": 16,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "00:16",
+      "text": "Quelle belle idée, mais ça coûte super cher une glacière sur batterie, Jamy.",
+      "endTimestamp": "00:20",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00007",
+      "startSeconds": 16,
+      "endSeconds": 20,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "00:20",
+      "text": "Ouais, sauf que la nôtre, elle sera pas ultra chère et en plus,",
+      "endTimestamp": "00:23",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00008",
+      "startSeconds": 20,
+      "endSeconds": 23,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "00:23",
+      "text": "elle sera connectée avec un retour de température, gestion de l'autonomie, Bluetooth,",
+      "endTimestamp": "00:27",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00009",
+      "startSeconds": 23,
+      "endSeconds": 27,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "00:27",
+      "text": "bref, incroyable pour quelques euros et un petit peu d'huile de coude.",
+      "endTimestamp": "00:30",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00010",
+      "startSeconds": 27,
+      "endSeconds": 30,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "00:34",
+      "text": "Eh ben, la voilà la fameuse glacière Sub-Zero 3000 qu'on avait fabriquée.",
+      "endTimestamp": "00:37",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00011",
+      "startSeconds": 34,
+      "endSeconds": 37,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "00:37",
+      "text": "Alors c'est vrai, on en avait déjà fabriqué une de A à Z ultra performante il y a quelques années.",
+      "endTimestamp": "00:41",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00012",
+      "startSeconds": 37,
+      "endSeconds": 41,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "00:41",
+      "text": "Et vous aviez été près de 210 000 à nous regarder la construire et la reproduire.",
+      "endTimestamp": "00:44",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00013",
+      "startSeconds": 41,
+      "endSeconds": 44,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "00:45",
+      "text": "Bon clairement, vous aviez adoré. Et ben là, on va refaire la même chose mais en hackant une glacière déjà disponible sur le marché.",
+      "endTimestamp": "00:50",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00014",
+      "startSeconds": 45,
+      "endSeconds": 50,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "00:51",
+      "text": "C'est la Lidl Crivit qu'on trouvait en avril à 49 euros.",
+      "endTimestamp": "00:54",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00015",
+      "startSeconds": 51,
+      "endSeconds": 54,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "00:54",
+      "text": "Elle est équipée d'un système de refroidissement utilisable en 230 volts,",
+      "endTimestamp": "00:57",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00016",
+      "startSeconds": 54,
+      "endSeconds": 57,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "00:57",
+      "text": "mais qu'elle dispose en plus de la possibilité de l'alimenter en 12 volts continu via la prise allume-cigare de la voiture.",
+      "endTimestamp": "01:03",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00017",
+      "startSeconds": 57,
+      "endSeconds": 63,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "01:04",
+      "text": "Et si vous voulez aller encore plus loin en termes de prix, on a aussi testé avec la glacière électrique de chez Action à 29,90 €.",
+      "endTimestamp": "01:09",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00018",
+      "startSeconds": 64,
+      "endSeconds": 69,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "01:10",
+      "text": "Et on a quand même une sortie 12 volts.",
+      "endTimestamp": "01:12",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00019",
+      "startSeconds": 70,
+      "endSeconds": 72,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "01:12",
+      "text": "En vrai, notre système, il est compatible avec toutes les glacières équipées d'un allume-cigare.",
+      "endTimestamp": "01:15",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00020",
+      "startSeconds": 72,
+      "endSeconds": 75,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "01:15",
+      "text": "Allez, on reprend.",
+      "endTimestamp": "01:17",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00021",
+      "startSeconds": 75,
+      "endSeconds": 77,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "01:18",
+      "text": "Cette vidéo vous est présentée en collaboration commerciale avec :",
+      "endTimestamp": "01:21",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00022",
+      "startSeconds": 78,
+      "endSeconds": 81,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "01:21",
+      "text": "NordVPN !",
+      "endTimestamp": "01:22",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00023",
+      "startSeconds": 81,
+      "endSeconds": 82,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "01:22",
+      "text": "Et oui, dans l'atelier, ben on passe notre temps à télécharger des documentations diverses et variées,",
+      "endTimestamp": "01:25",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00024",
+      "startSeconds": 82,
+      "endSeconds": 85,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "01:25",
+      "text": "des fichiers tout autant divers et variés, à installer des logiciels,",
+      "endTimestamp": "01:28",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00025",
+      "startSeconds": 85,
+      "endSeconds": 88,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "01:28",
+      "text": "et commander des composants sur des sites divers et variés,",
+      "endTimestamp": "01:31",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00026",
+      "startSeconds": 88,
+      "endSeconds": 91,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "01:31",
+      "text": "aussi en déplacement professionnel dans des lieux divers et variés...",
+      "endTimestamp": "01:34",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00027",
+      "startSeconds": 91,
+      "endSeconds": 94,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "01:34",
+      "text": "Avec du Wi-Fi divers et varié par exemple.",
+      "endTimestamp": "01:36",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00028",
+      "startSeconds": 94,
+      "endSeconds": 96,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "01:36",
+      "text": "Dans des endroits divers et variés aussi.",
+      "endTimestamp": "01:38",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00029",
+      "startSeconds": 96,
+      "endSeconds": 98,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "01:38",
+      "text": "Et la sûreté numérique nous concerne autant que la sécurité des machines, surtout avec tout l'IoT",
+      "endTimestamp": "01:42",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00030",
+      "startSeconds": 98,
+      "endSeconds": 102,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "01:42",
+      "text": "et la domotique qu'on a installés ici à l'atelier.",
+      "endTimestamp": "01:44",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00031",
+      "startSeconds": 102,
+      "endSeconds": 104,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "01:44",
+      "text": "Alors, on a besoin de lunettes de protection pour la construction électronique et nos DIY.",
+      "endTimestamp": "01:48",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00032",
+      "startSeconds": 104,
+      "endSeconds": 108,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "01:48",
+      "text": "Eh ben NordVPN, c'est un petit peu comme les lunettes de protection pour Internet et tout le reste.",
+      "endTimestamp": "01:51",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00033",
+      "startSeconds": 108,
+      "endSeconds": 111,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "01:51",
+      "text": "D'ailleurs, en ce moment en passant par nordvpn.com/poulain, vous avez une offre exclusive avec 4 mois offerts sur les abonnements de 2 ans.",
+      "endTimestamp": "01:57",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00034",
+      "startSeconds": 111,
+      "endSeconds": 117,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "01:58",
+      "text": "Alors on connaît surtout NordVPN pour son VPN et rassurez-vous, ça reste bien une des fonctionnalités principales de l'application.",
+      "endTimestamp": "02:03",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00035",
+      "startSeconds": 118,
+      "endSeconds": 123,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "02:03",
+      "text": "Ça permet toujours de chiffrer vos données de navigation pour plus de confidentialité",
+      "endTimestamp": "02:06",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00036",
+      "startSeconds": 123,
+      "endSeconds": 126,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "02:06",
+      "text": "et pour changer d'adresse IP et modifier vos emplacements virtuels.",
+      "endTimestamp": "02:08",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00037",
+      "startSeconds": 126,
+      "endSeconds": 128,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "02:09",
+      "text": "Mais NordVPN, ça intègre aussi maintenant également un antivirus nouvelle génération axé sur la sécurité.",
+      "endTimestamp": "02:13",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00038",
+      "startSeconds": 129,
+      "endSeconds": 133,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "02:14",
+      "text": "Il cherche à intercepter les menaces à la source avant que le téléchargement d'un fichier malveillant soit terminé.",
+      "endTimestamp": "02:18",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00039",
+      "startSeconds": 134,
+      "endSeconds": 138,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "02:19",
+      "text": "D'ailleurs, il peut notamment identifier les fausses boutiques, bloque les sites d'arnaques,",
+      "endTimestamp": "02:22",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00040",
+      "startSeconds": 139,
+      "endSeconds": 142,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "02:23",
+      "text": "il bloque aussi les tentatives d'hameçonnage, les analyses de fichiers en cours de téléchargement,",
+      "endTimestamp": "02:26",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00041",
+      "startSeconds": 143,
+      "endSeconds": 146,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "02:26",
+      "text": "ou même détecter les malwares et supprimer ceux qui sont dangereux.",
+      "endTimestamp": "02:29",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00042",
+      "startSeconds": 146,
+      "endSeconds": 149,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "02:30",
+      "text": "Et il permet aussi de bloquer les publicités et les traqueurs en ligne.",
+      "endTimestamp": "02:33",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00043",
+      "startSeconds": 150,
+      "endSeconds": 153,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "02:33",
+      "text": "C'est très utile quand on navigue sur tout un tas de sites pour retrouver la documentation d'une carte électronique",
+      "endTimestamp": "02:37",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00044",
+      "startSeconds": 153,
+      "endSeconds": 157,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "02:37",
+      "text": "un peu obscure du fond d'un carton des Frères Poulain, ou alors télécharger un firmware un peu douteux",
+      "endTimestamp": "02:40",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00045",
+      "startSeconds": 157,
+      "endSeconds": 160,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "02:41",
+      "text": "pour une machine dont on ne connaît ni le fabricant, ni sa provenance, sur un site internet de 2007.",
+      "endTimestamp": "02:47",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00046",
+      "startSeconds": 161,
+      "endSeconds": 167,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "02:47",
+      "text": "Ouais, là on vous montre directement l'application NordVPN. On peut activer le VPN, accéder aux différentes fonctionnalités de cybersécurité",
+      "endTimestamp": "02:51",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00047",
+      "startSeconds": 167,
+      "endSeconds": 171,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "02:52",
+      "text": "directement dans l'application, et les fonctionnalités disponibles peuvent varier",
+      "endTimestamp": "02:55",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00048",
+      "startSeconds": 172,
+      "endSeconds": 175,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "02:56",
+      "text": "selon votre appareil et l'abonnement que vous avez choisi.",
+      "endTimestamp": "02:58",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00049",
+      "startSeconds": 176,
+      "endSeconds": 178,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "02:59",
+      "text": "Alors à nouveau, si vous voulez profiter des 4 mois offerts, eh ben rendez-vous sur nordvpn.com/poulain qui s'affiche juste ici.",
+      "endTimestamp": "03:04",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00050",
+      "startSeconds": 179,
+      "endSeconds": 184,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "03:04",
+      "text": "Et surtout, comme d'hab, c'est sans risque avec la garantie satisfait ou remboursé de 30 jours.",
+      "endTimestamp": "03:08",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00051",
+      "startSeconds": 184,
+      "endSeconds": 188,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "03:08",
+      "text": "Vous pouvez essayer NordVPN et vérifier tranquillement si le service correspond à vos usages.",
+      "endTimestamp": "03:12",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00052",
+      "startSeconds": 188,
+      "endSeconds": 192,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "03:12",
+      "text": "Donc allez checker ça pour profiter de l'offre ou si vous êtes simplement curieux d'en savoir plus.",
+      "endTimestamp": "03:15",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00053",
+      "startSeconds": 192,
+      "endSeconds": 195,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "03:15",
+      "text": "La suite de la vidéo dès maintenant. Merci NordVPN !",
+      "endTimestamp": "03:17",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00054",
+      "startSeconds": 195,
+      "endSeconds": 197,
+      "speakerId": null
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "03:18",
+      "text": "La machine propose le bon goût d'être réglable en termes de puissance, et nous allons mesurer sa consommation en temps réel",
+      "endTimestamp": "03:22",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00055",
+      "startSeconds": 198,
+      "endSeconds": 202,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "03:22",
+      "text": "pour savoir quelle autonomie on va pouvoir obtenir avec notre système de batterie qu'on veut lui adjoindre.",
+      "endTimestamp": "03:26",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00056",
+      "startSeconds": 202,
+      "endSeconds": 206,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "03:27",
+      "text": "50 à 55 watts, c'est parfait. C'est tout juste ce qu'on peut supporter sans aucun problème",
+      "endTimestamp": "03:31",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00057",
+      "startSeconds": 207,
+      "endSeconds": 211,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "03:31",
+      "text": "avec une batterie de perceuse par exemple.",
+      "endTimestamp": "03:33",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00058",
+      "startSeconds": 211,
+      "endSeconds": 213,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "03:34",
+      "text": "Le niveau de température de l'air rejeté est très raisonnable comparé à la température absorbée et le radiateur semble faire son travail",
+      "endTimestamp": "03:39",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00059",
+      "startSeconds": 214,
+      "endSeconds": 219,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "03:39",
+      "text": "de manière assez remarquable vu le prix.",
+      "endTimestamp": "03:41",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00060",
+      "startSeconds": 219,
+      "endSeconds": 221,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "03:41",
+      "text": "Oui, alors ces petites glacières à bas coût fonctionnent avec un module Peltier sans entrer dans les détails.",
+      "endTimestamp": "03:45",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00061",
+      "startSeconds": 221,
+      "endSeconds": 225,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "03:45",
+      "text": "Lorsqu'on fait circuler un courant électrique dans ce module, il transfère la chaleur d'une face vers l'autre.",
+      "endTimestamp": "03:49",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00062",
+      "startSeconds": 225,
+      "endSeconds": 229,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "03:49",
+      "text": "Une face se refroidit tandis que l'autre chauffe.",
+      "endTimestamp": "03:53",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00063",
+      "startSeconds": 229,
+      "endSeconds": 233,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "03:53",
+      "text": "Et pour que le système reste efficace, il faut impérativement évacuer correctement la chaleur du côté chaud.",
+      "endTimestamp": "03:57",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00064",
+      "startSeconds": 233,
+      "endSeconds": 237,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "03:58",
+      "text": "Concernant les batteries pas chères pour outils, il en existe plein et nous, on va se servir de ces batteries pour alimenter notre glacière connectée et autonome.",
+      "endTimestamp": "04:03",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00065",
+      "startSeconds": 238,
+      "endSeconds": 243,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "04:04",
+      "text": "C'est chiant comme semelle. On en a là en exemple, mais c'est vrai que c'est pas des semelles.",
+      "endTimestamp": "04:08",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00066",
+      "startSeconds": 244,
+      "endSeconds": 248,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "04:08",
+      "text": "Mais ça rentre dedans, tu vois. Ouais ouais, c'est pas...",
+      "endTimestamp": "04:09",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00067",
+      "startSeconds": 248,
+      "endSeconds": 249,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "04:10",
+      "text": "Ryobi, on a déjà utilisé, mais en fait, excuse-moi, mais bon.",
+      "endTimestamp": "04:13",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00068",
+      "startSeconds": 250,
+      "endSeconds": 253,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "04:13",
+      "text": "Bah là, c'est... il faut que ce soit le plus compact possible. Donc... t'as qu'à... ouais.",
+      "endTimestamp": "04:17",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00069",
+      "startSeconds": 253,
+      "endSeconds": 257,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "04:18",
+      "text": "Parkside et Einhell. Et pour le coup, Parkside, utilisons Parkside parce que c'est... tout le monde peut acheter du Parkside. En plus sur une...",
+      "endTimestamp": "04:24",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00070",
+      "startSeconds": 258,
+      "endSeconds": 264,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "04:24",
+      "text": "Ça fait...",
+      "endTimestamp": "04:26",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00071",
+      "startSeconds": 264,
+      "endSeconds": 266,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "04:26",
+      "text": "Glacière Parkside, entretoise Parkside, batterie Parkside.",
+      "endTimestamp": "04:30",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00072",
+      "startSeconds": 266,
+      "endSeconds": 270,
+      "speakerId": null
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "04:31",
+      "text": "P'tit tips des Frères Poulain : les cosses plates électriques semblent très bien faire le boulot en termes de contact pour vos éventuels projets.",
+      "endTimestamp": "04:36",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00073",
+      "startSeconds": 271,
+      "endSeconds": 276,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "04:39",
+      "text": "L'avantage de ces batteries grand public, c'est qu'en plus, elles intègrent toutes des sécurités contre la chauffe,",
+      "endTimestamp": "04:42",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00074",
+      "startSeconds": 279,
+      "endSeconds": 282,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "04:42",
+      "text": "les courts-circuits, la surtension, etc. Donc on limite quand même le risque de faire des bêtises même si bien évidemment,",
+      "endTimestamp": "04:46",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00075",
+      "startSeconds": 282,
+      "endSeconds": 286,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "04:46",
+      "text": "vous devez continuer à faire attention à tout ça comme dans toute production DIY.",
+      "endTimestamp": "04:50",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00076",
+      "startSeconds": 286,
+      "endSeconds": 290,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "04:51",
+      "text": "C'est un fabl...",
+      "endTimestamp": "04:52",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00077",
+      "startSeconds": 291,
+      "endSeconds": 292,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "04:53",
+      "text": "Un fable ?",
+      "endTimestamp": "04:54",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00078",
+      "startSeconds": 293,
+      "endSeconds": 294,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "04:55",
+      "text": "Oh putain !",
+      "endTimestamp": "04:56",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00079",
+      "startSeconds": 295,
+      "endSeconds": 296,
+      "speakerId": null
+    },
+    {
+      "speaker": "Invité",
+      "timestamp": "04:56",
+      "text": "Oh, bonjour Laurent ! Oh putain !",
+      "endTimestamp": "04:58",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00080",
+      "startSeconds": 296,
+      "endSeconds": 298,
+      "speakerId": "Gu8bnHQaG5s:c1:voice3"
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "04:59",
+      "text": "Il fait chaud, hein.",
+      "endTimestamp": "05:00",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00081",
+      "startSeconds": 299,
+      "endSeconds": 300,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "05:00",
+      "text": "On peut dire aux gens, ça s'est passé comment la canicule, vous ? Bah nous, le logo, il est parti.",
+      "endTimestamp": "05:04",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00082",
+      "startSeconds": 300,
+      "endSeconds": 304,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "05:04",
+      "text": "Oh putain !",
+      "endTimestamp": "05:05",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00083",
+      "startSeconds": 304,
+      "endSeconds": 305,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "05:06",
+      "text": "J'ai fait ça bien ? OK.",
+      "endTimestamp": "05:08",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00084",
+      "startSeconds": 306,
+      "endSeconds": 308,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "05:08",
+      "text": "Alors tiens, le redresseur de tension...",
+      "endTimestamp": "05:10",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00085",
+      "startSeconds": 308,
+      "endSeconds": 310,
+      "speakerId": null
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "05:11",
+      "text": "Comme dit en début de vidéo, puisque notre glacière supporte déjà le 12 volts en continu grâce à la prise allume-cigare,",
+      "endTimestamp": "05:16",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00086",
+      "startSeconds": 311,
+      "endSeconds": 316,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "05:16",
+      "text": "on a juste à mettre les 20 volts de sortie de nos batteries Lidl Parkside à la tension désirée et supportée par le système, c'est-à-dire 12 volts.",
+      "endTimestamp": "05:22",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00087",
+      "startSeconds": 316,
+      "endSeconds": 322,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "05:22",
+      "text": "Et ça, merci le redresseur de tension, en lien dans la description bien évidemment.",
+      "endTimestamp": "05:25",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00088",
+      "startSeconds": 322,
+      "endSeconds": 325,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "05:26",
+      "text": "20 volts en entrée, 12 volts en sortie, on est nickel. Sauf que...",
+      "endTimestamp": "05:30",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00089",
+      "startSeconds": 326,
+      "endSeconds": 330,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "05:34",
+      "text": "Ah, là il est bouillant.",
+      "endTimestamp": "05:36",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00090",
+      "startSeconds": 334,
+      "endSeconds": 336,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "05:36",
+      "text": "Ouais ça y est, il a cramé chez cramé. On va essayer un autre, on va voir si c'est ça.",
+      "endTimestamp": "05:38",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00091",
+      "startSeconds": 336,
+      "endSeconds": 338,
+      "speakerId": null
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "05:39",
+      "text": "Bon bah, on n'a plus qu'à essayer de voir pourquoi ces modules crament tous les uns derrière les autres.",
+      "endTimestamp": "05:43",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00092",
+      "startSeconds": 339,
+      "endSeconds": 343,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "05:43",
+      "text": "Alors on teste les modules similaires qu'on a en rab, pas le choix.",
+      "endTimestamp": "05:46",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00093",
+      "startSeconds": 343,
+      "endSeconds": 346,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "05:50",
+      "text": "Ah ben là, il crame. Je pense qu'on a eu des modules foireux, c'est tout.",
+      "endTimestamp": "05:53",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00094",
+      "startSeconds": 350,
+      "endSeconds": 353,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "05:54",
+      "text": "C'est du caca. Ce qui n'est pas... ah oui !",
+      "endTimestamp": "05:56",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00095",
+      "startSeconds": 354,
+      "endSeconds": 356,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "05:56",
+      "text": "Wouah ! Out of range. Juste.",
+      "endTimestamp": "05:59",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00096",
+      "startSeconds": 356,
+      "endSeconds": 359,
+      "speakerId": null
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "06:00",
+      "text": "Je pense que le résultat, il est clair : trois modules HS, les calculs sont pas bons Kevin.",
+      "endTimestamp": "06:04",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00097",
+      "startSeconds": 360,
+      "endSeconds": 364,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "06:04",
+      "text": "Mais heureusement vous nous connaissez, on a plus d'un tour dans notre sac.",
+      "endTimestamp": "06:07",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00098",
+      "startSeconds": 364,
+      "endSeconds": 367,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "06:07",
+      "text": "Alors on a d'autres modules convertisseurs qu'on vous met aussi en lien dans la description. Ils sont un poil plus chers mais eux au moins, ils crament pas.",
+      "endTimestamp": "06:11",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00099",
+      "startSeconds": 367,
+      "endSeconds": 371,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "06:11",
+      "text": "Et maintenant qu'on a de l'électricité transportable pour la glacière, il est temps de tout interconnecter pour la rendre connectée et intelligente en Bluetooth.",
+      "endTimestamp": "06:17",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00100",
+      "startSeconds": 371,
+      "endSeconds": 377,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "06:19",
+      "text": "L'objectif avec cette glacière connectée, c'est d'utiliser un tout petit ESP32 de type SuperMini.",
+      "endTimestamp": "06:23",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00101",
+      "startSeconds": 379,
+      "endSeconds": 383,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "06:23",
+      "text": "On va l'utiliser avec un capteur de tension INA219,",
+      "endTimestamp": "06:26",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00102",
+      "startSeconds": 383,
+      "endSeconds": 386,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "06:26",
+      "text": "et une thermistance NTC de 10 kOhms. Ça nous permettra donc d'avoir la température et surtout le pourcentage de batterie restant.",
+      "endTimestamp": "06:31",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00103",
+      "startSeconds": 386,
+      "endSeconds": 391,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "06:34",
+      "text": "Lorsqu'une batterie est pleine, sa tension est plus élevée que lorsqu'elle est vide, c'est logique.",
+      "endTimestamp": "06:37",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00104",
+      "startSeconds": 394,
+      "endSeconds": 397,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "06:37",
+      "text": "Et en moyenne sur les Parkside, on passe de 21 volts à 17 volts.",
+      "endTimestamp": "06:42",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00105",
+      "startSeconds": 397,
+      "endSeconds": 402,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "06:42",
+      "text": "C'est cette courbe-là qui va nous permettre de déduire la capacité restante.",
+      "endTimestamp": "06:45",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00106",
+      "startSeconds": 402,
+      "endSeconds": 405,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "06:45",
+      "text": "Je soude directement sur l'ESP32 les deux composants sans connecteur Dupont pour gagner le plus de place,",
+      "endTimestamp": "06:48",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00107",
+      "startSeconds": 405,
+      "endSeconds": 408,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "06:49",
+      "text": "et tout le circuit de puissance sera lui relié avec des connecteurs de type Wago.",
+      "endTimestamp": "06:53",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00108",
+      "startSeconds": 409,
+      "endSeconds": 413,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "06:53",
+      "text": "Ok bon bah, je viens de faire un test d'upload du code Arduino sur l'ESP32-C2",
+      "endTimestamp": "06:56",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00109",
+      "startSeconds": 413,
+      "endSeconds": 416,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "06:56",
+      "text": "et ça fonctionne. J'ai bien la température qui est relevée sur le site en connexion Bluetooth directement au niveau de la sonde de température.",
+      "endTimestamp": "07:01",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00110",
+      "startSeconds": 416,
+      "endSeconds": 421,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "07:02",
+      "text": "Donc maintenant ce qu'il faut c'est qu'en plus du transformateur 12 volts, on en ait un 5 volts pour alimenter le SP.",
+      "endTimestamp": "07:07",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00111",
+      "startSeconds": 422,
+      "endSeconds": 427,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "07:12",
+      "text": "On teste déjà, on ne va pas tout tout assembler et tout tester.",
+      "endTimestamp": "07:15",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00112",
+      "startSeconds": 432,
+      "endSeconds": 435,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "07:15",
+      "text": "Là, on met juste le système d'accroche de la batterie.",
+      "endTimestamp": "07:18",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00113",
+      "startSeconds": 435,
+      "endSeconds": 438,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "07:18",
+      "text": "À côté on met le convertisseur de tension.",
+      "endTimestamp": "07:20",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00114",
+      "startSeconds": 438,
+      "endSeconds": 440,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "07:20",
+      "text": "À côté on met le circuit avec l'ESP32.",
+      "endTimestamp": "07:22",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00115",
+      "startSeconds": 440,
+      "endSeconds": 442,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "07:23",
+      "text": "On regarde un petit peu si tout fonctionne bien, on fait les tests de batterie, on voit si ça marche,",
+      "endTimestamp": "07:26",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00116",
+      "startSeconds": 443,
+      "endSeconds": 446,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "07:26",
+      "text": "et après eh ben on essaie de compacter pour le faire rentrer dedans.",
+      "endTimestamp": "07:28",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00117",
+      "startSeconds": 446,
+      "endSeconds": 448,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "07:28",
+      "text": "Ouais, on le colle sur le côté quoi. Ouais, c'est ça.",
+      "endTimestamp": "07:31",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00118",
+      "startSeconds": 448,
+      "endSeconds": 451,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "07:36",
+      "text": "Il faut qu'on coupe normalement là, ou alors on coupe là et ouais. Ouais, mais comment on pensait mettre la batterie ? Moi tu vois, je pensais...",
+      "endTimestamp": "07:41",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00119",
+      "startSeconds": 456,
+      "endSeconds": 461,
+      "speakerId": null
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "07:41",
+      "text": "Mesure la distance entre la carte et la zone où on va placer les batteries et la sonde de température.",
+      "endTimestamp": "07:45",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00120",
+      "startSeconds": 461,
+      "endSeconds": 465,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "07:45",
+      "text": "Une fois que c'est fait, on dévisse la partie haute pour voir comment l'intérieur est construit,",
+      "endTimestamp": "07:48",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00121",
+      "startSeconds": 465,
+      "endSeconds": 468,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "07:48",
+      "text": "puis où connecter notre système à nous pour améliorer le leur.",
+      "endTimestamp": "07:51",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00122",
+      "startSeconds": 468,
+      "endSeconds": 471,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "07:51",
+      "text": "C'est pratique, sur cette glacière, tout se déboîte hyper facilement.",
+      "endTimestamp": "07:54",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00123",
+      "startSeconds": 471,
+      "endSeconds": 474,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "08:05",
+      "text": "C'est vraiment un montage très simple et efficace : on ne retire rien d'existant,",
+      "endTimestamp": "08:08",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00124",
+      "startSeconds": 485,
+      "endSeconds": 488,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "08:08",
+      "text": "on ajoute juste nos modules intelligents et autonomes.",
+      "endTimestamp": "08:11",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00125",
+      "startSeconds": 488,
+      "endSeconds": 491,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "08:11",
+      "text": "C'est du grand art à pas cher, les amis. Pour le moment, on en est à moins de 20 euros, carte ESP comprise,",
+      "endTimestamp": "08:16",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00126",
+      "startSeconds": 491,
+      "endSeconds": 496,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "08:16",
+      "text": "si on ne compte pas la batterie que vous possédez déjà parce que vous êtes bricoleur.",
+      "endTimestamp": "08:19",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00127",
+      "startSeconds": 496,
+      "endSeconds": 499,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "08:20",
+      "text": "Ça rentrait ici, ça allait là, on a coupé là,",
+      "endTimestamp": "08:23",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00128",
+      "startSeconds": 500,
+      "endSeconds": 503,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "08:23",
+      "text": "on a rajouté cette route-là pour aller dans les 12 volts du Peltier.",
+      "endTimestamp": "08:28",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00129",
+      "startSeconds": 503,
+      "endSeconds": 508,
+      "speakerId": null
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "08:28",
+      "text": "Maintenant que tout est relié, on n'a plus qu'à tout ranger proprement à l'intérieur.",
+      "endTimestamp": "08:31",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00130",
+      "startSeconds": 508,
+      "endSeconds": 511,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "08:31",
+      "text": "C'est super simple, il y a vraiment beaucoup de place dans ce capot.",
+      "endTimestamp": "08:33",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00131",
+      "startSeconds": 511,
+      "endSeconds": 513,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "08:33",
+      "text": "On dirait presque que Lidl a pensé l'objet pour la réparation, le DIY et les Frères Poulain.",
+      "endTimestamp": "08:37",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00132",
+      "startSeconds": 513,
+      "endSeconds": 517,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "08:44",
+      "text": "Allez, petit test pour voir si tout fonctionne comme prévu et...",
+      "endTimestamp": "08:47",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00133",
+      "startSeconds": 524,
+      "endSeconds": 527,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "08:47",
+      "text": "la machine s'allume. Victoire ! Il est temps de passer à la conception et à l'impression de la semelle de notre batterie Parkside.",
+      "endTimestamp": "08:52",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00134",
+      "startSeconds": 527,
+      "endSeconds": 532,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "08:52",
+      "text": "Donc on fait un truc où ça glisse quoi.",
+      "endTimestamp": "08:55",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00135",
+      "startSeconds": 532,
+      "endSeconds": 535,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "08:55",
+      "text": "Sur le... on mettrait genre sur le devant, on fait...",
+      "endTimestamp": "08:58",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00136",
+      "startSeconds": 535,
+      "endSeconds": 538,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "08:58",
+      "text": "et les cosses elles rentrent dedans quoi, tac. Tu tires, tac. J'y arrive même à la main comme ça.",
+      "endTimestamp": "09:03",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00137",
+      "startSeconds": 538,
+      "endSeconds": 543,
+      "speakerId": null
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "09:04",
+      "text": "Et les plus assidus d'entre vous connaissent déjà notre source préférée pour modifier les fichiers 3D : GrabCAD.",
+      "endTimestamp": "09:08",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00138",
+      "startSeconds": 544,
+      "endSeconds": 548,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "09:09",
+      "text": "Et évidemment, si vous voulez reproduire ce modèle by LF Poulain par vous-mêmes",
+      "endTimestamp": "09:12",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00139",
+      "startSeconds": 549,
+      "endSeconds": 552,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "09:12",
+      "text": "en l'imprimant chez vous, il est dispo en lien dans la description via les comptes MakerWorld, Printables, etc.",
+      "endTimestamp": "09:17",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00140",
+      "startSeconds": 552,
+      "endSeconds": 557,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "09:21",
+      "text": "Pour l'impression, on a simplement utilisé du PETG avec la Bambu Lab H2D dispo à l'atelier.",
+      "endTimestamp": "09:26",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00141",
+      "startSeconds": 561,
+      "endSeconds": 566,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "09:28",
+      "text": "Waouh, le résultat est trop cool. C'est toujours aussi génial de voir que ce qu'on conçoit peut devenir un objet réel en quelques heures, ça m'épatera à chaque fois.",
+      "endTimestamp": "09:34",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00142",
+      "startSeconds": 568,
+      "endSeconds": 574,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "09:37",
+      "text": "Comme vous pouvez le voir, notre petite technique des cosses insérées semble parfaitement adaptée et s'emboîte à la perfection dans la pièce 3D et la batterie.",
+      "endTimestamp": "09:41",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00143",
+      "startSeconds": 577,
+      "endSeconds": 581,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "09:43",
+      "text": "On choisit donc de les sceller à l'intérieur avec de la colle à chaud.",
+      "endTimestamp": "09:46",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00144",
+      "startSeconds": 583,
+      "endSeconds": 586,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "09:46",
+      "text": "Pour faire les choses bien, eh ben on prend même de la colle de couleur noire.",
+      "endTimestamp": "09:49",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00145",
+      "startSeconds": 586,
+      "endSeconds": 589,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "09:52",
+      "text": "On perce la pièce pour bien laisser passer tous les câbles à l'endroit qu'on souhaite.",
+      "endTimestamp": "09:56",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00146",
+      "startSeconds": 592,
+      "endSeconds": 596,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "09:56",
+      "text": "La version finale évidemment, elle pourrait être corrigée au besoin même si bon, hein, c'est juste un trou.",
+      "endTimestamp": "10:00",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00147",
+      "startSeconds": 596,
+      "endSeconds": 600,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "10:02",
+      "text": "On le voit, le module convertisseur ou abaisseur de tension s'adapte parfaitement aussi.",
+      "endTimestamp": "10:06",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00148",
+      "startSeconds": 602,
+      "endSeconds": 606,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "10:06",
+      "text": "Il nous reste à sertir nos cosses aux câbles pour tout connecter proprement.",
+      "endTimestamp": "10:09",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00149",
+      "startSeconds": 606,
+      "endSeconds": 609,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "10:19",
+      "text": "C'est du huit celle-là ? Non.",
+      "endTimestamp": "10:21",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00150",
+      "startSeconds": 619,
+      "endSeconds": 621,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "10:21",
+      "text": "Ça c'est du huit ? Non, c'est du 6 et demi ça.",
+      "endTimestamp": "10:23",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00151",
+      "startSeconds": 621,
+      "endSeconds": 623,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "10:23",
+      "text": "C'est du cinq. Oh.",
+      "endTimestamp": "10:25",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00152",
+      "startSeconds": 623,
+      "endSeconds": 625,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "10:26",
+      "text": "Ouais, comme ça après on perce la glacière, on peut mettre la sonde de température dedans. Petite perte calorifique mais bon.",
+      "endTimestamp": "10:30",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00153",
+      "startSeconds": 626,
+      "endSeconds": 630,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "10:31",
+      "text": "On va pouvoir voir la qualité de...",
+      "endTimestamp": "10:34",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00154",
+      "startSeconds": 631,
+      "endSeconds": 634,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "10:34",
+      "text": "Oh qu'elle est morte cette mèche.",
+      "endTimestamp": "10:35",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00155",
+      "startSeconds": 634,
+      "endSeconds": 635,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "10:36",
+      "text": "Elle a vingt ans.",
+      "endTimestamp": "10:37",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00156",
+      "startSeconds": 636,
+      "endSeconds": 637,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "10:37",
+      "text": "Elle est de dead de chez dead.",
+      "endTimestamp": "10:38",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00157",
+      "startSeconds": 637,
+      "endSeconds": 638,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "10:38",
+      "text": "Moi je dis on utilise un affûteur de mèches.",
+      "endTimestamp": "10:40",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00158",
+      "startSeconds": 638,
+      "endSeconds": 640,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "10:40",
+      "text": "Flemme.",
+      "endTimestamp": "10:41",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00159",
+      "startSeconds": 640,
+      "endSeconds": 641,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "10:41",
+      "text": "Voilà pourquoi on n'utilise jamais les affûteurs de mèches.",
+      "endTimestamp": "10:43",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00160",
+      "startSeconds": 641,
+      "endSeconds": 643,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "10:43",
+      "text": "Après, on a douze milliards de mèches alors bon.",
+      "endTimestamp": "10:46",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00161",
+      "startSeconds": 643,
+      "endSeconds": 646,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "10:47",
+      "text": "C'est pas pareil.",
+      "endTimestamp": "10:48",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00162",
+      "startSeconds": 647,
+      "endSeconds": 648,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "10:49",
+      "text": "J'ai rien dit, c'est fait exprès.",
+      "endTimestamp": "10:50",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00163",
+      "startSeconds": 649,
+      "endSeconds": 650,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "10:51",
+      "text": "Est-ce que tu crois qu'on t'entend au micro dire : « Attention hein quand tu feras le trou traversant, tu t'arrêteras pour que je filme l'intérieur » ?",
+      "endTimestamp": "10:55",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00164",
+      "startSeconds": 651,
+      "endSeconds": 655,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "10:55",
+      "text": "Mais ça c'est pas grave, on peut le tricher.",
+      "endTimestamp": "10:56",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00165",
+      "startSeconds": 655,
+      "endSeconds": 656,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "10:57",
+      "text": "Toi tu t'arrêtes au milieu, je filme un plan de dedans. Bien sûr.",
+      "endTimestamp": "11:00",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00166",
+      "startSeconds": 657,
+      "endSeconds": 660,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "11:00",
+      "text": "Vas-y.",
+      "endTimestamp": "11:02",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00167",
+      "startSeconds": 660,
+      "endSeconds": 662,
+      "speakerId": null
+    },
+    {
+      "speaker": "Invité",
+      "timestamp": "11:03",
+      "text": "Waouh !",
+      "endTimestamp": "11:04",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00168",
+      "startSeconds": 663,
+      "endSeconds": 664,
+      "speakerId": "Gu8bnHQaG5s:c1:voice3"
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "11:05",
+      "text": "Inutile.",
+      "endTimestamp": "11:06",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00169",
+      "startSeconds": 665,
+      "endSeconds": 666,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "11:06",
+      "text": "C'est ça.",
+      "endTimestamp": "11:07",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00170",
+      "startSeconds": 666,
+      "endSeconds": 667,
+      "speakerId": null
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "11:08",
+      "text": "Allez, maintenant que le trou pour placer la sonde de température est maintenant percé, il est temps de tout fixer proprement à l'arrière.",
+      "endTimestamp": "11:13",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00171",
+      "startSeconds": 668,
+      "endSeconds": 673,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "11:14",
+      "text": "C'est un peu notre module complet DIY qui transforme cette glacière basique en machine haut de gamme.",
+      "endTimestamp": "11:18",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00172",
+      "startSeconds": 674,
+      "endSeconds": 678,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "11:18",
+      "text": "J'adore le concept. En fait, on devrait vendre des kits à coller au dos de sa glacière DIY sur le site des Frères Poulain.",
+      "endTimestamp": "11:22",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00173",
+      "startSeconds": 678,
+      "endSeconds": 682,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "11:36",
+      "text": "En plus, regardez-moi ce petit emplacement parfait pour y coller la sonde de température.",
+      "endTimestamp": "11:39",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00174",
+      "startSeconds": 696,
+      "endSeconds": 699,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "11:40",
+      "text": "Magnifique, les amis. D'ailleurs, petit message supplémentaire : on vous conseille de la sortir un petit peu plus que sur les images",
+      "endTimestamp": "11:44",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00175",
+      "startSeconds": 700,
+      "endSeconds": 704,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "11:44",
+      "text": "pour avoir un retour de température plus fiable que nous idéalement,",
+      "endTimestamp": "11:47",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00176",
+      "startSeconds": 704,
+      "endSeconds": 707,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "11:48",
+      "text": "voire même de mettre la sonde tout en bas de la glacière.",
+      "endTimestamp": "11:51",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00177",
+      "startSeconds": 708,
+      "endSeconds": 711,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "11:52",
+      "text": "Là, là, là.",
+      "endTimestamp": "11:54",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00178",
+      "startSeconds": 712,
+      "endSeconds": 714,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "11:56",
+      "text": "La sonde elle est mise.",
+      "endTimestamp": "11:58",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00179",
+      "startSeconds": 716,
+      "endSeconds": 718,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "12:04",
+      "text": "Oh là là ! Incroyable.",
+      "endTimestamp": "12:06",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00180",
+      "startSeconds": 724,
+      "endSeconds": 726,
+      "speakerId": null
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "12:13",
+      "text": "Donc, pour vous récapituler simplement :",
+      "endTimestamp": "12:15",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00181",
+      "startSeconds": 733,
+      "endSeconds": 735,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "12:15",
+      "text": "on a juste coupé l'alimentation de l'allume-cigare pour rajouter un câble qui va nous permettre d'y injecter notre 12 volts provenant directement de la batterie.",
+      "endTimestamp": "12:21",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00182",
+      "startSeconds": 735,
+      "endSeconds": 741,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "12:21",
+      "text": "Ça permet de garder le connecteur d'origine tout en ajoutant l'option batterie,",
+      "endTimestamp": "12:25",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00183",
+      "startSeconds": 741,
+      "endSeconds": 745,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Voff",
+      "timestamp": "12:25",
+      "text": "en gardant le schéma de câblage originel et sans toucher au transformateur.",
+      "endTimestamp": "12:28",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00184",
+      "startSeconds": 745,
+      "endSeconds": 748,
+      "speakerId": "Gu8bnHQaG5s:c1:voice1"
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "12:29",
+      "text": "Bon ! Est-ce qu'elle marche alors cette glacière ?",
+      "endTimestamp": "12:31",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00185",
+      "startSeconds": 749,
+      "endSeconds": 751,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "12:31",
+      "text": "Alors moi je suis sûr qu'elle marche à la perfection. Déjà le petit support en PETG des familles qui se clipse à la perfection, bah oui je vous le dis.",
+      "endTimestamp": "12:36",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00186",
+      "startSeconds": 751,
+      "endSeconds": 756,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "12:37",
+      "text": "La glacière qui démarre avec la petite LED bleue et vous allez voir, c'est magique si vous avez bien suivi toutes les étapes et installé le firmware qui est en lien dans la description sur votre ESP32,",
+      "endTimestamp": "12:44",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00187",
+      "startSeconds": 757,
+      "endSeconds": 764,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "12:44",
+      "text": "vous avez plus qu'à vous rendre sur le petit site internet des Frères Poulain qu'on vous a développé aux petits oignons :",
+      "endTimestamp": "12:48",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00188",
+      "startSeconds": 764,
+      "endSeconds": 768,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "12:48",
+      "text": "glaciere.yt.",
+      "endTimestamp": "12:50",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00189",
+      "startSeconds": 768,
+      "endSeconds": 770,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "12:50",
+      "text": "Et vous aurez directement accès à l'intégralité des informations de votre glacière en fait.",
+      "endTimestamp": "12:54",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00190",
+      "startSeconds": 770,
+      "endSeconds": 774,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "12:54",
+      "text": "Alors sur Android c'est natif, mais sur iOS il faut installer un navigateur spécial.",
+      "endTimestamp": "12:58",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00191",
+      "startSeconds": 774,
+      "endSeconds": 778,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "12:58",
+      "text": "Mais après, vous allez sur « Connecter la glacière », vous sélectionnez la glacière en Bluetooth,",
+      "endTimestamp": "13:03",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00192",
+      "startSeconds": 778,
+      "endSeconds": 783,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "13:03",
+      "text": "et là vous avez normalement la température, 24,5 degrés,",
+      "endTimestamp": "13:09",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00193",
+      "startSeconds": 783,
+      "endSeconds": 789,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "13:09",
+      "text": "et surtout eh ben la jauge de batterie restante : 97 %. Ce qui veut dire qu'on a fait une reprise de cette fin.",
+      "endTimestamp": "13:12",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00194",
+      "startSeconds": 789,
+      "endSeconds": 792,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "13:12",
+      "text": "Bref, l'intégralité des informations qui rendent cette glacière intelligente et connectée en Bluetooth sont disponibles via ce site internet là,",
+      "endTimestamp": "13:17",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00195",
+      "startSeconds": 792,
+      "endSeconds": 797,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "13:17",
+      "text": "sans application et tout reste confidentiel parce que c'est une connexion directe entre votre téléphone et la glacière.",
+      "endTimestamp": "13:22",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00196",
+      "startSeconds": 797,
+      "endSeconds": 802,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "13:22",
+      "text": "Bref, tout est en lien dans la description.",
+      "endTimestamp": "13:24",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00197",
+      "startSeconds": 802,
+      "endSeconds": 804,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "13:24",
+      "text": "N'oubliez pas d'être tous bienveillants les uns envers les autres.",
+      "endTimestamp": "13:26",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00198",
+      "startSeconds": 804,
+      "endSeconds": 806,
+      "speakerId": null
+    },
+    {
+      "speaker": "Indéterminé",
+      "timestamp": "13:26",
+      "text": "On vous embrasse ! À la prochaine ! Ciao ! Ciao !",
+      "endTimestamp": "13:28",
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:t00199",
+      "startSeconds": 806,
+      "endSeconds": 808,
+      "speakerId": null
+    }
+  ],
+  "visualSegments": [
+    {
+      "timestamp": "00:00",
+      "endTimestamp": "00:01",
+      "title": "Texte d'introduction sur la mer",
+      "visualDescription": "Vue en plongée d'une vague blanche venant s'écraser sur le rivage d'une plage d'eau turquoise. Du texte stylisé jaune et rose apparaît au centre.",
+      "screenText": [
+        "C'est"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00001",
+      "startSeconds": 0,
+      "endSeconds": 1
+    },
+    {
+      "timestamp": "00:01",
+      "endTimestamp": "00:02",
+      "title": "Texte sur les vagues",
+      "visualDescription": "La vague continue de se retirer sur la plage de galets avec l'inscription « PIC NIQUE » en lettres roses au coin supérieur gauche.",
+      "screenText": [
+        "PIC NIQUE"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00002",
+      "startSeconds": 1,
+      "endSeconds": 2
+    },
+    {
+      "timestamp": "00:02",
+      "endTimestamp": "00:03",
+      "title": "Famille en pique-nique au coucher du soleil",
+      "visualDescription": "Groupe assis autour d'une table pliante sur une plage de sable fin face à la mer au crépuscule, avec du texte en superposition.",
+      "screenText": [
+        "PIC NIQUE",
+        "sur la plage"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00003",
+      "startSeconds": 2,
+      "endSeconds": 3
+    },
+    {
+      "timestamp": "00:03",
+      "endTimestamp": "00:06",
+      "title": "Verres de boissons fraîches sur le sable",
+      "visualDescription": "Gros plan sur deux grands verres garnis de tranches de citron et de pailles jaunes plantés dans le sable au bord de l'eau. Une main vient en saisir un.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00004",
+      "startSeconds": 3,
+      "endSeconds": 6
+    },
+    {
+      "timestamp": "00:06",
+      "endTimestamp": "00:08",
+      "title": "Message écrit dans le sable",
+      "visualDescription": "Plan en plongée sur l'inscription « HAPPY HOLIDAY » tracée dans le sable fin avec un petit dessin de soleil souriant.",
+      "screenText": [
+        "HAPPY HOLIDAY"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00005",
+      "startSeconds": 6,
+      "endSeconds": 8
+    },
+    {
+      "timestamp": "00:08",
+      "endTimestamp": "00:09",
+      "title": "Vue d'un glacier polaire",
+      "visualDescription": "Photographie plein champ montrant une immense paroi de glacier blanc et bleu flottant sur l'eau.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00006",
+      "startSeconds": 8,
+      "endSeconds": 9
+    },
+    {
+      "timestamp": "00:09",
+      "endTimestamp": "00:11",
+      "title": "Glacière de plage classique",
+      "visualDescription": "Une glacière portable rigide turquoise et blanche posée sur le sable de la plage à côté d'un ballon gonflable, avec un titre stylisé en bas.",
+      "screenText": [
+        "GLACIÈRE"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00007",
+      "startSeconds": 9,
+      "endSeconds": 11
+    },
+    {
+      "timestamp": "00:11",
+      "endTimestamp": "00:15",
+      "title": "Prise électrique sur la plage avec interdiction",
+      "visualDescription": "Une prise murale électrique blanche apparaît incrustée au-dessus de la plage, puis une croix rouge d'interdiction se superpose dessus.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00008",
+      "startSeconds": 11,
+      "endSeconds": 15
+    },
+    {
+      "timestamp": "00:15",
+      "endTimestamp": "00:17",
+      "title": "Batterie acoustique sur la plage",
+      "visualDescription": "Une batterie de musique complète de marque Pearl apparaît à droite de la croix rouge sur le fond de sable marin.",
+      "screenText": [
+        "Pearl"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00009",
+      "startSeconds": 15,
+      "endSeconds": 17
+    },
+    {
+      "timestamp": "00:17",
+      "endTimestamp": "00:20",
+      "title": "Homme souriant levant le pouce",
+      "visualDescription": "Un jeune homme en chemise bleue lève le pouce droit vers le haut avec un grand sourire face à la caméra dans un salon.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00010",
+      "startSeconds": 17,
+      "endSeconds": 20
+    },
+    {
+      "timestamp": "00:20",
+      "endTimestamp": "00:23",
+      "title": "Outils d'atelier et lettrage DIY",
+      "visualDescription": "Vue du dessus d'un établi en bois garni de nombreux outils de bricolage variés. Les lettres « DIY » s'animent au centre.",
+      "screenText": [
+        "DIY"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00011",
+      "startSeconds": 20,
+      "endSeconds": 23
+    },
+    {
+      "timestamp": "00:23",
+      "endTimestamp": "00:26",
+      "title": "Téléphone portable tenu en main",
+      "visualDescription": "Gros plan sur une main tenant un smartphone affichant un écran vert d'incrustation devant l'eau, avec le texte « GLACIÈRE CONNECTÉE » de chaque côté.",
+      "screenText": [
+        "CONNECTÉE",
+        "GLACIÈRE"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00012",
+      "startSeconds": 23,
+      "endSeconds": 26
+    },
+    {
+      "timestamp": "00:26",
+      "endTimestamp": "00:30",
+      "title": "Public applaudissant",
+      "visualDescription": "Plan serré sur des personnes applaudissant chaleureusement dans une salle sombre.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00013",
+      "startSeconds": 26,
+      "endSeconds": 30
+    },
+    {
+      "timestamp": "00:30",
+      "endTimestamp": "00:31",
+      "title": "Jingle Les Frères Poulain",
+      "visualDescription": "Animation graphique colorée avec textures réticulées affichant le logo officiel « LES FRÈRES POULAIN ».",
+      "screenText": [
+        "LES FRÈRES POULAIN"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00014",
+      "startSeconds": 30,
+      "endSeconds": 31
+    },
+    {
+      "timestamp": "00:31",
+      "endTimestamp": "00:35",
+      "title": "Recherche dans la mezzanine de stockage",
+      "visualDescription": "Un homme monte sur une échelle menant sous le plafond d'un atelier pour attraper une glacière bleue rangée sur une étagère.",
+      "screenText": [
+        "TARION"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00015",
+      "startSeconds": 31,
+      "endSeconds": 35
+    },
+    {
+      "timestamp": "00:35",
+      "endTimestamp": "00:37",
+      "title": "Récupération de la glacière Sub-Zero 3000",
+      "visualDescription": "L'homme sur la mezzanine tend la glacière cubique bleue et blanche à son collègue posté en bas les bras levés pour la réceptionner.",
+      "screenText": [
+        "SUB-ZERO -3000"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00016",
+      "startSeconds": 35,
+      "endSeconds": 37
+    },
+    {
+      "timestamp": "00:37",
+      "endTimestamp": "00:44",
+      "title": "Rappels de la fabrication de la glacière en bois",
+      "visualDescription": "Alternance d'extraits d'une ancienne vidéo montrant l'assemblage de panneaux en bois découpés, l'isolation thermique, la mise en peinture bleue à la bombe et la pose d'un vinyle de titrage.",
+      "screenText": [
+        "GLACIERE SUB-ZERO -3000",
+        "GLACIERE SUB-ZERO -3000 by LFPoulain"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00017",
+      "startSeconds": 37,
+      "endSeconds": 44
+    },
+    {
+      "timestamp": "00:44",
+      "endTimestamp": "00:48",
+      "title": "Page YouTube et atelier",
+      "visualDescription": "Affichage de la vidéo YouTube précédente totalisant plus de 209 000 vues, puis plan large dans l'atelier où deux glacières reposent sur une table au premier plan.",
+      "screenText": [
+        "Une GLACIERE EN BOIS !!! HEIN ?? ULTRA PERFORMANTE en plus ! DIY Camping",
+        "Les Freres Poulain",
+        "GLACIERE SUB-ZERO -3000 by LFPoulain"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00018",
+      "startSeconds": 44,
+      "endSeconds": 48
+    },
+    {
+      "timestamp": "00:48",
+      "endTimestamp": "00:54",
+      "title": "Présentation de la glacière Lidl Crivit",
+      "visualDescription": "Plan moyen sur la glacière électrique grise et orange posée devant un mur végétalisé. Une vignette du catalogue Lidl affichant le produit à 49,99 € s'incruste à gauche.",
+      "screenText": [
+        "GLACIÈRE ÉLECTRIQUE LIDL",
+        "Du jeudi 24/04 au lundi 28/04",
+        "CRIVIT",
+        "49.99 €"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00019",
+      "startSeconds": 48,
+      "endSeconds": 54
+    },
+    {
+      "timestamp": "00:54",
+      "endTimestamp": "01:03",
+      "title": "Détails du capot et des cordons d'alimentation",
+      "visualDescription": "Gros plan sur les aérations et le panneau de commande du capot, puis ouverture des compartiments de rangement supérieurs montrant la prise secteur 230V et la fiche allume-cigare 12V.",
+      "screenText": [
+        "CRIVIT",
+        "OFF",
+        "MAX",
+        "HOT",
+        "COLD",
+        "230V",
+        "12V"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00020",
+      "startSeconds": 54,
+      "endSeconds": 63
+    },
+    {
+      "timestamp": "01:03",
+      "endTimestamp": "01:11",
+      "title": "Comparaison avec la glacière Action",
+      "visualDescription": "Une seconde glacière bleue et orange de marque Action est posée à côté de la Crivit. Elle affiche un câble allume-cigare avec son prix incrusté.",
+      "screenText": [
+        "GLACIÈRE ÉLECTRIQUE ACTION",
+        "29,99 €"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00021",
+      "startSeconds": 63,
+      "endSeconds": 71
+    },
+    {
+      "timestamp": "01:11",
+      "endTimestamp": "01:18",
+      "title": "Retrait des glacières de la table",
+      "visualDescription": "Gros plan sur la prise allume-cigare 12V, puis les deux animateurs attrapent chacun une glacière pour libérer le meuble devant le mur végétal.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00022",
+      "startSeconds": 71,
+      "endSeconds": 78
+    },
+    {
+      "timestamp": "01:18",
+      "endTimestamp": "01:23",
+      "title": "Introduction du partenariat NordVPN",
+      "visualDescription": "Les deux animateurs debout face caméra devant le logo ampoule expliquent le sujet du partenariat commercial avec NordVPN.",
+      "screenText": [
+        "COLLABORATION COMMERCIALE",
+        "NordVPN"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00023",
+      "startSeconds": 78,
+      "endSeconds": 83
+    },
+    {
+      "timestamp": "01:23",
+      "endTimestamp": "01:31",
+      "title": "Téléchargements, dossiers et composants",
+      "visualDescription": "Succession d'écrans montrant des barres de progression de téléchargement, un dossier Windows rempli de fichiers variés, puis une page web d'achat de vis à billes SFU pour machine outil.",
+      "screenText": [
+        "COLLABORATION COMMERCIALE",
+        "85.1%",
+        "73.4%",
+        "Vis à billes SFU par taille"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00024",
+      "startSeconds": 83,
+      "endSeconds": 91
+    },
+    {
+      "timestamp": "01:31",
+      "endTimestamp": "01:38",
+      "title": "Déplacements et réseaux publics",
+      "visualDescription": "Extrait d'un vlog lors d'un tournage extérieur, retour aux deux présentateurs discutant, puis vidéo verticale au format smartphone montrant une foule dans un salon d'exposition.",
+      "screenText": [
+        "COLLABORATION COMMERCIALE",
+        "endroit dis vers et vars y est",
+        "Kitchen Appliances"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00025",
+      "startSeconds": 91,
+      "endSeconds": 98
+    },
+    {
+      "timestamp": "01:38",
+      "endTimestamp": "01:51",
+      "title": "Sécurité numérique et métaphore des lunettes",
+      "visualDescription": "Les deux compères gesticulent en parlant, entrecoupés par une image générée d'un artisan meulant du métal avec des lunettes de sécurité, puis devant son ordinateur portable.",
+      "screenText": [
+        "COLLABORATION COMMERCIALE",
+        "inserer ici Artusse Poul1"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00026",
+      "startSeconds": 98,
+      "endSeconds": 111
+    },
+    {
+      "timestamp": "01:51",
+      "endTimestamp": "01:58",
+      "title": "Offre commerciale NordVPN",
+      "visualDescription": "Retour aux animateurs avec des flèches vertes animées pointant vers un bandeau noir affichant le lien promotionnel et les 4 mois offerts.",
+      "screenText": [
+        "COLLABORATION COMMERCIALE",
+        "nordvpn.com/poulain",
+        "4 mois offerts sur les abonnements de deux ans"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00027",
+      "startSeconds": 111,
+      "endSeconds": 118
+    },
+    {
+      "timestamp": "01:58",
+      "endTimestamp": "02:08",
+      "title": "Fonctionnalités de géolocalisation et VPN sur smartphone",
+      "visualDescription": "Une maquette de smartphone s'affiche à côté de l'orateur, montrant l'activation de la fonction « Masquer l'IP » et une liste de serveurs dans différents pays du monde.",
+      "screenText": [
+        "COLLABORATION COMMERCIALE",
+        "Masquer l'IP",
+        "États-Unis",
+        "Allemagne",
+        "Italie",
+        "Portugal",
+        "Canada",
+        "Royaume-Uni",
+        "Corée du Sud",
+        "Lituanie",
+        "Brésil",
+        "Suède",
+        "Australie",
+        "Japon"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00028",
+      "startSeconds": 118,
+      "endSeconds": 128
+    },
+    {
+      "timestamp": "02:08",
+      "endTimestamp": "02:18",
+      "title": "Présentation de la protection antivirus Next-Gen",
+      "visualDescription": "L'autre animateur détaille la nouvelle fonction de protection contre les menaces en ligne illustrée par l'interface sur ordinateur portable.",
+      "screenText": [
+        "COLLABORATION COMMERCIALE",
+        "NordVPN",
+        "next-gen antivirus",
+        "Protection contre les attaques, le phishing et les logiciels malveillants"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00029",
+      "startSeconds": 128,
+      "endSeconds": 138
+    },
+    {
+      "timestamp": "02:18",
+      "endTimestamp": "02:29",
+      "title": "Détails des éléments bloqués",
+      "visualDescription": "Gros plan sur les modules Anti-arnaque, Anti-malware et Anti-suivi, puis liste textuelle au-dessus du présentateur résumant les éléments interceptés.",
+      "screenText": [
+        "COLLABORATION COMMERCIALE",
+        "Bloque :",
+        "Site d'arnaque",
+        "Hameçonnage",
+        "Analyse de fichiers"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00030",
+      "startSeconds": 138,
+      "endSeconds": 149
+    },
+    {
+      "timestamp": "02:29",
+      "endTimestamp": "02:47",
+      "title": "Navigation sécurisée et vieux sites",
+      "visualDescription": "Les deux acolytes expliquent l'intérêt pour la recherche de documentations ou de firmwares anciens en mimant des situations cocasses.",
+      "screenText": [
+        "COLLABORATION COMMERCIALE"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00031",
+      "startSeconds": 149,
+      "endSeconds": 167
+    },
+    {
+      "timestamp": "02:47",
+      "endTimestamp": "02:59",
+      "title": "Démonstration sur l'application mobile",
+      "visualDescription": "Un écran de smartphone animé montre la connexion à un serveur situé à Paris en un seul clic.",
+      "screenText": [
+        "COLLABORATION COMMERCIALE",
+        "Berlin, Germany",
+        "Protéger ma connexion",
+        "France",
+        "Connexion sécurisée",
+        "Suspendre la connexion"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00032",
+      "startSeconds": 167,
+      "endSeconds": 179
+    },
+    {
+      "timestamp": "02:59",
+      "endTimestamp": "03:17",
+      "title": "Rappel de l'offre et garantie 30 jours",
+      "visualDescription": "Affichage de l'URL promotionnelle et du calendrier montrant la garantie satisfait ou remboursé de 30 jours avant le retour au projet glacière.",
+      "screenText": [
+        "COLLABORATION COMMERCIALE",
+        "nordvpn.com/poulain",
+        "Garantie satisfait ou remboursé de 30 jours"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00033",
+      "startSeconds": 179,
+      "endSeconds": 197
+    },
+    {
+      "timestamp": "03:17",
+      "endTimestamp": "03:18",
+      "title": "Transition logo Les Frères Poulain",
+      "visualDescription": "Bref jingle animé avec le logo coloré du collectif.",
+      "screenText": [
+        "LES FRÈRES POULAIN"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00034",
+      "startSeconds": 197,
+      "endSeconds": 198
+    },
+    {
+      "timestamp": "03:18",
+      "endTimestamp": "03:22",
+      "title": "Mesure de puissance de la glacière",
+      "visualDescription": "Branchement de la prise de la glacière sur un wattmètre numérique enfichable blanc posé sur l'établi.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00035",
+      "startSeconds": 198,
+      "endSeconds": 202
+    },
+    {
+      "timestamp": "03:22",
+      "endTimestamp": "03:27",
+      "title": "Lecture de la consommation électrique",
+      "visualDescription": "La main tourne le potentiomètre du capot de la glacière tandis que l'afficheur du wattmètre augmente progressivement jusqu'à 40,3 W.",
+      "screenText": [
+        "0.49",
+        "6.4 W",
+        "15.3 W",
+        "24.5 W",
+        "40.3 W"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00036",
+      "startSeconds": 202,
+      "endSeconds": 207
+    },
+    {
+      "timestamp": "03:27",
+      "endTimestamp": "03:31",
+      "title": "Consommation maximale mesurée",
+      "visualDescription": "L'afficheur digital se stabilise à 53,8 W avec l'incrustation du texte « 50 à 55 Watts ».",
+      "screenText": [
+        "50 à 55 Watts",
+        "53.8 W"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00037",
+      "startSeconds": 207,
+      "endSeconds": 211
+    },
+    {
+      "timestamp": "03:31",
+      "endTimestamp": "03:34",
+      "title": "Recherche d'une batterie dans la servante d'atelier",
+      "visualDescription": "L'homme ouvre un tiroir étiqueté « VISSERIE-PERCEUSES » dans une servante à outils rouge pour y choisir du matériel.",
+      "screenText": [
+        "FRONTIE",
+        "TOURNEVIS",
+        "PINCES",
+        "VISSERIE-PERCEUSES",
+        "SERRES",
+        "VISSERIE-PERCEUSES"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00038",
+      "startSeconds": 211,
+      "endSeconds": 214
+    },
+    {
+      "timestamp": "03:34",
+      "endTimestamp": "03:41",
+      "title": "Mesure thermique de l'air au thermomètre infrarouge",
+      "visualDescription": "Un thermomètre pistolet laser mesure la température de l'air expulsé par la grille (31,1 °C) puis à l'intérieur de la cuve (23,2 °C).",
+      "screenText": [
+        "31.1 °C",
+        "23.2 °C"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00039",
+      "startSeconds": 214,
+      "endSeconds": 221
+    },
+    {
+      "timestamp": "03:41",
+      "endTimestamp": "03:46",
+      "title": "Ouverture du couvercle et module Peltier",
+      "visualDescription": "Ouverture du couvercle de la glacière montrant le bloc ventilateur et radiateur inférieur avec la mention « MODULE PELTIER » en surimpression.",
+      "screenText": [
+        "MODULE PELTIER",
+        "CRIVIT"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00040",
+      "startSeconds": 221,
+      "endSeconds": 226
+    },
+    {
+      "timestamp": "03:46",
+      "endTimestamp": "03:57",
+      "title": "Schéma explicatif du module Peltier",
+      "visualDescription": "Animation 2D montrant la circulation du courant 12V dans les jonctions semi-conductrices P et N, le transfert thermique de la face froide vers la face chaude et l'évacuation par radiateur.",
+      "screenText": [
+        "MODULE PELTIER",
+        "INTÉRIEUR DE LA GLACIÈRE",
+        "12 V",
+        "VENTILATION",
+        "FACE FROIDE",
+        "FACE CHAUDE",
+        "SANS DISSIPATION",
+        "PEU DE FROID",
+        "≈ 25 °C",
+        "≈ 70 °C",
+        "AVEC DISSIPATION",
+        "LE FROID DESCEND",
+        "≈ 8 °C",
+        "ORDRES DE GRANDEUR",
+        "VENTILATEUR",
+        "RADIATEUR",
+        "CHALEUR ÉVACUÉE",
+        "≈ 40 °C"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00041",
+      "startSeconds": 226,
+      "endSeconds": 237
+    },
+    {
+      "timestamp": "03:57",
+      "endTimestamp": "04:03",
+      "title": "Alignement de différentes batteries d'outillage",
+      "visualDescription": "Quatre batteries rechargeables différentes sont disposées sur l'établi avec leurs noms respectifs incrustés : Ryobi, Einhell, AEG et Parkside.",
+      "screenText": [
+        "RYOBI",
+        "EINHELL",
+        "AEG",
+        "PARKSIDE",
+        "9.0Ah",
+        "Bluetooth"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00042",
+      "startSeconds": 237,
+      "endSeconds": 243
+    },
+    {
+      "timestamp": "04:03",
+      "endTimestamp": "04:10",
+      "title": "Examen des connecteurs de batteries",
+      "visualDescription": "Les deux hommes manipulent et comparent les boîtiers de batterie pour étudier la forme de leurs rails et fentes de contact.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00043",
+      "startSeconds": 243,
+      "endSeconds": 250
+    },
+    {
+      "timestamp": "04:10",
+      "endTimestamp": "04:17",
+      "title": "Comparaison de l'encombrement",
+      "visualDescription": "L'un montre une batterie Ryobi à haute tige puis désigne l'arrière de la glacière où elle pourrait être fixée.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00044",
+      "startSeconds": 250,
+      "endSeconds": 257
+    },
+    {
+      "timestamp": "04:17",
+      "endTimestamp": "04:30",
+      "title": "Choix de la batterie Parkside",
+      "visualDescription": "Discussion autour de la batterie Parkside, jugée plus compacte et très accessible dans le commerce, avec des logos Parkside animés à l'écran.",
+      "screenText": [
+        "PARKSIDE"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00045",
+      "startSeconds": 257,
+      "endSeconds": 270
+    },
+    {
+      "timestamp": "04:30",
+      "endTimestamp": "04:36",
+      "title": "Test de cosses plates dans les fentes",
+      "visualDescription": "Insertion manuelle de cosses à sertir mâles plates directement dans les connecteurs de la batterie Parkside, avec un dessin explicatif du composant à droite.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00046",
+      "startSeconds": 270,
+      "endSeconds": 276
+    },
+    {
+      "timestamp": "04:36",
+      "endTimestamp": "04:38",
+      "title": "Recherche de composants sur les étagères",
+      "visualDescription": "L'homme cherche des fils et composants dans des bacs de rangement sur les rayonnages de l'atelier.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00047",
+      "startSeconds": 276,
+      "endSeconds": 278
+    },
+    {
+      "timestamp": "04:38",
+      "endTimestamp": "04:44",
+      "title": "Préparation du câblage électrique",
+      "visualDescription": "Les deux collègues préparent des conducteurs électriques et dénudent des fils à l'aide d'une pince à dénuder automatique.",
+      "screenText": [
+        "Court-circuit",
+        "Chauffe"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00048",
+      "startSeconds": 278,
+      "endSeconds": 284
+    },
+    {
+      "timestamp": "04:44",
+      "endTimestamp": "04:51",
+      "title": "Sertissage des cosses",
+      "visualDescription": "Gros plan sur la pince à sertir utilisée pour fixer une cosse rouge sur un fil dénudé, puis insertion sur les bornes de la batterie avec une étiquette d'avertissement humoristique.",
+      "screenText": [
+        "Attention !"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00049",
+      "startSeconds": 284,
+      "endSeconds": 291
+    },
+    {
+      "timestamp": "04:51",
+      "endTimestamp": "04:56",
+      "title": "Mur du FabLab avec lettre manquante",
+      "visualDescription": "Vue générale du mur de l'atelier arborant l'inscription géante « FabLab » où la lettre « a » s'est détachée et est tombée.",
+      "screenText": [
+        "FabL b"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00050",
+      "startSeconds": 291,
+      "endSeconds": 296
+    },
+    {
+      "timestamp": "04:56",
+      "endTimestamp": "04:58",
+      "title": "Mème vidéo Laurent",
+      "visualDescription": "Court extrait vidéo comique d'un passant reconnaissant quelqu'un dans un couloir de centre commercial.",
+      "screenText": [
+        "LE BNY PARIS"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00051",
+      "startSeconds": 296,
+      "endSeconds": 298
+    },
+    {
+      "timestamp": "04:58",
+      "endTimestamp": "05:07",
+      "title": "Recollage de la lettre au mur",
+      "visualDescription": "L'homme recolle la lettre en bois « a » sur le mur sombre du FabLab à l'aide d'un pistolet à colle.",
+      "screenText": [
+        "FabL b",
+        "FabLab",
+        "S'ABONNER",
+        "ABONNÉ"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00052",
+      "startSeconds": 298,
+      "endSeconds": 307
+    },
+    {
+      "timestamp": "05:07",
+      "endTimestamp": "05:11",
+      "title": "Recherche du redresseur de tension",
+      "visualDescription": "L'homme ouvre un tiroir de rangement à casiers pour en sortir une petite carte électronique.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00053",
+      "startSeconds": 307,
+      "endSeconds": 311
+    },
+    {
+      "timestamp": "05:11",
+      "endTimestamp": "05:16",
+      "title": "Mesure de la tension de la batterie",
+      "visualDescription": "Un multimètre digital Tacklife affiche 20,50 V aux bornes de la batterie 20V Parkside.",
+      "screenText": [
+        "20.50 V",
+        "TACKLIFE"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00054",
+      "startSeconds": 311,
+      "endSeconds": 316
+    },
+    {
+      "timestamp": "05:16",
+      "endTimestamp": "05:22",
+      "title": "Réglage du convertisseur abaisseur",
+      "visualDescription": "Un tournevis règle le potentiomètre d'une carte step-down avec afficheur 7 segments digital rouge indiquant 12.0 V.",
+      "screenText": [
+        "12.0",
+        "HWK",
+        "20,5V -> 12V"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00055",
+      "startSeconds": 316,
+      "endSeconds": 322
+    },
+    {
+      "timestamp": "05:22",
+      "endTimestamp": "05:26",
+      "title": "Présentation du module redresseur de tension",
+      "visualDescription": "Gros plan sur le petit module électronique dans la main avec incrustation du texte descriptif.",
+      "screenText": [
+        "Redresseur de tension",
+        "LIENS EN DESCRIPTION"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00056",
+      "startSeconds": 322,
+      "endSeconds": 326
+    },
+    {
+      "timestamp": "05:26",
+      "endTimestamp": "05:30",
+      "title": "Contrôle de la sortie à 12 volts",
+      "visualDescription": "Pointes de touche sur le bornier de sortie du convertisseur, le voltmètre affiche précisément 12,00 V.",
+      "screenText": [
+        "12.00",
+        "LIENS EN DESCRIPTION"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00057",
+      "startSeconds": 326,
+      "endSeconds": 330
+    },
+    {
+      "timestamp": "05:30",
+      "endTimestamp": "05:38",
+      "title": "Surchauffe du module électronique",
+      "visualDescription": "Lors du branchement de charge, le circuit se met à fumer et à chauffer excessivement.",
+      "screenText": [
+        "11.5"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00058",
+      "startSeconds": 330,
+      "endSeconds": 338
+    },
+    {
+      "timestamp": "05:38",
+      "endTimestamp": "05:51",
+      "title": "Essais successifs d'autres modules identiques",
+      "visualDescription": "Ils testent d'autres cartes identiques à l'aide d'un tournevis de réglage, mais les composants grillent à leur tour.",
+      "screenText": [
+        "8.50",
+        "0.69"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00059",
+      "startSeconds": 338,
+      "endSeconds": 351
+    },
+    {
+      "timestamp": "05:51",
+      "endTimestamp": "06:00",
+      "title": "Constat d'échec sur les modules",
+      "visualDescription": "Les deux bricoleurs constatent l'échec face à leur établi, avec un encart de caméra thermique affichant « OUT OF RANGE ».",
+      "screenText": [
+        "OUT OF RANGE"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00060",
+      "startSeconds": 351,
+      "endSeconds": 360
+    },
+    {
+      "timestamp": "06:00",
+      "endTimestamp": "06:04",
+      "title": "Trois modules hors service",
+      "visualDescription": "Plan serré sur les trois petites cartes électroniques brûlées alignées côte à côte sur la table.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00061",
+      "startSeconds": 360,
+      "endSeconds": 364
+    },
+    {
+      "timestamp": "06:04",
+      "endTimestamp": "06:11",
+      "title": "Nouveaux modules convertisseurs étanches",
+      "visualDescription": "L'un apporte des modules abaisseurs en boîtier plastique moulé noir avec ailettes en aluminium et fils intégrés.",
+      "screenText": [
+        "CE"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00062",
+      "startSeconds": 364,
+      "endSeconds": 371
+    },
+    {
+      "timestamp": "06:11",
+      "endTimestamp": "06:18",
+      "title": "Raccordement de la batterie au nouveau régulateur",
+      "visualDescription": "Connexion des câbles de la batterie au convertisseur étanche posé sur l'établi à côté de la glacière.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00063",
+      "startSeconds": 371,
+      "endSeconds": 378
+    },
+    {
+      "timestamp": "06:18",
+      "endTimestamp": "06:23",
+      "title": "Recherche de composants électroniques",
+      "visualDescription": "L'homme rassemble des microcontrôleurs et du matériel de câblage dans un autre bureau.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00064",
+      "startSeconds": 378,
+      "endSeconds": 383
+    },
+    {
+      "timestamp": "06:23",
+      "endTimestamp": "06:33",
+      "title": "Schéma de connexion ESP32 et capteurs",
+      "visualDescription": "Schéma de câblage électronique reliant un ESP32 SuperMini à un capteur de courant INA219 et une thermistance NTC pendant que l'homme prépare la soudure.",
+      "screenText": [
+        "INA219",
+        "ESP32",
+        "NTC 10 kOhm",
+        "BLE"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00065",
+      "startSeconds": 383,
+      "endSeconds": 393
+    },
+    {
+      "timestamp": "06:33",
+      "endTimestamp": "06:44",
+      "title": "Soudure et courbe de décharge de batterie",
+      "visualDescription": "Travail de soudure au fer sur la petite platine, avec incrustation d'une courbe tension/capacité de batterie Parkside de 21 V à 17 V.",
+      "screenText": [
+        "21V",
+        "17V",
+        "Courbe de test non représentative"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00066",
+      "startSeconds": 393,
+      "endSeconds": 404
+    },
+    {
+      "timestamp": "06:44",
+      "endTimestamp": "06:53",
+      "title": "Montage compact des composants soudés",
+      "visualDescription": "Examen minutieux de la platine assemblée sans broches, tenue dans les doigts, avec le mot « OUAGO » affiché en grand.",
+      "screenText": [
+        "J'espère que vous êtes content, j'ai dit",
+        "OUAGO"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00067",
+      "startSeconds": 404,
+      "endSeconds": 413
+    },
+    {
+      "timestamp": "06:53",
+      "endTimestamp": "07:07",
+      "title": "Explication du code et des tensions d'alimentation",
+      "visualDescription": "L'expérimentateur face caméra montre les composants miniaturisés et détaille l'utilisation du 5V pour la carte de contrôle.",
+      "screenText": [
+        "LIENS EN DESCRIPTION"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00068",
+      "startSeconds": 413,
+      "endSeconds": 427
+    },
+    {
+      "timestamp": "07:07",
+      "endTimestamp": "07:12",
+      "title": "Poursuite du câblage à l'établi",
+      "visualDescription": "Suite des opérations de soudure et d'isolation des fils sous une loupe d'établi.",
+      "screenText": [
+        "PARKSIDE"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00069",
+      "startSeconds": 427,
+      "endSeconds": 432
+    },
+    {
+      "timestamp": "07:12",
+      "endTimestamp": "07:31",
+      "title": "Test à blanc de l'ensemble du circuit",
+      "visualDescription": "Disposition de tous les éléments raccordés sur la table d'atelier : batterie, convertisseur, ESP32 et multimètres pour valider le fonctionnement avant intégration.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00070",
+      "startSeconds": 432,
+      "endSeconds": 451
+    },
+    {
+      "timestamp": "07:31",
+      "endTimestamp": "07:35",
+      "title": "Vérification du porte-fusible",
+      "visualDescription": "Ouverture du porte-fusible étanche sur le cordon allume-cigare pour inspecter le fusible à broche.",
+      "screenText": [
+        "Fusible"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00071",
+      "startSeconds": 451,
+      "endSeconds": 455
+    },
+    {
+      "timestamp": "07:35",
+      "endTimestamp": "07:41",
+      "title": "Planification de l'implantation sur la glacière",
+      "visualDescription": "Les deux animateurs discutent de l'emplacement optimal pour fixer le socle de batterie au dos de la cuve grise.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00072",
+      "startSeconds": 455,
+      "endSeconds": 461
+    },
+    {
+      "timestamp": "07:41",
+      "endTimestamp": "07:45",
+      "title": "Passage des câbles vers le haut",
+      "visualDescription": "Mesure et guidage des fils électriques longeant l'arête jusqu'à la charnière supérieure du couvercle.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00073",
+      "startSeconds": 461,
+      "endSeconds": 465
+    },
+    {
+      "timestamp": "07:45",
+      "endTimestamp": "07:54",
+      "title": "Démontage du carter intérieur du couvercle",
+      "visualDescription": "Dévissage des vis de fixation du carénage en plastique gris pour accéder au ventilateur et au module Peltier.",
+      "screenText": [
+        "CRIVIT"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00074",
+      "startSeconds": 465,
+      "endSeconds": 474
+    },
+    {
+      "timestamp": "07:54",
+      "endTimestamp": "07:58",
+      "title": "Découpe du fil d'alimentation",
+      "visualDescription": "Une pince coupante sectionne le câble noir relié à la carte électronique de puissance près du gros dissipateur thermique en aluminium.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00075",
+      "startSeconds": 474,
+      "endSeconds": 478
+    },
+    {
+      "timestamp": "07:58",
+      "endTimestamp": "08:00",
+      "title": "Vue spatiale de la Terre la nuit",
+      "visualDescription": "Animation représentant la Terre vue depuis l'espace de nuit, montrant les lumières de l'Europe illuminée.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00076",
+      "startSeconds": 478,
+      "endSeconds": 480
+    },
+    {
+      "timestamp": "08:00",
+      "endTimestamp": "08:05",
+      "title": "Reprise des raccordements électriques",
+      "visualDescription": "Dénudage des câbles internes avec la pince automatique, puis vue d'ensemble du poste de travail avec alimentation de laboratoire.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00077",
+      "startSeconds": 480,
+      "endSeconds": 485
+    },
+    {
+      "timestamp": "08:05",
+      "endTimestamp": "08:12",
+      "title": "Alimentation stabilisée et embouts de câblage",
+      "visualDescription": "L'alimentation affiche 12,3 V, tandis que l'opérateur présente dans sa paume plusieurs embouts à sertir métalliques pour fils fins.",
+      "screenText": [
+        "12.3 V",
+        "0.01 A",
+        "AEG",
+        "ONE+"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00078",
+      "startSeconds": 485,
+      "endSeconds": 492
+    },
+    {
+      "timestamp": "08:12",
+      "endTimestamp": "08:20",
+      "title": "Sertissage des dérivations",
+      "visualDescription": "Raccordement des nouveaux câbles au circuit d'origine avec des connecteurs rapides.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00079",
+      "startSeconds": 492,
+      "endSeconds": 500
+    },
+    {
+      "timestamp": "08:20",
+      "endTimestamp": "08:28",
+      "title": "Explication du circuit dans le couvercle",
+      "visualDescription": "L'animateur pointe du doigt le parcours du fil sectionné et la dérivation alimentant le module Peltier et la carte d'alimentation secteur.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00080",
+      "startSeconds": 500,
+      "endSeconds": 508
+    },
+    {
+      "timestamp": "08:28",
+      "endTimestamp": "08:44",
+      "title": "Revissage du carter et fermeture du capot",
+      "visualDescription": "Serrage de la bride de maintien des câbles, remise en place de la coque en plastique et fermeture des compartiments supérieurs.",
+      "screenText": [
+        "CRIVIT"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00081",
+      "startSeconds": 508,
+      "endSeconds": 524
+    },
+    {
+      "timestamp": "08:44",
+      "endTimestamp": "08:48",
+      "title": "Raccordement des bornes et allumage",
+      "visualDescription": "Branchement d'un domino Wago et mise en place de la batterie Parkside, déclenchant l'allumage d'une LED bleue sur le capot.",
+      "screenText": [
+        "Bluetooth",
+        "HOT",
+        "COLD",
+        "CRIVIT"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00082",
+      "startSeconds": 524,
+      "endSeconds": 528
+    },
+    {
+      "timestamp": "08:48",
+      "endTimestamp": "08:52",
+      "title": "Validation du démarrage",
+      "visualDescription": "Les deux hommes constatent le fonctionnement avec satisfaction devant la glacière allumée.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00083",
+      "startSeconds": 528,
+      "endSeconds": 532
+    },
+    {
+      "timestamp": "08:52",
+      "endTimestamp": "09:03",
+      "title": "Conception mécanique de la glissière de batterie",
+      "visualDescription": "Manipulation de la batterie pour réfléchir à l'orientation du socle imprimé et à la façon dont les cosses vont s'insérer.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00084",
+      "startSeconds": 532,
+      "endSeconds": 543
+    },
+    {
+      "timestamp": "09:03",
+      "endTimestamp": "09:09",
+      "title": "Modélisation 3D sur ordinateur",
+      "visualDescription": "L'opérateur consulte une galerie de pièces 3D sur un double écran d'ordinateur dans son bureau.",
+      "screenText": [
+        "GrabCAD",
+        "Printables"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00085",
+      "startSeconds": 543,
+      "endSeconds": 549
+    },
+    {
+      "timestamp": "09:09",
+      "endTimestamp": "09:21",
+      "title": "Modèle CAO de l'adaptateur de batterie",
+      "visualDescription": "Modélisation 3D d'une pièce d'adaptation pour batterie Parkside dans un logiciel de CAO avec rails de guidage et logements pour cosses, puis préparation dans le slicer.",
+      "screenText": [
+        "GRABCAD COMMUNITY",
+        "LIENS EN DESCRIPTION",
+        "Printables by JOSEF PRUSA",
+        "Bambu Lab H2E",
+        "Textured PEI Plate",
+        "LIEN"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00086",
+      "startSeconds": 549,
+      "endSeconds": 561
+    },
+    {
+      "timestamp": "09:21",
+      "endTimestamp": "09:28",
+      "title": "Impression 3D en PETG",
+      "visualDescription": "Vue en accéléré de la buse d'impression de l'imprimante Bambu Lab déposant les couches de filament PETG noir sur le plateau texturé.",
+      "screenText": [
+        "FabLab",
+        "Bambu Lab",
+        "PETG"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00087",
+      "startSeconds": 561,
+      "endSeconds": 568
+    },
+    {
+      "timestamp": "09:28",
+      "endTimestamp": "09:34",
+      "title": "Pièce imprimée finie et test mécanique",
+      "visualDescription": "La pièce en plastique noir sortie de l'imprimante est emboîtée manuellement sur le dessus de la batterie Parkside pour vérifier le coulissement.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00088",
+      "startSeconds": 568,
+      "endSeconds": 574
+    },
+    {
+      "timestamp": "09:34",
+      "endTimestamp": "09:36",
+      "title": "Positionnement du boîtier sur la glacière",
+      "visualDescription": "Test de placement de la pièce imprimée contre la paroi arrière de la glacière.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00089",
+      "startSeconds": 574,
+      "endSeconds": 576
+    },
+    {
+      "timestamp": "09:36",
+      "endTimestamp": "09:44",
+      "title": "Insertion des cosses dans la pièce 3D",
+      "visualDescription": "Un petit tournevis plat enfonce les cosses métalliques dans les fentes intérieures du support plastique imprimé.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00090",
+      "startSeconds": 576,
+      "endSeconds": 584
+    },
+    {
+      "timestamp": "09:44",
+      "endTimestamp": "09:51",
+      "title": "Collage à chaud des cosses",
+      "visualDescription": "Application de colle chaude noire avec un pistolet Ryobi pour sceller fermement les contacts dans leur logement.",
+      "screenText": [
+        "RYOBI"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00091",
+      "startSeconds": 584,
+      "endSeconds": 591
+    },
+    {
+      "timestamp": "09:51",
+      "endTimestamp": "09:55",
+      "title": "Perçage du passage de câble",
+      "visualDescription": "Perçage d'un trou transversal dans le boîtier plastique noir à l'aide d'une visseuse sans fil Ryobi.",
+      "screenText": [
+        "RYOBI"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00092",
+      "startSeconds": 591,
+      "endSeconds": 595
+    },
+    {
+      "timestamp": "09:55",
+      "endTimestamp": "10:02",
+      "title": "Passage des câbles et intégration du module",
+      "visualDescription": "Les fils du convertisseur de tension sont passés à travers le trou percé avant collage du module abaisseur.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00093",
+      "startSeconds": 595,
+      "endSeconds": 602
+    },
+    {
+      "timestamp": "10:02",
+      "endTimestamp": "10:14",
+      "title": "Assemblage complet du sous-ensemble arrière",
+      "visualDescription": "Sertissage des embouts de fils, vissage des connexions et collage du deuxième boîtier pour former un module unitaire compact.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00094",
+      "startSeconds": 602,
+      "endSeconds": 614
+    },
+    {
+      "timestamp": "10:14",
+      "endTimestamp": "10:19",
+      "title": "Présentation du module monté sur la glacière",
+      "visualDescription": "Vérification du positionnement de l'ensemble assemblé sur la paroi extérieure de la glacière.",
+      "screenText": [
+        "ONE+",
+        "CRIVIT"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00095",
+      "startSeconds": 614,
+      "endSeconds": 619
+    },
+    {
+      "timestamp": "10:19",
+      "endTimestamp": "10:25",
+      "title": "Choix du foret pour la sonde",
+      "visualDescription": "Comparaison de plusieurs mèches de perçage tenues entre les doigts pour choisir le diamètre adapté au diamètre de la sonde thermique.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00096",
+      "startSeconds": 619,
+      "endSeconds": 625
+    },
+    {
+      "timestamp": "10:25",
+      "endTimestamp": "10:30",
+      "title": "Recherche d'un foret dans les étagères",
+      "visualDescription": "L'homme se déplace dans l'atelier pour aller chercher un foret adéquat sur les rayonnages.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00097",
+      "startSeconds": 625,
+      "endSeconds": 630
+    },
+    {
+      "timestamp": "10:30",
+      "endTimestamp": "10:36",
+      "title": "Perçage de la paroi de la glacière",
+      "visualDescription": "Perçage de la coque externe grise avec la perceuse-visseuse, puis constat que la mèche est usée et ne perce plus.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00098",
+      "startSeconds": 630,
+      "endSeconds": 636
+    },
+    {
+      "timestamp": "10:36",
+      "endTimestamp": "10:44",
+      "title": "Discussion sur les affûteurs de mèches",
+      "visualDescription": "Les deux hommes rient face à la caméra en expliquant leur flemme d'utiliser l'affûteur de forets présent dans l'atelier.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00099",
+      "startSeconds": 636,
+      "endSeconds": 644
+    },
+    {
+      "timestamp": "10:44",
+      "endTimestamp": "10:48",
+      "title": "Second perçage avec un nouveau foret",
+      "visualDescription": "Perçage réussi et fluide à travers la paroi plastique et l'isolant de la glacière avec un foret doré affûté.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00100",
+      "startSeconds": 644,
+      "endSeconds": 648
+    },
+    {
+      "timestamp": "10:48",
+      "endTimestamp": "10:57",
+      "title": "Échange amusé sur la mise en scène",
+      "visualDescription": "Les deux animateurs discutent en souriant d'un plan qu'ils ont dû tricher lors du perçage intérieur.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00101",
+      "startSeconds": 648,
+      "endSeconds": 657
+    },
+    {
+      "timestamp": "10:57",
+      "endTimestamp": "11:03",
+      "title": "Rétrospective du tournage du trou intérieur",
+      "visualDescription": "Flashback montrant la mèche perçant la paroi intérieure orange de la cuve avec la mention « 2 MIN PLUS TÔT » puis « LE PLAN TRICHÉ EN QUESTION ».",
+      "screenText": [
+        "2 MIN PLUS TÔT",
+        "LE PLAN TRICHÉ EN QUESTION :"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00102",
+      "startSeconds": 657,
+      "endSeconds": 663
+    },
+    {
+      "timestamp": "11:03",
+      "endTimestamp": "11:07",
+      "title": "Réaction comique face au trou",
+      "visualDescription": "L'un des présentateurs commente face caméra avec un air faussement désabusé le résultat de ce plan tourné en intérieur de cuve.",
+      "screenText": [
+        "WAOW"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00103",
+      "startSeconds": 663,
+      "endSeconds": 667
+    },
+    {
+      "timestamp": "11:07",
+      "endTimestamp": "11:13",
+      "title": "Mise en place de la sonde thermique",
+      "visualDescription": "Insertion de la petite capsule métallique de la sonde de température à travers le socle 3D avant fixation.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00104",
+      "startSeconds": 667,
+      "endSeconds": 673
+    },
+    {
+      "timestamp": "11:13",
+      "endTimestamp": "11:23",
+      "title": "Traçage et encollage du support sur la glacière",
+      "visualDescription": "Repérage au crayon de l'emplacement sur la cuve, application généreuse de colle thermofusible au dos du boîtier noir imprimé.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00105",
+      "startSeconds": 673,
+      "endSeconds": 683
+    },
+    {
+      "timestamp": "11:23",
+      "endTimestamp": "11:29",
+      "title": "Vissage mécanique du boîtier",
+      "visualDescription": "Enfoncement de vis de fixation à travers les trous du socle pour renforcer la tenue sur la coque plastique de la glacière.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00106",
+      "startSeconds": 683,
+      "endSeconds": 689
+    },
+    {
+      "timestamp": "11:29",
+      "endTimestamp": "11:36",
+      "title": "Connexion des fils et insertion de la batterie",
+      "visualDescription": "Raccordement des fils avec des dominos Wago compacts, puis glissement de la batterie Parkside sur ses rails.",
+      "screenText": [
+        "20V",
+        "Parkside"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00107",
+      "startSeconds": 689,
+      "endSeconds": 696
+    },
+    {
+      "timestamp": "11:36",
+      "endTimestamp": "11:41",
+      "title": "Emplacement de la sonde dans la cuve",
+      "visualDescription": "Vue en gros plan de l'extrémité cylindrique métallique de la sonde de température dépassant à l'intérieur de la cuve orange vif.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00108",
+      "startSeconds": 696,
+      "endSeconds": 701
+    },
+    {
+      "timestamp": "11:41",
+      "endTimestamp": "11:51",
+      "title": "Sécurisation et rubanage des fils",
+      "visualDescription": "Pendant que l'un colle au pistolet, l'autre applique du ruban adhésif isolant haute température brun cuivré autour du faisceau électrique.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00109",
+      "startSeconds": 701,
+      "endSeconds": 711
+    },
+    {
+      "timestamp": "11:51",
+      "endTimestamp": "11:56",
+      "title": "Photo de l'équipe de France 1998",
+      "visualDescription": "Photo souvenir des joueurs de l'équipe de France de football championne du monde 1998 incrustée de manière humoristique avec le mot « Là » répété.",
+      "screenText": [
+        "Là",
+        "Là",
+        "Là",
+        "Là"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00110",
+      "startSeconds": 711,
+      "endSeconds": 716
+    },
+    {
+      "timestamp": "11:56",
+      "endTimestamp": "12:03",
+      "title": "Finition de la pose du capot de protection",
+      "visualDescription": "Les deux bricoleurs vissent le couvercle de protection par-dessus le circuit électronique fixé au dos de la glacière.",
+      "screenText": [
+        "RYOBI"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00111",
+      "startSeconds": 716,
+      "endSeconds": 723
+    },
+    {
+      "timestamp": "12:03",
+      "endTimestamp": "12:13",
+      "title": "Découverte du résultat fini",
+      "visualDescription": "Une collègue vient admirer le montage au dos de la glacière. Ils montrent comment la batterie se retire et se remet en glissant d'un geste.",
+      "screenText": [
+        "Parkside"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00112",
+      "startSeconds": 723,
+      "endSeconds": 733
+    },
+    {
+      "timestamp": "12:13",
+      "endTimestamp": "12:28",
+      "title": "Schéma récapitulatif du câblage complet",
+      "visualDescription": "Schéma électrique animé montrant les connexions de la batterie 18-20V, du capteur INA219, des convertisseurs DC/DC 12V et 5V, de la sonde NTC et du microcontrôleur ESP32 avec la glacière.",
+      "screenText": [
+        "CODE COULEUR",
+        "19-20 V batterie",
+        "masse commune (-)",
+        "12 V glacière",
+        "5 V ESP32",
+        "3v3 + bus I2C",
+        "signal analogique NTC",
+        "Batterie",
+        "INA219",
+        "DC/DC",
+        "ESP32",
+        "Glacière 12 V",
+        "BLE"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00113",
+      "startSeconds": 733,
+      "endSeconds": 748
+    },
+    {
+      "timestamp": "12:28",
+      "endTimestamp": "12:36",
+      "title": "Arrivée triomphale sur le canapé",
+      "visualDescription": "Les deux présentateurs s'assoient vivement sur le canapé du studio en tenant la glacière modifiée et leurs smartphones.",
+      "screenText": [],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00114",
+      "startSeconds": 748,
+      "endSeconds": 756
+    },
+    {
+      "timestamp": "12:36",
+      "endTimestamp": "12:44",
+      "title": "Allumage de la glacière sur batterie",
+      "visualDescription": "Gros plan sur la glacière posée sur les genoux, le voyant lumineux bleu s'allume instantanément.",
+      "screenText": [
+        "CRIVIT"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00115",
+      "startSeconds": 756,
+      "endSeconds": 764
+    },
+    {
+      "timestamp": "12:44",
+      "endTimestamp": "12:54",
+      "title": "Page d'accueil de l'application web glaciere.yt",
+      "visualDescription": "Affichage sur écran smartphone de l'interface web dédiée aux glacières connectées avec bouton de connexion Bluetooth et adresse web incrustée en bas.",
+      "screenText": [
+        "En direct",
+        "Test batterie",
+        "GLACIÈRE CRIVIT / MODE BATTERIE NATIF",
+        "Le froid, loin de la prise.",
+        "PASSERELLE WEB BLUETOOTH",
+        "Glacière hors ligne",
+        "Connecter la glacière",
+        "glaciere.yt"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00116",
+      "startSeconds": 764,
+      "endSeconds": 774
+    },
+    {
+      "timestamp": "12:54",
+      "endTimestamp": "13:03",
+      "title": "Appairage Bluetooth de la glacière",
+      "visualDescription": "Capture d'écran du menu de sélection de périphérique Bluetooth affichant « GLACIERE-12V-H2 » et connexion réussie.",
+      "screenText": [
+        "Sélectionner l'appareil",
+        "GLACIERE-12V-H2",
+        "Autoriser ce site Web à établir de futures connexions en arrière-plan avec l'appareil sélectionné",
+        "Connecter la glacière",
+        "Déconnecter"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00117",
+      "startSeconds": 774,
+      "endSeconds": 783
+    },
+    {
+      "timestamp": "13:03",
+      "endTimestamp": "13:12",
+      "title": "Affichage de la télémétrie en temps réel",
+      "visualDescription": "L'application affiche la température intérieure mesurée à 24,4 °C, l'évolution sur 2 heures et la jauge de batterie résiduelle à 97 % et 98 %.",
+      "screenText": [
+        "24,4 °C",
+        "24,5 °C",
+        "ÉVOLUTION SUR 2 HEURES",
+        "Batterie de bord",
+        "97 %",
+        "98 %",
+        "Autonomie restante estimée"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00118",
+      "startSeconds": 783,
+      "endSeconds": 792
+    },
+    {
+      "timestamp": "13:12",
+      "endTimestamp": "13:28",
+      "title": "Conclusion et salutations finales",
+      "visualDescription": "Les deux animateurs concluent la vidéo sur le canapé en présentant fièrement le smartphone connecté et la glacière portable autonome.",
+      "screenText": [
+        "LIENS EN DESCRIPTION"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00119",
+      "startSeconds": 792,
+      "endSeconds": 808
+    },
+    {
+      "timestamp": "13:28",
+      "endTimestamp": "13:40",
+      "title": "Plans de coupe de la glacière finie",
+      "visualDescription": "Succession de gros plans esthétiques montrant le socle imprimé en 3D, la batterie Parkside insérée, le capot allumé et l'intérieur de la glacière.",
+      "screenText": [
+        "CRIVIT",
+        "X20V TEAM",
+        "Parkside"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00120",
+      "startSeconds": 808,
+      "endSeconds": 820
+    },
+    {
+      "timestamp": "13:40",
+      "endTimestamp": "13:51",
+      "title": "Générique de fin",
+      "visualDescription": "Logo des Frères Poulain sur fond graphique rétro-éclairé suivi d'un écran de fin avec liens vers Twitch et YouTube.",
+      "screenText": [
+        "LES FRÈRES POULAIN",
+        "TWITCH",
+        "YOUTUBE"
+      ],
+      "uncertainties": [],
+      "chunkIndex": 1,
+      "id": "Gu8bnHQaG5s:v00121",
+      "startSeconds": 820,
+      "endSeconds": 831
+    }
+  ],
+  "quality": {
+    "reviewRequired": false,
+    "warnings": [],
+    "visualCoverageRatio": 1,
+    "visualGaps": [],
+    "inaudibleEntries": 0,
+    "missingSpeechEndTimes": 0,
+    "visualUncertainties": 0
+  }
+}
