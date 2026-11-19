@@ -1,6 +1,8 @@
 import { getConfig, OPENROUTER_BASE_URL } from '../config.js';
 import { openAiUrl } from './embedding.js';
 import { accountRefusal, fetchRetrying } from './retry.js';
+import { configuredFetch, type ModelFetch } from './configured-fetch.js';
+import type { Pool } from 'pg';
 
 export interface ChatOptions {
   /** Tokens de réponse au plus. */
@@ -82,7 +84,7 @@ export function createLlmClient(
   model: string,
   apiKey: string,
   baseUrl = OPENROUTER_BASE_URL,
-  options: { retryDelaysMs?: number[]; timeoutMs?: number } = {},
+  options: { retryDelaysMs?: number[]; timeoutMs?: number; request?: ModelFetch } = {},
 ): LlmClient {
   const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` };
   const usage: LlmUsage = { calls: 0, input: 0, cachedInput: 0, output: 0, cost: 0 };
@@ -100,6 +102,7 @@ export function createLlmClient(
         signal: AbortSignal.timeout(options.timeoutMs ?? TIMEOUT_MS),
       }),
       options.retryDelaysMs ?? RETRY_DELAYS_MS,
+      options.request,
     );
   return {
     model,
@@ -132,7 +135,7 @@ export function createLlmClient(
     async available() {
       if (Date.now() < availableUntil) return true;
       try {
-        const probe = await fetch(openAiUrl(baseUrl, 'models'), { headers, signal: AbortSignal.timeout(5000) });
+        const probe = await (options.request ?? fetch)(openAiUrl(baseUrl, 'models'), { headers, signal: AbortSignal.timeout(5000) });
         if (!probe.ok) return false;
         const json = (await probe.json()) as { data?: Array<{ id: string }> };
         const found = json.data?.some((m) => m.id === model) ?? false;
@@ -145,7 +148,8 @@ export function createLlmClient(
   };
 }
 
-let shared: { key: string; client: LlmClient } | null = null;
+type CachedLlm = { key: string; pool: Pool | undefined; client: LlmClient };
+let shared: CachedLlm | null = null;
 
 /**
  * Client configuré (`config.llm`), ou `null` sans clé OpenRouter (réponses extractives). Une seule
@@ -153,25 +157,33 @@ let shared: { key: string; client: LlmClient } | null = null;
  * toutes les réponses du processus. llama-server accepte le même corps de requête (raisonnement coupé
  * compris) et ignore la clé.
  */
-export function llmFromConfig(): LlmClient | null {
-  const { llm } = getConfig();
+export function llmFromConfig(pool?: Pool): LlmClient | null {
+  const config = getConfig();
+  const { llm } = config;
   if (!llm) return null;
-  const key = `${llm.baseUrl}|${llm.model}|${llm.apiKey}`;
-  if (shared?.key !== key) shared = { key, client: createLlmClient(llm.model, llm.apiKey, llm.baseUrl, { timeoutMs: llm.timeoutMs }) };
+  const key = JSON.stringify([config.mode, llm]);
+  if (shared?.key !== key || shared.pool !== pool) {
+    const request = configuredFetch('llm', config, pool);
+    shared = { key, pool, client: createLlmClient(llm.model, llm.apiKey, llm.baseUrl, { timeoutMs: llm.timeoutMs, request }) };
+  }
   return shared.client;
 }
 
-let sharedEnrich: { key: string; client: LlmClient } | null = null;
+let sharedEnrich: CachedLlm | null = null;
 
 /**
  * Client de l'enrichissement des blocs (`config.llm.enrichModel`), ou `null` sans clé. Le même que
  * `llmFromConfig` quand les deux modèles sont identiques.
  */
-export function enrichLlmFromConfig(): LlmClient | null {
-  const { llm } = getConfig();
+export function enrichLlmFromConfig(pool?: Pool): LlmClient | null {
+  const config = getConfig();
+  const { llm } = config;
   if (!llm) return null;
-  if (llm.enrichModel === llm.model) return llmFromConfig();
-  const key = `${llm.baseUrl}|${llm.enrichModel}|${llm.apiKey}`;
-  if (sharedEnrich?.key !== key) sharedEnrich = { key, client: createLlmClient(llm.enrichModel, llm.apiKey, llm.baseUrl, { timeoutMs: llm.timeoutMs }) };
+  if (llm.enrichModel === llm.model) return llmFromConfig(pool);
+  const key = JSON.stringify([config.mode, llm]);
+  if (sharedEnrich?.key !== key || sharedEnrich.pool !== pool) {
+    const request = configuredFetch('llm', config, pool);
+    sharedEnrich = { key, pool, client: createLlmClient(llm.enrichModel, llm.apiKey, llm.baseUrl, { timeoutMs: llm.timeoutMs, request }) };
+  }
   return sharedEnrich.client;
 }

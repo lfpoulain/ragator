@@ -7,6 +7,7 @@ import { buildEnrichPrompt, ENRICH_SYSTEM_PROMPT, enrichmentText, enrichSchema, 
 import { formatTimestamp } from '../windows/format.js';
 import { textHash } from './hashes.js';
 import { mapConcurrent } from './concurrent.js';
+import { ModelSettingsChangedError } from '../providers/configured-fetch.js';
 import { evidenceBudgetChars } from './passages.js';
 
 export interface EnrichOptions {
@@ -63,10 +64,11 @@ export async function enrichPending(pool: Pool, llm: LlmClient, options: EnrichO
     const tokensPerBlock = getConfig().llm?.enrichTokensPerBlock ?? TOKENS_PER_BLOCK;
     const budget = evidenceBudgetChars(MAX_BLOCKS_PER_CALL * tokensPerBlock);
     const result: EnrichResult = { videos: 0, chunks: 0, failedGroups: 0, pendingChunks: 0, refused: null };
+    let changed: ModelSettingsChangedError | undefined;
 
     // Plusieurs vidéos à la fois (API distante).
     await mapConcurrent(videos, Math.max(1, options.parallel ?? 8), async (video) => {
-      if (result.refused) return;
+      if (result.refused || changed) return;
       const { rows: chunks } = await pool.query<{ id: string; start_s: number; text: string }>(
         `SELECT id, start_s, text FROM chunks WHERE video_id = $1 AND enrichment IS NULL ORDER BY start_s`,
         [video.video_id],
@@ -88,7 +90,7 @@ export async function enrichPending(pool: Pool, llm: LlmClient, options: EnrichO
       if (current.length > 0) groups.push(current);
 
       for (const group of groups) {
-        if (result.refused) return;
+        if (result.refused || changed) return;
         const blocks = group.map((chunk, i) => ({ id: `b${i + 1}`, at: formatTimestamp(chunk.start_s), text: body(chunk.text), chunk }));
         try {
           const raw = await llm.chat(ENRICH_SYSTEM_PROMPT, buildEnrichPrompt({ title: video.title, publishedAt: video.published_at, channel: video.channel }, blocks), {
@@ -111,6 +113,10 @@ export async function enrichPending(pool: Pool, llm: LlmClient, options: EnrichO
             result.chunks += written.rowCount ?? 0;
           }
         } catch (err) {
+          if (err instanceof ModelSettingsChangedError) {
+            changed = err;
+            return;
+          }
           // Refus du compte : noté une fois, les appels déjà partis en parallèle échouent sans bruit.
           if (err instanceof AccountRefusedError) {
             if (!result.refused) options.onProgress?.(`enrichissement arrêté : ${err.message}`);
@@ -128,6 +134,7 @@ export async function enrichPending(pool: Pool, llm: LlmClient, options: EnrichO
     result.pendingChunks = Number(rows[0]?.n ?? 0);
     // L'enrichissement change le classement (liste BM25) et efface des vecteurs : la version de l'index suit.
     if (result.chunks > 0) await refreshIndexVersion(pool);
+    if (changed) throw changed;
     return result;
   } finally {
     await lockClient.query(`SELECT pg_advisory_unlock(${LOCK})`).catch(() => {});

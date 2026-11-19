@@ -162,4 +162,16 @@ describe('validation du corpus', () => {
     );
     expect(issues).toHaveLength(0);
   });
+
+  it('borne la durée déclarée ou estimée avant la construction de l’index', () => {
+    const doc = makeDoc();
+    doc.source.durationSeconds = 24 * 3600;
+    expect(validateBusinessRules(doc)).toEqual([]);
+    doc.source.durationSeconds++;
+    expect(validateBusinessRules(doc).join(' ')).toContain('limite d’indexation');
+    doc.source.durationSeconds = null;
+    doc.transcript.push({ id: doc.videoId + ':t1', timestamp: '24:00:01', startSeconds: 86401,
+      endSeconds: null, text: 'Fin', speaker: 'Voix', speakerId: null });
+    expect(validateBusinessRules(doc).join(' ')).toContain('limite d’indexation');
+  });
 });

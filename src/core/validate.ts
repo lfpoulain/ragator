@@ -118,6 +118,8 @@ export function validateSchema(doc: unknown): ValidationResult {
 }
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+/** L'index alloue des fenêtres et des blocs en fonction de la durée déclarée ou estimée. */
+const MAX_VIDEO_SECONDS = 24 * 60 * 60;
 
 export function isValidPublicationDate(value: string): boolean {
   if (!DATE_PATTERN.test(value)) return false;
@@ -129,6 +131,7 @@ export function validateBusinessRules(doc: CorpusDocument): string[] {
   const issues: string[] = [];
   const seen = new Set<string>();
   const duration = doc.source.durationSeconds;
+  let effectiveDuration = duration ?? 0;
 
   const checkBounds = (
     id: string,
@@ -136,6 +139,7 @@ export function validateBusinessRules(doc: CorpusDocument): string[] {
     startSeconds: number,
     endSeconds: number | null,
   ): void => {
+    effectiveDuration = Math.max(effectiveDuration, startSeconds, endSeconds ?? 0);
     if (!id.startsWith(`${doc.videoId}:`) || id.length === doc.videoId.length + 1) {
       issues.push(`entrée ${id} (${kind}) : l’ID doit commencer par « ${doc.videoId}: » et avoir un suffixe`);
     }
@@ -171,6 +175,9 @@ export function validateBusinessRules(doc: CorpusDocument): string[] {
     }
     seen.add(visual.id);
     checkBounds(visual.id, 'plan', visual.startSeconds, visual.endSeconds);
+  }
+  if (effectiveDuration > MAX_VIDEO_SECONDS) {
+    issues.push('durée vidéo ou horodatage supérieur à la limite d’indexation de 24 h');
   }
   if (doc.source.publicationDate !== null && !isValidPublicationDate(doc.source.publicationDate)) {
     issues.push(

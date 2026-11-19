@@ -9,8 +9,8 @@ import { MAX_HISTORY_TURNS, type Turn } from '../core/followup.js';
 import { channelStats, stats } from '../core/stats.js';
 import { listCollections, resolveCollection } from '../core/collections.js';
 import { nearbyVideos } from '../core/nearby-videos.js';
-import { getConfig, MODES, PROJECT_ROOT, type Mode } from '../config.js';
-import { checkOpenRouterKey, localStatus, publicSettings, saveSettings, type SettingKey } from '../settings.js';
+import { getConfig, loadConfig, MODES, PROJECT_ROOT, type Mode } from '../config.js';
+import { checkOpenRouterKey, localStatus, publicSettings, readStoredSettings, saveSettings, type SettingKey } from '../settings.js';
 import { createAdmin } from './admin.js';
 
 /** Page de l'interface (recherche et administration), autonome : HTML, CSS et JS dans un seul fichier. */
@@ -86,14 +86,15 @@ const IP_HOST = /^(\d{1,3}(\.\d{1,3}){3}|\[[0-9a-f:.]+\])(:\d+)?$/;
 
 /**
  * Hôte de la requête, contre le rebinding DNS (un site tiers qui ferait pointer son nom vers ce
- * serveur) : hôte local, adresse IP, nom déclaré dans `RAGATOR_HOSTS`, ou n'importe quel nom dès
- * qu'un mot de passe protège l'interface (le site tiers ne le connaît pas).
+ * serveur). Sans mot de passe l'accès se fait par localhost ou son adresse de bouclage.
+ * Avec un mot de passe, RAGATOR_HOSTS peut restreindre les noms de domaine acceptés.
  */
 export function hostAllowed(host: string | undefined, allowed: readonly string[], protectedByPassword = false): boolean {
   const value = (host ?? '').toLowerCase();
   if (!value) return false;
-  if (LOCAL_HOST.test(value) || IP_HOST.test(value) || protectedByPassword) return true;
-  return allowed.includes(value) || allowed.includes(value.replace(/:\d+$/, ''));
+  if (LOCAL_HOST.test(value)) return true;
+  if (!protectedByPassword) return false;
+  return IP_HOST.test(value) || allowed.length === 0 || allowed.includes(value) || allowed.includes(value.replace(/:\d+$/, ''));
 }
 
 const digest = (text: string) => createHash('sha256').update(text).digest();
@@ -103,7 +104,9 @@ export function passwordOk(header: string | undefined, password: string): boolea
   const match = /^Basic\s+(.+)$/i.exec(header ?? '');
   if (!match) return false;
   const decoded = Buffer.from(match[1]!, 'base64').toString('utf8');
-  const given = decoded.slice(decoded.indexOf(':') + 1);
+  const separator = decoded.indexOf(':');
+  if (separator === -1) return false;
+  const given = decoded.slice(separator + 1);
   return timingSafeEqual(digest(given), digest(password));
 }
 
@@ -157,18 +160,25 @@ export function createWebServer(
   pool: Pool,
   options: { updateOnStart?: boolean; corpusDir?: string; hosts?: string[]; password?: string | null } = {},
 ): Server {
-  const admin = createAdmin(pool, options.corpusDir === undefined ? {} : { corpusDir: options.corpusDir });
   // Lus à chaque requête : les réglages changent sans redémarrage.
   const hostsNow = () => options.hosts ?? getConfig().web.hosts;
   const passwordNow = () => (options.password !== undefined ? options.password : getConfig().web.password);
+  // Compose transmet l'adresse publiée sur l'hôte ; sans Compose, on utilise celle de l'écoute HTTP.
+  const address = process.env.RAGATOR_BIND_ADDRESS || process.env.WEB_HOST || '127.0.0.1';
+  const requiresPassword = !['127.0.0.1', '::1', 'localhost'].includes(address);
+  if (requiresPassword && !passwordNow()?.trim()) {
+    throw new Error('Accès réseau : définir RAGATOR_PASSWORD ou enregistrer un mot de passe depuis une installation locale avant de publier le port.');
+  }
+  const admin = createAdmin(pool, options.corpusDir === undefined ? {} : { corpusDir: options.corpusDir });
   if (options.updateOnStart) admin.startUpdate();
   let asking = 0;
   return createServer((req, res) => {
     void (async () => {
       try {
         const password = passwordNow();
+        if (requiresPassword && !password?.trim()) return send(res, 503, { error: 'Mot de passe réseau requis.' });
         if (!hostAllowed(req.headers.host, hostsNow(), password !== null)) {
-          return send(res, 403, { error: "nom d'hôte refusé : ouvrir l'interface par son adresse IP, puis définir un mot de passe dans Réglages" });
+          return send(res, 403, { error: 'Nom d’hôte refusé. En local, utiliser localhost. Pour un accès réseau, vérifier le mot de passe et RAGATOR_HOSTS.' });
         }
         const url = new URL(req.url ?? '/', 'http://localhost');
         if (req.method === 'GET' && url.pathname === '/healthz') {
@@ -184,6 +194,15 @@ export function createWebServer(
           return send(res, 415, { error: 'JSON attendu' });
         }
         if (req.method === 'GET' && url.pathname === '/') return send(res, 200, readFileSync(PAGE, 'utf8'), 'text/html; charset=utf-8');
+        // La destination est décidée ici, y compris pour une ancienne page encore ouverte après une bascule.
+        const thumbnail = req.method === 'GET' && /^\/api\/videos\/([A-Za-z0-9_-]{11})\/miniature$/.exec(url.pathname);
+        if (thumbnail) {
+          const current = loadConfig(process.env, await readStoredSettings(pool));
+          if (current.mode === 'openrouter') {
+            return send(res, 302, '', 'text/plain', { Location: `https://i.ytimg.com/vi/${thumbnail[1]}/mqdefault.jpg`, 'Referrer-Policy': 'no-referrer' });
+          }
+          return send(res, 200, '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 36"><path fill="#898781" d="M28 11v14l11-7z"/></svg>', 'image/svg+xml');
+        }
         if (req.method === 'GET' && url.pathname === '/api/stats') return send(res, 200, (await stats(pool)).data);
         if (req.method === 'GET' && url.pathname === '/api/collections') return send(res, 200, { collections: await listCollections(pool) });
         // Vidéos proches d'une vidéo, par leur vecteur (?limit=8, ?collection=…).
@@ -279,6 +298,12 @@ export function createWebServer(
           return send(res, 200, admin.saveUpload(typeof body.name === 'string' ? body.name.slice(0, 200) : 'fichier', body.content));
         }
         if (req.method === 'POST' && url.pathname === '/api/admin/update') {
+          const hasBody = req.headers['transfer-encoding'] !== undefined || Number(req.headers['content-length']) > 0;
+          const body = hasBody ? (await readJson(req)) as { afterCurrent?: boolean } | null : null;
+          if (body?.afterCurrent === true) {
+            admin.requestUpdate();
+            return send(res, 202, { started: true });
+          }
           const started = admin.startUpdate();
           return send(res, started ? 202 : 409, started ? { started: true } : { error: 'une mise à jour est déjà en cours' });
         }
@@ -295,6 +320,9 @@ export function createWebServer(
             const value = text(key);
             if (value !== undefined) patch[key] = value;
           }
+          if (requiresPassword && patch.password !== undefined && !patch.password.trim() && !process.env.RAGATOR_PASSWORD?.trim()) {
+            return send(res, 400, { error: 'Un mot de passe est obligatoire tant que le port est publié sur le réseau.' });
+          }
           if (patch.mode && !MODES.includes(patch.mode.trim() as Mode)) return send(res, 400, { error: 'mode attendu : local ou openrouter' });
           if (patch.openrouterKey?.trim()) {
             const refused = await checkOpenRouterKey(patch.openrouterKey.trim());
@@ -310,7 +338,9 @@ export function createWebServer(
           const after = getConfig();
           // Modèles désormais disponibles (première clé, mode choisi ou changé) : le corpus déjà déposé est
           // enrichi et encodé sans attendre.
-          if (after.llm !== null && (before.llm === null || before.mode !== after.mode)) admin.startUpdate();
+          if (after.llm && (before.mode !== after.mode || before.llm?.apiKey !== after.llm.apiKey ||
+              before.llm?.enrichModel !== after.llm.enrichModel || before.llm?.baseUrl !== after.llm.baseUrl ||
+              before.embedding?.baseUrl !== after.embedding?.baseUrl)) admin.requestUpdate();
           // Nouveau jeton : transmis tout de suite au juge local (téléchargement d'Aplomb).
           if (patch.hfToken?.trim() && after.mode === 'local') void localStatus().catch(() => {});
           return send(res, 200, publicSettings());
@@ -321,5 +351,5 @@ export function createWebServer(
         send(res, 500, { error: err instanceof Error ? err.message : String(err) });
       }
     })();
-  });
+  }).once('close', admin.close);
 }

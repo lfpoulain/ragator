@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
 import type { AnswerInput, AnswerResult } from '../core/answer.js';
+import { LEXICAL_WITHOUT_ENCODER } from '../core/search.js';
 
 /**
  * Journal des questions posées (migration 0009) : interface web et ligne de commande.
@@ -85,11 +86,12 @@ export async function readQuestionLog(pool: Pool, options: { days?: number; fail
     `SELECT id, asked_at::text, origin, question, resolved, collection, route, refused, cited_videos, considered, degraded_reason, error, total_ms
      FROM question_log
      WHERE asked_at > now() - make_interval(days => $1)
-       AND (NOT $2 OR refused OR error IS NOT NULL OR degraded_reason IS NOT NULL
+       AND (NOT $2 OR refused OR error IS NOT NULL
+            OR (degraded_reason IS NOT NULL AND (mode IS DISTINCT FROM 'extractif' OR degraded_reason <> $4))
             OR (cardinality(cited_videos) = 0 AND route IS DISTINCT FROM 'clarifier' AND route IS DISTINCT FROM 'lister'))
      ORDER BY asked_at DESC
      LIMIT $3`,
-    [options.days ?? 30, options.failures ?? false, options.limit ?? 200],
+    [options.days ?? 30, options.failures ?? false, options.limit ?? 200, LEXICAL_WITHOUT_ENCODER],
   );
   return rows.map((r) => ({
     id: Number(r.id),

@@ -119,7 +119,7 @@ async function videosToEmbed(pool: Pool): Promise<VideoToEmbed[]> {
  * modèle se fait hors transaction ; un verrou de session garantit un seul worker.
  */
 export async function embedPending(pool: Pool, options: EmbedOptions = {}): Promise<EmbedResult> {
-  const embedder = options.embedder ?? embeddingFromConfig();
+  const embedder = options.embedder ?? embeddingFromConfig(pool);
   if (!embedder) throw new Error('aucun encodeur (mode à choisir dans Réglages) : rien à encoder');
   // Taille et nombre de lots à la fois : ceux du mode (`embedding`, voir config.ts).
   const settings = getConfig().embedding;

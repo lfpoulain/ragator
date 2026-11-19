@@ -4,6 +4,7 @@
 name: Images
 
 on:
+  pull_request:
   push:
     branches: [main]
     tags: ['v*']
@@ -11,14 +12,98 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: images-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: paradedb/paradedb:0.25.9-pg17
+        env:
+          POSTGRES_USER: ragator
+          POSTGRES_PASSWORD: ragator
+          POSTGRES_DB: ragator_test
+        ports:
+          - 15432:5432
+        options: >-
+          --shm-size=1g --health-cmd "pg_isready -U ragator -d ragator_test"
+          --health-interval 5s --health-timeout 5s --health-retries 30
+    env:
+      DATABASE_URL: postgres://ragator:ragator@127.0.0.1:15432/ragator_test
+      DATABASE_URL_TEST: postgres://ragator:ragator@127.0.0.1:15432/ragator_test
+      RAGATOR_REQUIRE_TEST_DB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm audit --omit=dev --audit-level=moderate
+      - run: npm run check
+
+  smoke:
+    needs: test
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: ragator
+            runner: ubuntu-latest
+            context: .
+            arch: amd64
+          - image: ragator
+            runner: ubuntu-24.04-arm
+            context: .
+            arch: arm64
+          - image: ragator-juge
+            runner: ubuntu-latest
+            context: docker/juge
+            arch: amd64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        if: matrix.image == 'ragator'
+        with:
+          node-version: '24'
+      - name: Libérer de l'espace disque pour PyTorch
+        if: matrix.image == 'ragator-juge'
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          tags: ${{ matrix.image }}:smoke
+          load: true
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ matrix.arch }}
+      - if: matrix.image == 'ragator'
+        run: node tests/docker/smoke.mjs ragator:smoke
+      - name: Vérifier le démarrage du juge sans poids ni GPU
+        if: matrix.image == 'ragator-juge'
+        run: |
+          id=$(docker run --detach --rm ragator-juge:smoke)
+          trap 'docker stop "$id" >/dev/null' EXIT
+          for i in {1..30}; do
+            if docker exec "$id" python -c "import json, urllib.request; assert json.load(urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2))['state'] == 'needs_token'"; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs "$id"
+          exit 1
+
   image:
+    needs: smoke
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     strategy:
@@ -27,10 +112,12 @@ jobs:
         include:
           - name: ragator
             context: .
+            platforms: linux/amd64,linux/arm64
           # Juge du mode local : PyTorch CUDA, plusieurs Go. Ne contient aucun modèle (Aplomb est
           # téléchargé au premier démarrage avec le jeton Hugging Face de l'utilisateur).
           - name: ragator-juge
             context: docker/juge
+            platforms: linux/amd64
     steps:
       - uses: actions/checkout@v4
 
@@ -39,6 +126,10 @@ jobs:
         if: matrix.name == 'ragator-juge'
         run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
 
+      - uses: docker/setup-qemu-action@v3
+        if: matrix.name == 'ragator'
+        with:
+          platforms: arm64
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/login-action@v3
@@ -60,8 +151,10 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
+          platforms: ${{ matrix.platforms }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.name }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+          cache-from: |
+            type=gha,scope=${{ matrix.name }}-amd64
+            type=gha,scope=${{ matrix.name }}-arm64

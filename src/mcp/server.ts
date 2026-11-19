@@ -9,6 +9,7 @@ import { chercherInfosVideo } from '../core/video-info.js';
 import { stats } from '../core/stats.js';
 import { listCollections, resolveCollection } from '../core/collections.js';
 import type { EmbeddingClient } from '../providers/embedding.js';
+import { applyStoredSettings } from '../settings.js';
 
 /**
  * Serveur MCP : façade mince sur les six outils de consultation.
@@ -140,6 +141,8 @@ export function createRagatorServer(pool: Pool, options: { embedder?: EmbeddingC
     async (args) =>
       run(async () => {
         const range = dateRange(args.dateFrom, args.dateTo);
+        // Ce serveur peut rester ouvert pendant un changement de mode dans l'interface.
+        await applyStoredSettings(pool);
         const page = await chercher(
           pool,
           {

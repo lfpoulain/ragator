@@ -1,6 +1,5 @@
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { closePool, getPool } from '../db/pool.js';
-import { applyStoredSettings } from '../settings.js';
 import { createRagatorServer } from './server.js';
 
 /**
@@ -9,8 +8,6 @@ import { createRagatorServer } from './server.js';
  * `npx tsx src/mcp/stdio.ts`, jamais `npm run mcp` (l'en-tête npm corromprait le flux).
  */
 const pool = getPool();
-// Réglages de l'interface (mode, clé…) ; sans base joignable, ceux de .env.
-await applyStoredSettings(pool).catch(() => {});
 const handle = serveStdio(() => createRagatorServer(pool));
 
 async function shutdown(): Promise<void> {

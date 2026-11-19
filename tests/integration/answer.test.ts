@@ -219,7 +219,8 @@ function failingLlm(): LlmClient {
       { llm, embedder: null, analyzer: null, judge: null },
     );
     expect(llm.calls).toBe(0);
-    expect(result.degradedReason).toContain('OPENROUTER_API_KEY');
+    expect(result.degraded).toBe(true);
+    expect(result.degradedReason).toContain('sans juge');
     expect(result.sources.length).toBeGreaterThan(0);
   });
 

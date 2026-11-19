@@ -22,7 +22,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 REPO = "empiriolabsai/aplomb-1"
+REVISION = "1225d382f51a29d04c888cdadc8b94f21261c7b2"
 MODEL_DIR = Path(os.environ.get("APLOMB_DIR", "/models/aplomb-1"))
+DOWNLOAD_COMPLETE = MODEL_DIR / ".ragator-download-complete"
 PORT = int(os.environ.get("PORT", "8000"))
 AUDIO = ["audio_encoder/*", "audio_notes/*", "audio_attach.safetensors", "audio_config.json"]
 
@@ -33,6 +35,10 @@ LOADING = threading.Lock()
 
 
 def downloaded() -> bool:
+    return DOWNLOAD_COMPLETE.is_file()
+
+
+def legacy_cache() -> bool:
     return (MODEL_DIR / "edm_config.json").is_file() and (MODEL_DIR / "run_aplomb.py").is_file()
 
 
@@ -41,9 +47,10 @@ def load(token: str | None) -> None:
     from huggingface_hub import snapshot_download
     from transformers import BitsAndBytesConfig
 
-    if not downloaded():
+    if not downloaded() and (token or not legacy_cache()):
         STATE.update(state="loading", message="téléchargement d'Aplomb (~10 Go)")
-        snapshot_download(REPO, local_dir=MODEL_DIR, token=token or None, ignore_patterns=AUDIO)
+        snapshot_download(REPO, revision=REVISION, local_dir=MODEL_DIR, token=token or None, ignore_patterns=AUDIO)
+        DOWNLOAD_COMPLETE.touch()
     STATE.update(state="loading", message="chargement sur la carte graphique")
     sys.path.insert(0, str(MODEL_DIR))
     from aplomb.adapter import DecisionAdapter
@@ -68,6 +75,8 @@ def load(token: str | None) -> None:
             + "[s1 00:10] PAROLE : On fixe les tasseaux sur le mur de l'atelier avec la visseuse. " * 120,
             "questions": {"decision": {"type": "noul", "instructions": "Do the `excerpts` answer the `question`?"}}})
     torch.cuda.empty_cache()
+    # Un ancien cache sans marqueur est reconnu après une première inférence réussie.
+    DOWNLOAD_COMPLETE.touch()
     STATE.update(state="ready", message=f"{torch.cuda.memory_reserved() / 1e9:.1f} Go réservés sur la carte")
     print(f"Aplomb prêt sur le port {PORT} : {STATE['message']}", flush=True)
 
@@ -83,8 +92,10 @@ def start(token: str | None) -> bool:
         except Exception as exc:  # jeton refusé, licence non acceptée, carte absente…
             traceback.print_exc()
             gated = "401" in str(exc) or "403" in str(exc) or "gated" in str(exc).lower()
-            STATE.update(state="needs_token" if gated and not downloaded() else "error",
-                         message=("jeton refusé : accepter la licence d'Aplomb sur Hugging Face avec ce compte" if gated
+            repair_cache = token is None and not downloaded() and legacy_cache()
+            STATE.update(state="needs_token" if (gated or repair_cache) and not downloaded() else "error",
+                         message=("cache incomplet : fournir le jeton pour reprendre le téléchargement" if repair_cache else
+                                  "jeton refusé : accepter la licence d'Aplomb sur Hugging Face avec ce compte" if gated
                                   else f"{type(exc).__name__} : {exc}"))
         finally:
             LOADING.release()
@@ -147,7 +158,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 # Déjà téléchargé (redémarrage) : chargé sans jeton. Sinon, attente du jeton envoyé par Ragator.
-if downloaded():
+if downloaded() or legacy_cache():
     start(None)
 print(f"Juge local sur le port {PORT} : {STATE['message']}", flush=True)
 ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

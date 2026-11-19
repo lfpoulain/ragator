@@ -11,6 +11,8 @@ node_modules/
 /outputs/
 /logs/
 *.log
+*.dump
+ragator-data*.tar.gz
 
 # Espace de développement personnel (évaluation, essais, archives)
 /dev/

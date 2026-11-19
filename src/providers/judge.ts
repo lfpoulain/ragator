@@ -1,6 +1,8 @@
 import { getConfig } from '../config.js';
 import { mapConcurrent } from '../core/concurrent.js';
 import { fetchRetrying } from './retry.js';
+import { configuredFetch, type ModelFetch } from './configured-fetch.js';
+import type { Pool } from 'pg';
 
 /**
  * Juge de pertinence des questions générales : JEV (TypeSafe), un modèle de
@@ -93,6 +95,7 @@ interface DecisionEndpoint {
   body: (question: string, video: { title: string; text: string }) => Record<string, unknown>;
   parallel: number;
   retryDelaysMs: number[];
+  request: ModelFetch;
 }
 
 /** Une décision oui/non (« noul ») par vidéo, sur une API au format de JEV. */
@@ -112,6 +115,7 @@ function decisionJudge(endpoint: DecisionEndpoint): RelevanceJudge {
             signal: AbortSignal.timeout(TIMEOUT_MS),
           }),
           endpoint.retryDelaysMs,
+          endpoint.request,
         );
         if (!response.ok) throw new Error(`${endpoint.label} HTTP ${response.status} : ${(await response.text()).slice(0, 200)}`);
         const body = (await response.json()) as { answers?: { decision?: { noul?: number } }; usage?: { cost?: number } };
@@ -132,6 +136,7 @@ interface JudgeOptions {
   /** Décisions à la fois (1 par défaut). */
   parallel?: number;
   retryDelaysMs?: number[];
+  request?: ModelFetch;
 }
 
 /** JEV via OpenRouter (`POST /api/alpha/decisions`) : une décision oui/non (« noul ») par vidéo. */
@@ -145,6 +150,7 @@ export function jevJudge(options: JudgeOptions & { apiKey: string; model: string
     body: (question, video) => ({ model, state: { question, video_title: video.title, excerpts: clip(video.text) }, questions: QUESTIONS }),
     parallel: options.parallel ?? 1,
     retryDelaysMs: options.retryDelaysMs ?? RETRY_DELAYS_MS,
+    request: options.request ?? fetch,
   });
 }
 
@@ -167,16 +173,21 @@ export function localJudge(options: JudgeOptions): RelevanceJudge {
     }),
     parallel: options.parallel ?? 1,
     retryDelaysMs: options.retryDelaysMs ?? RETRY_DELAYS_MS,
+    request: options.request ?? fetch,
   });
 }
 
-let shared: { key: string; judge: RelevanceJudge } | null = null;
+let shared: { key: string; pool: Pool | undefined; judge: RelevanceJudge } | null = null;
 
 /** Juge configuré (`config.judge` : JEV ou juge local), ou `null` sans clé OpenRouter. Une instance par configuration : ses compteurs couvrent le processus. */
-export function judgeFromConfig(): RelevanceJudge | null {
-  const { judge } = getConfig();
+export function judgeFromConfig(pool?: Pool): RelevanceJudge | null {
+  const config = getConfig();
+  const { judge } = config;
   if (!judge) return null;
-  const key = `${judge.kind}|${judge.baseUrl}|${judge.apiKey}`;
-  if (shared?.key !== key) shared = { key, judge: judge.kind === 'jev' ? jevJudge(judge) : localJudge(judge) };
+  const key = JSON.stringify([config.mode, judge]);
+  if (shared?.key !== key || shared.pool !== pool) {
+    const options = { ...judge, request: configuredFetch('judge', config, pool) };
+    shared = { key, pool, judge: judge.kind === 'jev' ? jevJudge(options) : localJudge(options) };
+  }
   return shared.judge;
 }

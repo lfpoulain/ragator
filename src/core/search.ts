@@ -9,6 +9,8 @@ import { escapeRegexTerm, lexique, nearestWords, wordPatterns } from './resolve.
 import { collectionSql, dateRangeSql, timeRangeSql, videoIdSql, videoIdsSql } from './filters.js';
 import { clampLimit, cursorKey, pageOf, pageOffset, type DateRange, type Kind, type Page, type PageInput } from './page.js';
 
+export const LEXICAL_WITHOUT_ENCODER = 'aucun modèle d’embedding configuré : lexical seul';
+
 export interface Evidence {
   sourceId: string;
   kind: Kind;
@@ -572,7 +574,7 @@ export async function chercher(
   const filters = buildFilters(input, options.deep ? DEEP_CANDIDATES : undefined);
 
   // Encodage de la question hors transaction (aucun appel modèle dans l'instantané).
-  const embedder = options.embedder === undefined ? embeddingFromConfig() : options.embedder;
+  const embedder = options.embedder === undefined ? embeddingFromConfig(pool) : options.embedder;
   const publishedModel = await getMetaString(pool, 'embedding_model');
   let queryVector: number[] | null = null;
   let hypotheticalVector: number[] | null = null;
@@ -580,7 +582,7 @@ export async function chercher(
   if (tokens.length === 0) {
     semanticIssue = 'requête vide après normalisation';
   } else if (!embedder) {
-    semanticIssue = 'aucun modèle d’embedding configuré : lexical seul';
+    semanticIssue = LEXICAL_WITHOUT_ENCODER;
   } else if (publishedModel === null) {
     semanticIssue = 'aucun embedding publié (lancer npm run embed) : lexical seul';
   } else if (publishedModel !== embedder.model) {

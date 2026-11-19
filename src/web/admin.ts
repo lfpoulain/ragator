@@ -2,7 +2,8 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { join, resolve } from 'node:path';
 import type { Pool } from 'pg';
 import { getConfig } from '../config.js';
-import { updateCorpus } from '../core/update.js';
+import { CORPUS_FILENAME } from '../core/ingest.js';
+import { updateCorpus, type UpdateReport } from '../core/update.js';
 import { parseCorpusJson, validateCorpusDocument } from '../core/validate.js';
 import { enrichLlmFromConfig } from '../providers/llm.js';
 
@@ -14,7 +15,7 @@ import { enrichLlmFromConfig } from '../providers/llm.js';
  */
 
 export interface UpdateJob {
-  state: 'idle' | 'running' | 'done' | 'error';
+  state: 'idle' | 'running' | UpdateReport['state'];
   startedAt: string | null;
   finishedAt: string | null;
   /** Dernières lignes du journal de la mise à jour en cours ou passée. */
@@ -49,12 +50,15 @@ export interface AdminVideo {
 }
 
 const MAX_LOG_LINES = 300;
-/** Identifiant YouTube : 11 caractères ; seul lui nomme le fichier écrit (jamais le nom envoyé). */
+const LOCAL_RETRY_MINUTES = [1, 2, 4, 8, 16];
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 
 export function createAdmin(pool: Pool, options: { corpusDir?: string } = {}) {
   const job: UpdateJob = { state: 'idle', startedAt: null, finishedAt: null, log: [], summary: null, refused: null };
   const corpusDir = resolve(options.corpusDir ?? getConfig().corpusDir);
+  let retryTimer: NodeJS.Timeout | undefined;
+  let requested = false;
+  let closed = false;
 
   const log = (line: string) => {
     job.log.push(`[${new Date().toLocaleTimeString('fr-FR')}] ${line}`);
@@ -62,32 +66,55 @@ export function createAdmin(pool: Pool, options: { corpusDir?: string } = {}) {
   };
 
   /** Lance la mise à jour en tâche de fond ; `false` si une mise à jour tourne déjà. */
-  function startUpdate(): boolean {
-    if (job.state === 'running') return false;
+  function startUpdate(attempt = 0): boolean {
+    if (closed || job.state === 'running') return false;
+    clearTimeout(retryTimer);
     Object.assign(job, { state: 'running', startedAt: new Date().toISOString(), finishedAt: null, log: [], summary: null, refused: null });
     log(`mise à jour de ${corpusDir}`);
     void (async () => {
       try {
-        const report = await updateCorpus(pool, { dir: corpusDir, llm: enrichLlmFromConfig(), log });
+        const report = await updateCorpus(pool, { dir: corpusDir, llm: enrichLlmFromConfig(pool), log });
         for (const note of report.notes) log(note);
         const counts =
           `${report.ingested.length} vidéo(s) ingérée(s), ${report.enriched} bloc(s) enrichi(s), ` +
           `${report.embedded} vecteur(s), ${report.failures.length} échec(s)`;
         log(counts);
         // Un refus du compte prime : c'est la cause à corriger, les chiffres restent au journal.
-        job.summary = report.refused ? report.refused.summary : counts;
+        job.summary = report.refused?.summary ?? (report.state === 'partial' ? report.notes.join(' · ') : counts);
         if (report.refused) log(`ARRÊT : ${report.refused.summary}`);
         job.refused = report.refused?.reason ?? null;
-        job.state = report.failures.length > 0 || report.refused ? 'error' : 'done';
+        job.state = report.state;
       } catch (err) {
         job.summary = `mise à jour en échec : ${err instanceof Error ? err.message : String(err)}`;
         log(job.summary);
         job.state = 'error';
       } finally {
         job.finishedAt = new Date().toISOString();
+        if (!closed && requested) {
+          requested = false;
+          startUpdate();
+        } else if (!closed && job.state === 'partial' && getConfig().mode === 'local') {
+          const minutes = LOCAL_RETRY_MINUTES[attempt];
+          if (minutes !== undefined) {
+            log(`nouvel essai dans ${minutes} min pendant la préparation des modèles locaux`);
+            retryTimer = setTimeout(() => {
+              if (getConfig().mode === 'local') startUpdate(attempt + 1);
+            }, minutes * 60_000).unref();
+          }
+        }
       }
     })();
     return true;
+  }
+
+  /** Un changement de modèles pendant le travail demande un nouveau passage avec les nouveaux clients. */
+  function requestUpdate(): void {
+    if (!closed && !startUpdate()) requested = true;
+  }
+
+  function close(): void {
+    closed = true;
+    clearTimeout(retryTimer);
   }
 
   /** Valide un fichier déposé et l'écrit dans le dossier du corpus, nommé d'après son identifiant. */
@@ -112,11 +139,11 @@ export function createAdmin(pool: Pool, options: { corpusDir?: string } = {}) {
 
   /** Fichiers du dossier du corpus pas encore dans la base (déposés, à ingérer). */
   async function corpusState(): Promise<{ dir: string; files: number; notIngested: string[] }> {
-    const files = existsSync(corpusDir) ? readdirSync(corpusDir).filter((f) => /^video--.+\.json$/.test(f)) : [];
-    const ids = files.map((f) => f.slice('video--'.length, -'.json'.length));
+    const files = existsSync(corpusDir) ? readdirSync(corpusDir).filter((name) => CORPUS_FILENAME.test(name)) : [];
+    const ids = files.map((name) => name.slice('video--'.length, -'.json'.length));
     const { rows } = await pool.query<{ video_id: string }>('SELECT video_id FROM videos WHERE video_id = ANY($1::text[])', [ids]);
     const known = new Set(rows.map((r) => r.video_id));
-    return { dir: corpusDir, files: files.length, notIngested: ids.filter((id) => !known.has(id)) };
+    return { dir: corpusDir, files: ids.length, notIngested: ids.filter((id) => !known.has(id)) };
   }
 
   /** Vidéos indexées, les plus récentes d'abord, avec l'état de leur enrichissement et de leurs vecteurs. */
@@ -157,7 +184,7 @@ export function createAdmin(pool: Pool, options: { corpusDir?: string } = {}) {
     }));
   }
 
-  return { job, startUpdate, saveUpload, corpusState, listVideos };
+  return { job, startUpdate, requestUpdate, close, saveUpload, corpusState, listVideos };
 }
 
 export type Admin = ReturnType<typeof createAdmin>;

@@ -1,12 +1,14 @@
+import type { ModelFetch } from './configured-fetch.js';
+
 /**
  * Requête HTTP avec nouvelles tentatives sur 429 (« Model busy ») et erreurs
  * 5xx : OpenRouter et ses fournisseurs saturent par moments. `init` est
  * rappelé à chaque essai, pour qu'un délai d'expiration reparte de zéro. Rend
  * la dernière réponse reçue, bonne ou non : l'appelant décide de l'erreur.
  */
-export async function fetchRetrying(url: string, init: () => RequestInit, delaysMs: readonly number[]): Promise<Response> {
+export async function fetchRetrying(url: string, init: () => RequestInit, delaysMs: readonly number[], request: ModelFetch = fetch): Promise<Response> {
   for (let attempt = 0; ; attempt++) {
-    const response = await fetch(url, init());
+    const response = await request(url, init());
     const retryable = response.status === 429 || response.status >= 500;
     if (response.ok || !retryable || attempt >= delaysMs.length) return response;
     // Corps abandonné : libère la connexion avant le prochain essai.

@@ -18,7 +18,7 @@
 
 Ragator indexe les transcriptions et les descriptions visuelles des vidéos d'une ou plusieurs chaînes YouTube, puis répond aux questions en langage naturel en **citant chaque affirmation au timecode près**. Quand les vidéos ne contiennent pas la réponse, il le dit au lieu d'inventer.
 
-- 🏠 **100 % local** : Qwen 3.5 9B, le juge Aplomb et pplx-embed tournent sur votre carte graphique. Aucune clé, rien ne sort de la machine.
+- 🏠 **Inférence locale** : Qwen et le juge Aplomb utilisent la carte graphique, pplx-embed utilise le processeur. Une fois les modèles installés, vos questions et vos vidéos sont traitées par les serveurs que vous avez choisis.
 - ☁️ **Ou OpenRouter**, sans carte graphique : un clic dans les Réglages pour changer de mode, sans réindexer.
 - 🎯 **Réponses citées** : chaque phrase renvoie au moment exact de la vidéo, vérifié par le code.
 - 🔎 **Recherche hybride** : mots exacts (BM25 : marques, noms propres, fautes de frappe) et sens (vecteurs).
@@ -63,7 +63,7 @@ Une seule instance de Ragator, une seule base. Le mode se choisit dans l'onglet 
 | Vecteurs | pplx-embed-v1-4b en GGUF Q8 (processeur) | `perplexity/pplx-embed-v1-4b` |
 | Matériel | carte NVIDIA, 16 Go de mémoire vidéo | aucun |
 | Clé | aucune (un jeton Hugging Face, une fois, pour télécharger Aplomb) | clé OpenRouter payante |
-| Confidentialité | rien ne sort de la machine une fois les modèles téléchargés | questions et extraits envoyés à OpenRouter |
+| Confidentialité | questions et extraits traités sur vos serveurs de modèles | questions et extraits envoyés à OpenRouter |
 | Coût | l'électricité | ~0,001 $ par question précise, ~0,02 $ par question générale, < 1 $ pour indexer 400 vidéos |
 | Vitesse | ~5 s par question précise sur une RTX 4090 ; indexation lente (~4 min par vidéo, vecteurs sur le processeur) | ~5 s par question précise ; indexation ~15 s par vidéo |
 
@@ -102,20 +102,20 @@ flowchart LR
 - **Aplomb** est un modèle de *décision* : pour chaque vidéo, il donne la probabilité qu'elle réponde à la question prise au mot (« quand *utilisent*-ils » exige qu'ils l'utilisent). En 4 bits, il note environ 0,1 plus haut que JEV : son seuil est 0,4 au lieu de 0,3.
 - **pplx-embed** tourne sur le processeur, par petits lots : il laisse la carte au LLM et au juge. C'est le même encodeur que celui d'OpenRouter (vecteurs identiques à un cosinus de 0,98-0,99 près), d'où l'index commun aux deux modes.
 
-**Premier démarrage.** Chaque serveur télécharge son modèle dans le volume `ragator-models` (~17 Go en tout), puis le charge : comptez plusieurs minutes. L'onglet Réglages affiche l'état de chacun (prêt, en préparation, jeton attendu, injoignable). Ensuite, plus aucun accès extérieur.
+**Premier démarrage.** Chaque serveur télécharge son modèle dans le volume `ragator-models` (~17 Go en tout), puis le charge. Comptez plusieurs minutes. L'onglet Réglages affiche l'état de chacun. En mode local, afficher les résultats ne contacte pas YouTube. Ouvrir un lien vers une vidéo vous connecte à YouTube.
 
 **Aplomb est sous licence.** Acceptez-la sur [huggingface.co/empiriolabsai/aplomb-1](https://huggingface.co/empiriolabsai/aplomb-1), créez un jeton de lecture ([huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)) et collez-le dans **Réglages** : Ragator le transmet au juge, qui télécharge le modèle. Le jeton ne sert qu'à ce téléchargement ; le modèle n'est jamais redistribué.
 
 <details>
 <summary>Modèles sur une autre machine (PC à carte graphique qui sert un NAS)</summary>
 
-Ragator peut tourner sur un NAS sans carte graphique et utiliser les modèles d'un PC qui en a une. Sur le PC, lancez seulement les trois serveurs, en publiant leurs ports (ajoutez `ports: ['8080:8080']` à `llm`, `['8081:8080']` à `embed` et `['8000:8000']` à `juge` dans `compose.yml`) :
+Ragator peut tourner sur un NAS et utiliser le GPU d'un autre PC. Sur le PC, publiez les trois serveurs sur son adresse VPN privée. Par exemple, si celle-ci est `10.8.0.2`, ajoutez `ports: ['10.8.0.2:8080:8080']` à `llm`, `ports: ['10.8.0.2:8081:8080']` à `embed` et `ports: ['10.8.0.2:8000:8000']` à `juge`. Autorisez l'adresse du NAS dans le pare-feu du PC. Puis lancez les services :
 
 ```bash
 docker compose --profile local up -d llm embed juge
 ```
 
-Puis, dans **Réglages → Serveurs sur une autre machine**, indiquez `http://<ip-du-pc>:8080/v1`, `http://<ip-du-pc>:8081/v1` et `http://<ip-du-pc>:8000`. Ces ports n'ont pas de mot de passe : ne les ouvrez que sur votre réseau local.
+Dans **Réglages → Serveurs sur une autre machine**, indiquez `http://10.8.0.2:8080/v1`, `http://10.8.0.2:8081/v1` et `http://10.8.0.2:8000`, en remplaçant l'adresse par celle de votre PC. Le VPN chiffre ces échanges, y compris le premier envoi du jeton Hugging Face au juge.
 
 </details>
 
@@ -159,7 +159,7 @@ Chaque famille de questions suit son propre chemin :
 
 | Élément | Mode local | Mode OpenRouter |
 |---|---|---|
-| Docker | Docker Desktop (Windows avec WSL 2, macOS exclu) ou Docker Engine (Linux, NAS) avec Compose | Docker Desktop ou Docker Engine avec Compose |
+| Docker | Hôte Linux x86-64 ou Windows x86-64 avec WSL 2, Compose et GPU NVIDIA pour les modèles | Docker Desktop ou Docker Engine avec Compose ; image applicative prévue pour Linux amd64 et arm64 |
 | Carte graphique | NVIDIA, 16 Go de mémoire vidéo ou plus, pilote 580 ou plus (CUDA 13) ; sous Linux, [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) | aucune |
 | Mémoire | ~4 Go de RAM | ~1 Go de RAM pour quelques centaines de vidéos |
 | Disque | ~17 Go de modèles, plus les images Docker | quelques centaines de Mo |
@@ -187,7 +187,7 @@ docker compose pull && docker compose up -d
 
 Les images sont publiées sur ghcr.io ([`ragator`](https://github.com/lfpoulain/ragator/pkgs/container/ragator), [`ragator-juge`](https://github.com/lfpoulain/ragator/pkgs/container/ragator-juge)) à chaque mise à jour de `main`. Pour les construire depuis le code : `docker compose up -d --build` (avec ou sans `--profile local`).
 
-Ouvrez <http://localhost:3210> (ou `http://<adresse-du-serveur>:3210`). Aucune variable d'environnement, aucun fichier de configuration : tout se règle dans l'interface.
+Ouvrez <http://localhost:3210>. Par défaut, le port est publié sur la boucle locale. Sur un serveur, vous pouvez garder cette configuration et ouvrir un tunnel depuis votre poste avec `ssh -L 3210:127.0.0.1:3210 utilisateur@serveur`. Pour publier le port sur un réseau privé, suivez la section [Sécurité](#sécurité) avant le premier démarrage.
 
 L'image `ragator` contient tout le reste : PostgreSQL 17 avec ParadeDB (recherche BM25 et vecteurs), l'application et l'interface web. Les données vivent dans le volume Docker `ragator-data`, les modèles dans `ragator-models`.
 
@@ -196,7 +196,8 @@ L'image `ragator` contient tout le reste : PostgreSQL 17 avec ParadeDB (recherch
 
 ```bash
 docker run -d --name ragator --restart unless-stopped --shm-size 1g \
-  -p 3210:3210 -v /chemin/vers/ragator:/data ghcr.io/lfpoulain/ragator:latest
+  -p 127.0.0.1:3210:3210 -e RAGATOR_BIND_ADDRESS=127.0.0.1 \
+  -v /chemin/vers/ragator:/data ghcr.io/lfpoulain/ragator:latest
 ```
 
 `/data` doit être sur un vrai disque : un dossier en mémoire vive serait perdu au redémarrage, et le conteneur refuse d'y créer la base. Pour le mode local, préférez Compose, ou pointez Ragator vers des serveurs de modèles existants (voir [La stack locale](#la-stack-locale), « Modèles sur une autre machine »).
@@ -205,14 +206,14 @@ docker run -d --name ragator --restart unless-stopped --shm-size 1g \
 
 ## Premiers pas
 
-1. **Réglages** → choisissez le mode.
+1. **Réglages** → définissez votre mot de passe sur l'instance locale. Pour un accès réseau direct, provisionnez-le avant le démarrage.
+2. **Réglages** → choisissez le mode.
    - **Local** : collez votre jeton Hugging Face, puis attendez que les trois serveurs soient « prêts ».
    - **OpenRouter** : collez votre clé. Elle est vérifiée, puis enregistrée dans la base de Ragator.
-2. **Réglages** → définissez un mot de passe si Ragator est joignable depuis le réseau.
 3. **Administration** → déposez vos fichiers `video--<id>.json`. Ils sont vérifiés, puis indexés automatiquement.
 4. **Rechercher** → posez votre question.
 
-L'onglet Administration suit l'indexation en direct : vidéos ajoutées, passages enrichis, vecteurs calculés, et l'état de chaque vidéo. Une indexation interrompue (serveur de modèles pas encore prêt, crédit épuisé, redémarrage) reprend là où elle s'était arrêtée. En mode local, comptez quelques minutes par vidéo : une grosse chaîne s'indexe en une nuit ou plus.
+L'onglet Administration suit les vidéos ajoutées, les passages enrichis et les vecteurs calculés. Une mise à jour partielle indique ce qui reste à traiter. Pendant le démarrage des modèles locaux, Ragator réessaie automatiquement. Vous pouvez aussi relancer la mise à jour après avoir corrigé le problème ou rechargé votre crédit. Les éléments déjà indexés sont conservés.
 
 ## Préparer les vidéos
 
@@ -228,7 +229,7 @@ Pour un gros volume, montez directement le dossier dans le conteneur (dans `comp
       - /chemin/vers/yt2md/outputs:/data/corpus
 ```
 
-Le format est décrit par [schemas/corpus.schema.json](schemas/corpus.schema.json) ; deux exemples complets sont dans [tests/fixtures/](tests/fixtures/). Chaque vidéo est rangée dans la collection de sa chaîne (« Ma Chaîne, sous-titre » → `ma-chaine`).
+Le format est décrit par [schemas/corpus.schema.json](schemas/corpus.schema.json). Deux exemples complets sont dans [tests/fixtures/](tests/fixtures/). Ragator indexe les fichiers `video--<id>.json`, ignore les fichiers de provenance `.local.json` et accepte jusqu’à 24 heures par vidéo. Chaque vidéo est rangée dans la collection de sa chaîne (« Ma Chaîne, sous-titre » → `ma-chaine`).
 
 ## Utilisation
 
@@ -262,7 +263,7 @@ La ligne de commande et le serveur MCP utilisent le mode et les réglages choisi
 
 ### Serveur MCP
 
-Ragator expose six outils de consultation à un client IA (Claude Desktop, Claude Code, Cursor…) : recherche, réponse citée, liste de vidéos, lecture d'un passage… Dans la configuration MCP du client :
+Ragator expose six outils de consultation à un client IA (Claude Desktop, Claude Code, Cursor…). Le client rédige la réponse à partir des passages et des liens horodatés renvoyés par ces outils. Dans la configuration MCP du client :
 
 ```json
 {
@@ -274,24 +275,44 @@ Ragator expose six outils de consultation à un client IA (Claude Desktop, Claud
 
 ## Données, sauvegarde et mise à jour
 
-Tout est dans le volume `/data` : la base (`postgres/` : vidéos indexées, vecteurs, réglages, journal des questions) et les fichiers déposés (`corpus/`). Les modèles du mode local sont dans le volume `ragator-models` : inutile de les sauvegarder, ils se retéléchargent.
+Sauvegardez **tout `/data`**, qui comprend PostgreSQL, les réglages, le journal des questions et les JSON originaux de `corpus/`. Protégez l'archive comme vos identifiants : la base contient les clés que vous avez saisies dans l'interface. Le volume séparé des modèles peut être téléchargé à nouveau.
+
+**Sauvegarder.** Depuis le dossier Compose, dans un shell Bash, créez un dossier privé hors du dépôt. L'arrêt temporaire de Ragator permet de copier une base et un corpus cohérents. Si un autre outil écrit dans un corpus monté, suspendez aussi ses écritures pendant la copie.
 
 ```bash
-# Sauvegarde à chaud
-docker exec ragator pg_dump -U ragator -Fc ragator > ragator-$(date +%F).dump
+backup_dir=$(mktemp -d "$HOME/ragator-backup.XXXXXXXX")
+image=$(docker inspect --format '{{.Image}}' ragator)
+(
+  set -eu
+  docker compose stop ragator
+  trap 'docker compose start ragator' EXIT
+  docker run --rm --volumes-from ragator:ro \
+    --mount "type=bind,src=$backup_dir,dst=/backup" --entrypoint tar "$image" \
+    -czf /backup/ragator-data.tar.gz -C /data .
+)
+```
 
-# Restauration
-docker exec -i ragator pg_restore -U ragator -d ragator --clean --if-exists --no-owner < ragator.dump
-docker restart ragator
+**Restaurer.** Sur une installation neuve, utilisez la même version de l'image, pointez `backup_dir` vers la sauvegarde et configurez un volume de destination vide. Créez le conteneur sans le démarrer, restaurez, puis attendez la sonde de santé. La commande s'arrête si la destination contient déjà des données.
 
-# Mise à jour de Ragator : les données sont conservées, les migrations s'appliquent seules
+```bash
+docker compose create ragator
+image=$(docker inspect --format '{{.Image}}' ragator)
+docker run --rm --volumes-from ragator \
+  --mount "type=bind,src=$backup_dir,dst=/backup,readonly" --entrypoint sh "$image" \
+  -ec 'test -z "$(find /data -mindepth 1 ! -path /data/corpus -print -quit)" && tar -xzpf /backup/ragator-data.tar.gz -C /data' \
+  && docker compose up -d --wait ragator
+```
+
+Si le corpus est un montage distinct sur `/data/corpus`, reproduisez ce montage avec un dossier vide sur la machine de destination. Pour mettre à jour Ragator sur ses volumes existants :
+
+```bash
 docker compose --profile local pull && docker compose --profile local up -d    # ou sans --profile local
 ```
 
 ## Sécurité
 
-- **Mot de passe** : sans mot de passe, toute personne qui atteint le port peut poser des questions, ajouter des vidéos et changer les réglages. Définissez-en un dès que Ragator est joignable depuis le réseau. Pour le garder sur votre seule machine, publiez le port sur `127.0.0.1:3210:3210` dans `compose.yml`.
-- **Nom de domaine** : l'interface s'ouvre toujours par `localhost` ou une adresse IP ; par un nom (`ragator.maison.lan`, reverse proxy), seulement une fois un mot de passe défini. C'est une protection contre le rebinding DNS.
+- **Accès distant**. Pour un VPN ou un réseau privé, renseignez dans le fichier `.env` ignoré par Git `RAGATOR_BIND_ADDRESS` avec l'adresse IP privée de l'hôte et `RAGATOR_PASSWORD` avec un mot de passe fort. Appliquez le changement avec `docker compose up -d` (ajoutez `--profile local` avant `up` pour les modèles locaux). Le service refuse de démarrer en écoute réseau sans mot de passe. L'utilisateur HTTP Basic est libre. Ce mot de passe donne aussi accès à l'administration.
+- **Nom de domaine**. Avec un mot de passe, `RAGATOR_HOSTS` permet de restreindre les noms acceptés, par exemple `ragator.maison.lan`. Pour un reverse proxy sur le même hôte, gardez le port sur la boucle locale, configurez le mot de passe avant d'ouvrir le proxy et transmettez le nom d'hôte d'origine.
 - **Accès depuis Internet** : ne redirigez jamais le port sur votre box. Passez par un VPN, ou par un reverse proxy en HTTPS ; une question générale peut durer une minute, allongez son délai (`proxy_read_timeout 300s;` pour nginx).
 - **Serveurs de modèles** : dans la pile, ils ne sont joignables que par Ragator. Si vous publiez leurs ports (modèles sur une autre machine), limitez-les à votre réseau local.
 - La clé OpenRouter et le jeton Hugging Face ne sont jamais renvoyés à la page : seuls leurs quatre derniers caractères sont affichés.

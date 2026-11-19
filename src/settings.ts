@@ -1,7 +1,8 @@
 import { lookup } from 'node:dns/promises';
+import type { Pool } from 'pg';
 import { DEFAULT_LLM_MODEL, getConfig, getStoredSettings, LOCAL_DEFAULTS, MODES, OPENROUTER_BASE_URL, setStoredSettings, type Mode, type StoredSettings } from './config.js';
-import { getMeta, setMeta } from './db/meta.js';
-import type { Db } from './db/pool.js';
+import { setMeta } from './db/meta.js';
+import { withTransaction, type Db } from './db/pool.js';
 
 /**
  * Réglages modifiables depuis l'interface (onglet Réglages) : mode (local ou OpenRouter), clé
@@ -14,35 +15,48 @@ const TEXT_KEYS = ['openrouterKey', 'llmModel', 'password', 'localLlmUrl', 'loca
 export type SettingKey = (typeof TEXT_KEYS)[number] | 'mode';
 
 function clean(raw: unknown): StoredSettings {
-  if (!raw || typeof raw !== 'object') return {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Réglages enregistrés illisibles.');
   const value = raw as Record<string, unknown>;
   const out: StoredSettings = {};
   for (const key of TEXT_KEYS) {
     const v = value[key];
-    if (typeof v === 'string' && v.trim()) out[key] = v.trim();
+    if (v === undefined) continue;
+    if (typeof v !== 'string' || !v.trim()) throw new Error(`Réglage enregistré invalide : ${key}.`);
+    out[key] = v.trim();
   }
-  if (MODES.includes(value.mode as Mode)) out.mode = value.mode as Mode;
+  if (value.mode !== undefined) {
+    if (!MODES.includes(value.mode as Mode)) throw new Error('Mode enregistré invalide.');
+    out.mode = value.mode as Mode;
+  }
   return out;
+}
+
+export async function readStoredSettings(db: Db): Promise<StoredSettings> {
+  const { rows } = await db.query<{ value: unknown }>('SELECT value FROM corpus_meta WHERE key = $1', [META_KEY]);
+  return rows.length ? clean(rows[0]!.value) : {};
 }
 
 /** Charge les réglages enregistrés et les applique à la configuration du processus. */
 export async function applyStoredSettings(db: Db): Promise<StoredSettings> {
-  // Base pas encore migrée : aucun réglage enregistré.
-  const settings = clean(await getMeta(db, META_KEY).catch(() => null));
+  const settings = await readStoredSettings(db);
   setStoredSettings(settings);
   return settings;
 }
 
 /** Modifie les réglages : une chaîne vide efface la valeur, une valeur absente la garde. */
-export async function saveSettings(db: Db, patch: Partial<Record<SettingKey, string>>): Promise<StoredSettings> {
-  const next: Record<string, string> = { ...getStoredSettings() };
-  for (const [key, value] of Object.entries(patch)) {
-    if (value === undefined) continue;
-    if (value.trim()) next[key] = value.trim();
-    else delete next[key];
-  }
-  const settings = clean(next);
-  await setMeta(db, META_KEY, settings);
+export async function saveSettings(pool: Pool, patch: Partial<Record<SettingKey, string>>): Promise<StoredSettings> {
+  const settings = await withTransaction(pool, async (client) => {
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('ragator:model-settings'))");
+    const next: Record<string, string> = { ...(await readStoredSettings(client)) };
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === undefined) continue;
+      if (value.trim()) next[key] = value.trim();
+      else delete next[key];
+    }
+    const result = clean(next);
+    await setMeta(client, META_KEY, result);
+    return result;
+  });
   setStoredSettings(settings);
   return settings;
 }

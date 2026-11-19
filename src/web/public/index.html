@@ -2,6 +2,8 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="x-dns-prefetch-control" content="off">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ragator</title>
 <style>
@@ -361,9 +363,9 @@ a.cite:hover { background: var(--accent); color: #fff; }
       <h2>Modèles</h2>
       <p class="hint">Où tournent les trois modèles de Ragator : réponses, vecteurs et tri des vidéos. Le même index sert aux deux modes : on passe de l’un à l’autre sans réindexer.</p>
       <div class="modes" role="radiogroup" aria-label="Mode">
-        <label class="mode" id="mode-local-card"><input type="radio" name="mode" value="local"><strong>Local</strong>
-          <span class="hint">Tout sur cette machine : Qwen 3.5 9B, juge Aplomb et pplx-embed, sur une carte NVIDIA de 16 Go ou plus. Aucune clé, rien ne sort. Lancé par <code>docker compose --profile local up -d</code>.</span></label>
-        <label class="mode" id="mode-or-card"><input type="radio" name="mode" value="openrouter"><strong>OpenRouter</strong>
+        <label class="mode" id="mode-local-card"><input type="radio" name="provider" value="local"><strong>Local</strong>
+          <span class="hint">Qwen et Aplomb utilisent votre GPU NVIDIA (16 Go ou plus). L’encodeur utilise le processeur. Vos questions et vos extraits sont traités par vos serveurs. Démarrage avec <code>docker compose --profile local up -d</code>.</span></label>
+        <label class="mode" id="mode-or-card"><input type="radio" name="provider" value="openrouter"><strong>OpenRouter</strong>
           <span class="hint">Les modèles par l’API d’OpenRouter (gpt-6-luna, JEV, pplx-embed), avec une clé payante. Aucune carte graphique, réponses plus rapides.</span></label>
       </div>
     </div>
@@ -427,7 +429,7 @@ a.cite:hover { background: var(--accent); color: #fff; }
 <script>
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
-const thumb = (videoId) => 'https://i.ytimg.com/vi/' + encodeURIComponent(videoId) + '/mqdefault.jpg';
+const thumb = (videoId) => '/api/videos/' + encodeURIComponent(videoId) + '/miniature';
 const watch = (videoId) => 'https://www.youtube.com/watch?v=' + encodeURIComponent(videoId);
 const ts = (s) => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = String(s % 60).padStart(2, '0'); return h ? h + ':' + String(m).padStart(2, '0') + ':' + x : m + ':' + x; };
 const num = (n) => Number(n).toLocaleString('fr-FR');
@@ -809,7 +811,7 @@ function readableDate(value) {
   const d = new Date(String(value).replace(' ', 'T').replace(/([+-]\d\d)$/, '$1:00'));
   return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
 }
-const JOB = { idle: ['inactive', 'idle'], running: ['en cours', 'warn'], done: ['terminée', 'ok'], error: ['erreur', 'err'] };
+const JOB = { idle: ['inactive', 'idle'], running: ['en cours', 'warn'], done: ['terminée', 'ok'], partial: ['partielle', 'warn'], error: ['erreur', 'err'] };
 const REFUSED = { credit: 'crédit OpenRouter épuisé', key: 'clé OpenRouter refusée' };
 /** Bandeau d'état : l'index est-il complet, une mise à jour tourne-t-elle, a-t-elle échoué, et pourquoi. */
 function renderHealth(s, job, corpus) {
@@ -827,6 +829,9 @@ function renderHealth(s, job, corpus) {
   } else if (job.state === 'error') {
     cls = 'err'; title = REFUSED[job.refused] ? 'Mise à jour arrêtée : ' + REFUSED[job.refused] : 'La dernière mise à jour a échoué';
     sub = job.summary || '';
+  } else if (job.state === 'partial') {
+    cls = 'warn'; title = 'Mise à jour partielle';
+    sub = job.summary || todo.join(' · ');
   } else if (todo.length) {
     cls = 'warn'; title = 'Index incomplet';
     sub = todo.join(' · ') + ' — les vidéos concernées sont moins bien retrouvées.';
@@ -839,7 +844,7 @@ function renderHealth(s, job, corpus) {
   $('health-sub').textContent = sub;
   const button = $('update');
   button.disabled = job.state === 'running';
-  button.textContent = job.state === 'running' ? 'Mise à jour en cours…' : job.state === 'error' ? 'Relancer la mise à jour' : 'Mettre à jour l’index';
+  button.textContent = job.state === 'running' ? 'Mise à jour en cours…' : ['partial', 'error'].includes(job.state) ? 'Relancer la mise à jour' : 'Mettre à jour l’index';
   button.className = 'btn' + (cls === 'ok' ? '' : ' primary');
 }
 
@@ -885,7 +890,7 @@ function renderJob(job, corpus) {
   // Refus du compte (crédit épuisé, clé refusée) : la cause dans le badge, le remède en infobulle et au journal.
   const refused = job.state === 'error' && REFUSED[job.refused];
   $('jobstate').textContent = refused || label; $('jobstate').className = 'badge ' + cls;
-  $('jobstate').title = job.state === 'error' && job.summary ? job.summary : '';
+  $('jobstate').title = ['partial', 'error'].includes(job.state) && job.summary ? job.summary : '';
   const when = job.finishedAt && job.state !== 'running' ? ' · terminée le ' + readableDate(job.finishedAt) : '';
   $('corpusinfo').textContent = plural(corpus.files, 'fichier') + ' dans le dossier' + (corpus.notIngested.length ? ' · ' + corpus.notIngested.length + ' à ingérer' : '') + when;
   const log = $('log');
@@ -954,13 +959,19 @@ document.querySelectorAll('input[name=vstate]').forEach((r) => r.addEventListene
 $('moreVideos').onclick = () => { shown += 100; renderVideos(); };
 
 async function upload(files) {
+  let changed = false;
   for (const file of files) {
     const li = el('li'); const name = el('span', 'name', file.name); const badge = el('span', 'badge idle', 'vérification…');
     li.append(badge, name); $('uploads').prepend(li);
+    if (/^video--[A-Za-z0-9_-]{11}\.local\.json$/i.test(file.name)) {
+      badge.textContent = 'provenance ignorée';
+      continue;
+    }
     try {
       if (!/\.json$/i.test(file.name)) throw new Error('fichier .json attendu');
       const result = await api('/api/admin/upload', { name: file.name, content: await file.text() });
       if (result.ok) {
+        if (result.status !== 'identique') changed = true;
         badge.textContent = result.status; badge.className = 'badge ' + (result.status === 'identique' ? 'idle' : 'ok');
         name.textContent = result.title + ' (' + result.videoId + ')';
       } else {
@@ -968,6 +979,10 @@ async function upload(files) {
         const issues = el('span', 'issues', (result.issues || []).join(' · ')); name.append(issues);
       }
     } catch (err) { badge.textContent = 'erreur'; badge.className = 'badge err'; name.append(el('span', 'issues', err.message)); }
+  }
+  if (changed) {
+    try { await api('/api/admin/update', { afterCurrent: true }); }
+    catch (err) { $('uploads').append(el('li', 'issues', 'Indexation à relancer : ' + err.message)); }
   }
   refreshAdmin(false);
 }
@@ -1012,7 +1027,7 @@ let settingsState = null;
 let serversTimer = 0;
 function showSettings(st) {
   settingsState = st;
-  for (const input of document.querySelectorAll('input[name=mode]')) input.checked = input.value === st.mode;
+  for (const input of document.querySelectorAll('input[name=provider]')) input.checked = input.value === st.mode;
   $('mode-local-card').classList.toggle('on', st.mode === 'local');
   $('mode-or-card').classList.toggle('on', st.mode === 'openrouter');
   $('local-card').hidden = st.mode !== 'local';
@@ -1037,6 +1052,7 @@ function showSettings(st) {
 }
 async function loadServers() {
   clearTimeout(serversTimer);
+  if (settingsState?.mode !== 'local' || $('settings').hidden) return;
   const list = $('servers');
   if (!list.children.length) list.textContent = 'Vérification des serveurs…';
   try {
@@ -1062,9 +1078,9 @@ async function saveSetting(patch, done) {
   try {
     showSettings(await api('/api/settings', patch));
     msg.textContent = done;
-  } catch (err) { msg.textContent = 'Refusé : ' + err.message; }
+  } catch (err) { if (settingsState) showSettings(settingsState); msg.textContent = 'Refusé : ' + err.message; }
 }
-for (const input of document.querySelectorAll('input[name=mode]')) {
+for (const input of document.querySelectorAll('input[name=provider]')) {
   input.onchange = () => saveSetting({ mode: input.value }, input.value === 'local'
     ? 'Mode local enregistré. L’état des serveurs s’affiche ci-dessous.'
     : 'Mode OpenRouter enregistré.' + (settingsState && settingsState.openrouterKey.set ? '' : ' Collez une clé ci-dessous.'));

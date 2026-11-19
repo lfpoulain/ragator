@@ -1,5 +1,7 @@
 import { EMBEDDING_COLUMN_DIMS, getConfig, OPENROUTER_BASE_URL } from '../config.js';
 import { accountRefusal, fetchRetrying } from './retry.js';
+import { configuredFetch, type ModelFetch } from './configured-fetch.js';
+import type { Pool } from 'pg';
 
 export interface EmbeddingClient {
   readonly model: string;
@@ -29,6 +31,7 @@ export function createEmbeddingClient(
     timeoutMs?: number;
     dims?: number;
     retryDelaysMs?: number[];
+    request?: ModelFetch;
   } = {},
 ): EmbeddingClient {
   const url = openAiUrl(options.baseUrl ?? OPENROUTER_BASE_URL, 'embeddings');
@@ -47,6 +50,7 @@ export function createEmbeddingClient(
           signal: AbortSignal.timeout(options.timeoutMs ?? TIMEOUT_MS),
         }),
         delays,
+        options.request,
       );
       if (!response.ok) {
         const detail = await response.text().catch(() => '');
@@ -68,9 +72,15 @@ export function createEmbeddingClient(
 }
 
 /** Client configuré (`config.embedding`), ou `null` sans clé OpenRouter (recherche lexicale seule). */
-export function embeddingFromConfig(): EmbeddingClient | null {
-  const { embedding } = getConfig();
-  return embedding ? createEmbeddingClient(embedding.model, embedding.apiKey, { baseUrl: embedding.baseUrl, timeoutMs: embedding.timeoutMs }) : null;
+export function embeddingFromConfig(pool?: Pool): EmbeddingClient | null {
+  const config = getConfig();
+  const { embedding } = config;
+  if (!embedding) return null;
+  return createEmbeddingClient(embedding.model, embedding.apiKey, {
+    baseUrl: embedding.baseUrl,
+    timeoutMs: embedding.timeoutMs,
+    request: configuredFetch('embedding', config, pool),
+  });
 }
 
 /** Littéral pgvector (`[x,y,…]`) à caster en `halfvec`. */

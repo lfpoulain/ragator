@@ -6,6 +6,7 @@ import { MAX_HISTORY_TURNS, type Turn } from '../core/followup.js';
 import { resolveCollection } from '../core/collections.js';
 import type { Args } from './args.js';
 import { printAnswer } from './ask.js';
+import { applyStoredSettings } from '../settings.js';
 
 /**
  * `npm run chat` : conversation en terminal. L'historique (5 échanges) sert
@@ -34,6 +35,7 @@ export async function chat(pool: Pool, args: Args): Promise<number> {
         history = [];
         console.log('Historique effacé.');
       } else {
+        await applyStoredSettings(pool);
         const input: AnswerInput = { question, mode, history, ...(collection ? { collection } : {}) };
         const result = await repondre(pool, input);
         await logQuestion(pool, 'cli', input, { result });

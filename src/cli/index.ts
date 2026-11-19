@@ -65,14 +65,15 @@ const commands: Record<string, (args: Args) => Promise<number>> = {
       const minutes = args.int('--surveiller');
       const once = async () => {
         const started = Date.now();
-        const report = await updateCorpus(pool, { llm: enrichLlmFromConfig(), log: (line) => console.log(line) });
+        if (minutes !== undefined) await applyStoredSettings(pool);
+        const report = await updateCorpus(pool, { llm: enrichLlmFromConfig(pool), log: (line) => console.log(line) });
         console.log(
           `[${new Date().toLocaleTimeString('fr-FR')}] ${report.ingested.length} vidéo(s) ingérée(s), ${report.enriched} bloc(s) enrichi(s), ` +
             `${report.embedded} vecteur(s), ${report.failures.length} échec(s) — ${((Date.now() - started) / 1000).toFixed(0)} s`,
         );
         for (const note of report.notes) console.log(`  ${note}`);
         if (report.refused) console.error(`ARRÊT : ${report.refused.summary}`);
-        return report.failures.length > 0 || report.refused ? 1 : 0;
+        return report.state === 'done' ? 0 : 1;
       };
       if (minutes === undefined) return once();
       console.log(`Surveillance de ${getConfig().corpusDir} toutes les ${minutes} min (Ctrl+C pour arrêter).`);
@@ -100,7 +101,7 @@ const commands: Record<string, (args: Args) => Promise<number>> = {
 
   enrich: (args) =>
     withDatabase(async (pool) => {
-      const llm = enrichLlmFromConfig();
+      const llm = enrichLlmFromConfig(pool);
       if (!llm || !(await llm.available())) {
         console.error('Aucun modèle (mode à choisir dans Réglages) : rien à enrichir.');
         return 2;

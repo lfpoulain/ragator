@@ -6,8 +6,10 @@ import { AccountRefusedError } from '../providers/retry.js';
 import { embedPending } from './embed.js';
 import { enrichPending } from './enrich.js';
 import { ingestPaths } from './ingest.js';
+import { stats } from './stats.js';
 
 export interface UpdateReport {
+  state: 'done' | 'partial' | 'error';
   /** Fichiers nouveaux ou modifiés, ingérés. */
   ingested: string[];
   failures: Array<{ file: string; error: string }>;
@@ -42,7 +44,11 @@ export async function updateCorpus(
 ): Promise<UpdateReport> {
   const log = options.log ?? (() => {});
   const config = getConfig();
-  const report: UpdateReport = { ingested: [], failures: [], enriched: 0, embedded: 0, notes: [], refused: null };
+  const report: UpdateReport = { state: 'done', ingested: [], failures: [], enriched: 0, embedded: 0, notes: [], refused: null };
+  const partial = (note: string) => {
+    report.state = 'partial';
+    report.notes.push(note);
+  };
 
   const ingest = await ingestPaths(pool, [options.dir ?? config.corpusDir]);
   report.ingested = ingest.results.filter((r) => r.status === 'ingested').map((r) => r.videoId);
@@ -57,29 +63,37 @@ export async function updateCorpus(
       report.refused = enrich.refused;
       report.notes.push(`enrichissement arrêté : ${enrich.refused.message}`);
     }
-    if (enrich.failedGroups > 0) report.notes.push(`enrichissement : ${enrich.failedGroups} groupe(s) en échec, repris à la prochaine mise à jour`);
+    if (enrich.failedGroups || enrich.pendingChunks) {
+      partial(`enrichissement : ${enrich.pendingChunks} bloc(s) en attente, ${enrich.failedGroups} groupe(s) en échec`);
+    }
+  } else if (options.llm) {
+    const { rows } = await pool.query<{ n: string }>('SELECT count(*) AS n FROM chunks WHERE enrichment IS NULL');
+    const pending = Number(rows[0]!.n);
+    if (pending) partial(`LLM indisponible : ${pending} bloc(s) à enrichir`);
   } else {
     report.notes.push('enrichissement sauté : aucun LLM disponible');
   }
 
-  const embedder = options.embedder === undefined ? embeddingFromConfig() : options.embedder;
+  const embedder = options.embedder === undefined ? embeddingFromConfig(pool) : options.embedder;
   if (embedder) {
     try {
       log('vecteurs : textes manquants, puis index vectoriels s’ils manquent (plusieurs minutes pour un corpus complet)');
       const embed = await embedPending(pool, { embedder });
       report.embedded = embed.embedded;
       if (embed.vectorIndexCreated) log('index vectoriels construits');
-      if (!embed.complete) report.notes.push(`vecteurs : ${embed.pending} en attente`);
+      if (!embed.complete) partial(`vecteurs : ${embed.pending} en attente`);
     } catch (err) {
       if (err instanceof AccountRefusedError) {
         report.refused ??= err;
         report.notes.push(`vecteurs arrêtés : ${err.message}`);
       } else {
-        report.notes.push(`vecteurs sautés : ${err instanceof Error ? err.message : String(err)}`);
+        const { data } = await stats(pool);
+        partial(`vecteurs : ${data.embeddings.pending} en attente — ${err instanceof Error ? err.message : String(err)}`);
       }
     }
   } else {
     report.notes.push('vecteurs sautés : aucun encodeur (mode à choisir dans Réglages)');
   }
+  if (report.refused || report.failures.length > 0) report.state = 'error';
   return report;
 }

@@ -13,6 +13,9 @@ const TEST_DATABASE_URL =
   process.env.DATABASE_URL_TEST ?? 'postgres://ragator:ragator@127.0.0.1:15432/ragator_test';
 
 export const dbAvailable = await ensureTestDatabase(TEST_DATABASE_URL);
+if (!dbAvailable && process.env.RAGATOR_REQUIRE_TEST_DB === '1') {
+  throw new Error('PostgreSQL de test injoignable : les tests d’intégration sont obligatoires.');
+}
 
 export function getTestPool(): Pool {
   return getPool(TEST_DATABASE_URL);

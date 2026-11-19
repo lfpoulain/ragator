@@ -2,7 +2,7 @@
 #
 #   docker compose --profile local pull && docker compose --profile local up -d
 #                                    mode local : tous les modèles sur cette machine
-#                                    (carte NVIDIA de 16 Go ou plus), aucune clé, rien ne sort
+#                                    (carte NVIDIA de 16 Go ou plus, jeton Hugging Face pour Aplomb)
 #   docker compose pull && docker compose up -d
 #                                    Ragator seul : mode OpenRouter (clé), sans carte graphique
 #
@@ -27,9 +27,14 @@ services:
     container_name: ragator
     restart: unless-stopped
     ports:
-      # Sur un serveur ou un NAS, l'interface est joignable depuis le réseau local : définir un mot de passe
-      # dans Réglages. Pour la garder sur cette machine seulement : '127.0.0.1:3210:3210'.
-      - '3210:3210'
+      - target: 3210
+        published: '${RAGATOR_PORT:-3210}'
+        host_ip: '${RAGATOR_BIND_ADDRESS:-127.0.0.1}'
+    environment:
+      # La même adresse gouverne la publication Docker et l'exigence d'un mot de passe côté serveur.
+      RAGATOR_BIND_ADDRESS: '${RAGATOR_BIND_ADDRESS:-127.0.0.1}'
+      RAGATOR_PASSWORD: '${RAGATOR_PASSWORD:-}'
+      RAGATOR_HOSTS: '${RAGATOR_HOSTS:-}'
     volumes:
       - ragator-data:/data
       # Facultatif : un dossier de fichiers video--<id>.json (yt2md : son dossier outputs/), lu à chaque mise à jour.
@@ -39,8 +44,8 @@ services:
     stop_grace_period: 30s
 
   # ── Mode local (profil « local ») : trois serveurs de modèles, joints par Ragator dans ce réseau ──────────
-  # Modèles téléchargés au premier démarrage dans le volume ragator-models (~17 Go), puis plus aucun accès
-  # extérieur. Places (-np) et contexte (-c) du LLM : Ragator suppose 8 et 81920 (voir README).
+  # Modèles téléchargés au premier démarrage dans le volume ragator-models (~17 Go).
+  # Places (-np) et contexte (-c) du LLM : Ragator suppose 8 et 81920 (voir README).
 
   # Qwen 3.5 9B (tête MTP intégrée), réponses et enrichissement : carte graphique, ~11 Go.
   llm:
@@ -48,6 +53,8 @@ services:
     profiles: [local]
     image: ghcr.io/ggml-org/llama.cpp:server-cuda-b11515
     restart: unless-stopped
+    healthcheck:
+      start_period: 30m
     environment:
       LLAMA_CACHE: /models/llama
       # Qwen 3.5 réfléchit par défaut : coupé ici (Ragator l'en dispense aussi à chaque requête).
@@ -79,6 +86,8 @@ services:
     profiles: [local]
     image: ghcr.io/ggml-org/llama.cpp:server-b11515
     restart: unless-stopped
+    healthcheck:
+      start_period: 30m
     environment:
       LLAMA_CACHE: /models/llama
     command: >

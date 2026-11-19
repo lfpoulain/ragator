@@ -43,11 +43,14 @@ export interface IngestReport {
   failures: Array<{ file: string; error: string }>;
 }
 
+/** yt2md écrit aussi un fichier de provenance video--<id>.local.json à côté de chaque vidéo. */
+export const CORPUS_FILENAME = /^video--[A-Za-z0-9_-]{11}\.json$/;
+
 export function listCorpusFiles(path: string): string[] {
   const stat = statSync(path);
   if (stat.isDirectory()) {
     return readdirSync(path)
-      .filter((name) => /^video--.+\.json$/.test(name))
+      .filter((name) => CORPUS_FILENAME.test(name))
       .sort()
       .map((name) => join(path, name));
   }

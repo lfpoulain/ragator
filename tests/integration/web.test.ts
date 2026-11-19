@@ -1,4 +1,4 @@
-import { mkdtempSync, copyFileSync, readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, copyFileSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
@@ -35,8 +35,10 @@ import { dbAvailable, FIXTURES_DIR, getTestPool, resetDatabase, setupDatabase } 
     const dir = mkdtempSync(join(tmpdir(), 'ragator-update-'));
     const [first, second] = readdirSync(FIXTURES_DIR).filter((f) => f.endsWith('.json'));
     copyFileSync(join(FIXTURES_DIR, first!), join(dir, first!));
+    writeFileSync(join(dir, first!.replace(/\.json$/, '.local.json')), JSON.stringify({ revision: 'test' }));
     const one = await updateCorpus(pool, { dir, llm: null, embedder: null });
     expect(one.ingested).toHaveLength(1);
+    expect(one).toMatchObject({ state: 'done', failures: [] });
     expect(one.notes.join(' ')).toContain('enrichissement sauté');
     // Une nouvelle vidéo arrive : seule elle est ingérée.
     copyFileSync(join(FIXTURES_DIR, second!), join(dir, second!));
@@ -122,6 +124,7 @@ import { dbAvailable, FIXTURES_DIR, getTestPool, resetDatabase, setupDatabase } 
     const first = (await (await post('/api/admin/upload', { name: 'nimporte-quoi.json', content })).json()) as { ok: boolean; status: string; videoId: string };
     expect(first).toMatchObject({ ok: true, status: 'nouvelle' });
     expect(readdirSync(adminDir)).toEqual([`video--${first.videoId}.json`]);
+    writeFileSync(join(adminDir, `video--${first.videoId}.local.json`), JSON.stringify({ revision: 'test' }));
     expect(((await (await post('/api/admin/upload', { name: 'bis.json', content })).json()) as { status: string }).status).toBe('identique');
 
     expect((await post('/api/admin/update', {})).status).toBe(202);

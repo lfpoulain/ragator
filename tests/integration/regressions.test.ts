@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import { request } from 'node:http';
 import type { Pool } from 'pg';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { EMBEDDING_COLUMN_DIMS } from '../../src/config.js';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { EMBEDDING_COLUMN_DIMS, getStoredSettings, setStoredSettings } from '../../src/config.js';
 import { repondre } from '../../src/core/answer.js';
 import { embedPending, resetEmbeddings } from '../../src/core/embed.js';
 import { resolveFollowUp } from '../../src/core/followup.js';
@@ -19,6 +19,7 @@ import type { EmbeddingClient } from '../../src/providers/embedding.js';
 import type { LlmClient } from '../../src/providers/llm.js';
 import { createAdmin } from '../../src/web/admin.js';
 import { createWebServer } from '../../src/web/server.js';
+import { applyStoredSettings, saveSettings } from '../../src/settings.js';
 import { dbAvailable, getTestPool, readFixture, resetDatabase, setupDatabase } from './helpers.js';
 
 const OLD = 'aaaaaaaaaaa';
@@ -59,6 +60,32 @@ function signal(): { promise: Promise<void>; resolve: () => void } {
   afterAll(async () => {
     await closePool(pool);
     for (const path of directories) rmSync(path, { recursive: true, force: true });
+  });
+
+  it('exige un mot de passe avant toute publication réseau et empêche de le retirer à chaud', async () => {
+    vi.stubEnv('RAGATOR_BIND_ADDRESS', '0.0.0.0');
+    vi.stubEnv('RAGATOR_PASSWORD', '');
+    const previous = getStoredSettings();
+    try {
+      await applyStoredSettings(pool);
+      expect(() => createWebServer(pool)).toThrow('RAGATOR_PASSWORD');
+      await Promise.all([saveSettings(pool, { password: 'initial' }), saveSettings(pool, { llmModel: 'test/modele' })]);
+      expect(await applyStoredSettings(pool)).toMatchObject({ password: 'initial', llmModel: 'test/modele' });
+      const server = createWebServer(pool);
+      await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+      try {
+        const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/settings`;
+        const headers = { Authorization: `Basic ${Buffer.from('user:initial').toString('base64')}`, 'Content-Type': 'application/json' };
+        expect((await fetch(url, { method: 'POST', headers, body: JSON.stringify({ password: '' }) })).status).toBe(400);
+        expect((await fetch(url)).status).toBe(401);
+        expect((await fetch(url, { headers })).status).toBe(200);
+      } finally {
+        await new Promise<void>((resolve) => server.close(() => resolve()));
+      }
+    } finally {
+      setStoredSettings(previous);
+      vi.unstubAllEnvs();
+    }
   });
 
   it('exige le mot de passe en local et derrière un proxy, avec une sonde dédiée', async () => {

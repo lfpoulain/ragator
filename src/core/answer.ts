@@ -465,8 +465,8 @@ async function speculatePrecise(
 export async function repondre(pool: Pool, input: AnswerInput, options: AnswerOptions = {}): Promise<AnswerResult> {
   const startedAt = Date.now();
   const mode = input.mode ?? 'détaillé';
-  const llm = mode === 'extractif' ? null : options.llm !== undefined ? options.llm : llmFromConfig();
-  const judge = options.judge !== undefined ? options.judge : judgeFromConfig();
+  const llm = mode === 'extractif' ? null : options.llm !== undefined ? options.llm : llmFromConfig(pool);
+  const judge = options.judge !== undefined ? options.judge : judgeFromConfig(pool);
   const settings = {
     mode,
     maxEvidence: input.maxEvidence === undefined ? undefined : Math.max(1, Math.min(input.maxEvidence, 100)),
@@ -576,7 +576,7 @@ export async function repondre(pool: Pool, input: AnswerInput, options: AnswerOp
           threshold,
           routed.collection ?? null,
           // Candidates par le sens : même encodeur que la recherche.
-          { embedder: options.embedder === undefined ? embeddingFromConfig() : options.embedder, hypothetical: analysis?.hypothetical ?? null },
+          { embedder: options.embedder === undefined ? embeddingFromConfig(pool) : options.embedder, hypothetical: analysis?.hypothetical ?? null },
           (vidéos) => progress({ étape: 'jugement', vidéos }),
         ).catch(() => null)
       : null;

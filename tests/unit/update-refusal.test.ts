@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Pool } from 'pg';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { OPENROUTER_BASE_URL } from '../../src/config.js';
+import { getStoredSettings, OPENROUTER_BASE_URL, setStoredSettings } from '../../src/config.js';
 import { embedPending } from '../../src/core/embed.js';
 import { enrichPending, type EnrichResult } from '../../src/core/enrich.js';
 import { updateCorpus } from '../../src/core/update.js';
@@ -16,6 +16,7 @@ import { createAdmin } from '../../src/web/admin.js';
 vi.mock('../../src/core/ingest.js', () => ({ ingestPaths: vi.fn(async () => ({ results: [], failures: [] })) }));
 vi.mock('../../src/core/enrich.js', () => ({ enrichPending: vi.fn() }));
 vi.mock('../../src/core/embed.js', () => ({ embedPending: vi.fn() }));
+vi.mock('../../src/core/stats.js', () => ({ stats: async () => ({ data: { embeddings: { pending: 7 } } }) }));
 // L'administration prend le LLM de la configuration : un faux, pour ne dépendre d'aucune clé locale.
 vi.mock('../../src/providers/llm.js', () => ({ llmFromConfig: () => llm, enrichLlmFromConfig: () => llm }));
 
@@ -51,12 +52,43 @@ describe('mise à jour face à un compte refusé', () => {
     expect(report.notes.some((n) => n.startsWith('vecteurs sautés'))).toBe(false);
   });
 
-  it('une autre erreur des vecteurs reste une note, sans refus', async () => {
+  it('signale les vecteurs restants après un incident d’encodage', async () => {
     vi.mocked(enrichPending).mockResolvedValue(enrichResult());
     vi.mocked(embedPending).mockRejectedValue(new Error('un autre encodage est déjà en cours'));
     const report = await updateCorpus(pool, { dir: '.', llm, embedder });
-    expect(report.refused).toBeNull();
-    expect(report.notes).toEqual(['vecteurs sautés : un autre encodage est déjà en cours']);
+    expect(report).toMatchObject({ state: 'partial', refused: null });
+    expect(report.notes).toEqual(['vecteurs : 7 en attente — un autre encodage est déjà en cours']);
+  });
+
+  it('signale les blocs en attente si le LLM configuré est indisponible', async () => {
+    const db = { query: async () => ({ rows: [{ n: '4' }] }) } as unknown as Pool;
+    const report = await updateCorpus(db, { dir: '.', llm: { ...llm, available: async () => false }, embedder: null });
+    expect(report.state).toBe('partial');
+    expect(report.notes).toContain('LLM indisponible : 4 bloc(s) à enrichir');
+  });
+
+  it('reprend les travaux partiels en local et annule le minuteur à la fermeture', async () => {
+    const previous = getStoredSettings();
+    setStoredSettings({ mode: 'local' });
+    vi.useFakeTimers();
+    const admin = createAdmin(pool, { corpusDir: '.' });
+    try {
+      vi.mocked(enrichPending).mockResolvedValue(enrichResult({ failedGroups: 1, pendingChunks: 4 }));
+      vi.mocked(embedPending).mockResolvedValue({ model: 'm', embedded: 0, pending: 0, complete: true, vectorIndexCreated: false, indexVersion: 'v' });
+      admin.startUpdate();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(admin.job.state).toBe('partial');
+      expect(admin.job.summary).toContain('4 bloc(s) en attente');
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(enrichPending).toHaveBeenCalledTimes(2);
+      admin.close();
+      await vi.advanceTimersByTimeAsync(120_000);
+      expect(enrichPending).toHaveBeenCalledTimes(2);
+    } finally {
+      admin.close();
+      vi.useRealTimers();
+      setStoredSettings(previous);
+    }
   });
 
   it('l’administration passe en erreur, avec la cause en résumé et au journal', async () => {
