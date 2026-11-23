@@ -12,6 +12,7 @@ import { MAX_TURN_SCENES, sceneRefs, type Turn } from './followup.js';
 import { evidenceBudgetChars, passagesForSpans } from './passages.js';
 import { entrySource, extractiveAnswer, reference, type AnswerSource } from './sources.js';
 import { otherProjectEpisodes } from './projects.js';
+import { mentionsTimeReferent, sharedTimeSource, timeReferent } from './scene-time.js';
 
 interface Scene {
   source: AnswerSource;
@@ -25,12 +26,6 @@ interface Scene {
 // ou « à ce moment-là » désignent le passage. Une nouvelle recherche garde tout le catalogue.
 const SCENE_REFERENCE = /\b(?:laquelle|lequel|lesquelles|lesquels|celle ci|celui ci|l autre|ces (?:deux|scenes|extraits|passages)|(?:cette|cet|ce) (?:scene|passage|extrait|moment|plan|operation|etape|geste)|a ce moment la|tout a l heure|plus haut|precedemment)\b/;
 const TIMECODE = /\b(?:minutage|timecode|horodatage)\b/;
-const ONLY_TIME = /\b(?:minutage|timecode|horodatage|quel (?:moment|instant)|quelle (?:minute|seconde))\b(?: (?:exact|exactement|precis|precisement|deja|stp|svp|de|pour|ce|cet|cette|la|le|meme|scene|moment|passage|extrait|plan))*$/;
-const TIME_PREFIX = /^(?:(?:et|alors|deja|a|c|est|etait|le|la|son|sa|ce|vers|quel|quelle|tu|vous|peux|pourrais|pouvez|pourriez|me|nous|redire|redis|redonne[rs]?|donne[rs]?|rappelle[rs]?|rappeler|precise[rs]?|indique[rs]?)\s+)*$/;
-function asksOnlyTime(text: string): boolean {
-  const suffix = ONLY_TIME.exec(text);
-  return suffix !== null && TIME_PREFIX.test(text.slice(0, suffix.index));
-}
 const BARE_REFERENCE = /^(?:et )?(?:(?:dans|sur|pour) )?(?:celle ci|celui ci|celle la|ce passage|cette scene|cet extrait|laquelle|lequel)$/;
 const COMPARE = /\b(?:laquelle|lequel|lesquelles|lesquels|compare\w* (?:ces|les|leurs) (?:deux|scenes|passages)|entre ces (?:deux|scenes))\b/;
 const ORDINAL = /^(?:et )?(?:(?:dans|pour) )?(?:la|le) (premiere?|premier|deuxieme|seconde?|troisieme)(?: (?:scene|extrait|passage|video))?$/;
@@ -39,10 +34,10 @@ const choiceReply = (text: string) => text.split(' ').length <= 12 && !/\b(?:com
 const shortDetail = (text: string) => /^(?:(?:a|avec|de|en) )?(?:quelle?s?|quels?|combien)\b/.test(text) &&
   text.split(' ').length <= 5 && !/\b(?:videos?|episodes?|fois|vous|tu|ils|elles|nous|est|sont|faut)\b/.test(text);
 
-function sceneQuestion(question: string, text: string, history: Turn[]): boolean {
+function sceneQuestion(question: string, text: string, history: Turn[], timeOnly: boolean): boolean {
   if (!history.some(t => t.scenes?.length) || extractVideoReference(question)) return false;
   if (/\b(?:autre sujet|nouvelle question|autres videos|ailleurs dans|tout le (?:corpus|catalogue)|toute la chaine|(?:laquelle|lequel|lesquelles|lesquels) de (?:leurs|toutes les|tous les) (?:videos|episodes|projets))\b/.test(text)) return false;
-  if (SCENE_REFERENCE.test(text) || ORDINAL.test(text) || TIMECODE.test(text) || ONLY_TIME.test(text) ||
+  if (timeOnly || SCENE_REFERENCE.test(text) || ORDINAL.test(text) || TIMECODE.test(text) ||
     history.at(-1)?.choosingScene && choiceReply(text)) return true;
   // Les relances d'un décompte (« et de Parkside ? ») conservent leur sémantique de décompte.
   if (classify(history.at(-1)!.question).route === 'lister' || classify(question).route === 'lister') return false;
@@ -209,15 +204,16 @@ export async function answerFromScenes(pool: Pool, question: string, mode: Answe
   const offered = previous.offeredEpisodeSearch === true;
   const accept = offered && /^(?:oui|ok|okay|d accord|vas y|allons y|cherche)(?: (?:oui|merci|vas y|cherche|bien sur|volontiers|stp|s il te plait|dans les autres episodes))*$/.test(text);
   const decline = offered && /^(?:non|non merci|pas maintenant|reste ici|une autre fois)$/.test(text);
-  if (!accept && !decline && !sceneQuestion(question, text, history)) return null;
+  const picking = previous.choosingScene && choiceReply(text);
+  const intent = picking ? previous.question : question;
+  const target = timeReferent(picking ? normalize(intent) : text);
+  const timeOnly = target !== null;
+  if (!accept && !decline && !sceneQuestion(question, text, history, timeOnly)) return null;
   const start = Date.now();
   progress({ étape: 'recherche' });
   const memory = await readScenes(pool, history, collection);
   const recent = memory.scenes.filter(s => s.turn === history.length - 1);
   const searchMs = Date.now() - start;
-  const picking = previous.choosingScene && choiceReply(text);
-  const intent = picking ? previous.question : question;
-  const timeOnly = asksOnlyTime(normalize(intent));
   let usedModel: string | null = null;
   let issue: string | null = null;
   const result = (selected: Scene[], sources: AnswerSource[], answer: string, refused: boolean, route: 'chercher' | 'clarifier' = 'chercher', claims: AnswerResult['claims'] = [], considered = selected): AnswerResult => ({
@@ -234,6 +230,10 @@ export async function answerFromScenes(pool: Pool, question: string, mode: Answe
     return result(choices, choices.map(s => s.source), answer, true, 'clarifier');
   };
   if (!memory.scenes.length) return clarify();
+  if (timeOnly && !picking && previous.scenes?.some(ref => !recent.some(({ source }) =>
+    ref.videoId === source.videoId && ref.sourceId === source.sourceId && ref.startS === source.startS))) return clarify();
+  if (target && !mentionsTimeReferent(target, previous.question) &&
+      !recent.some(s => mentionsTimeReferent(target, s.source.excerpt))) return null;
   if (accept || decline) {
     if (!recent.length) return clarify();
     const anchors = recent.map(s => s.source);
@@ -266,13 +266,15 @@ export async function answerFromScenes(pool: Pool, question: string, mode: Answe
   const timestamp = picking && /\b(?:\d{1,3}:[0-5]\d:|\d{1,3}:)[0-5]\d\b/.exec(question)?.[0];
   if (timestamp) {
     const matches = recent.filter(s => s.source.startS === parseTimestamp(timestamp));
-    selected = matches.length === 1 ? matches : [];
+    selected = timeOnly || matches.length === 1 ? matches : [];
   } else if (comparing && alternatives.length <= 6) {
     selected = alternatives;
   } else if (ordinal) {
     const index = ordinal.startsWith('prem') ? 0 : ordinal === 'troisieme' ? 2 : 1;
     selected = recent.slice(index, index + 1);
-  } else if (timeOnly && !picking || BARE_REFERENCE.test(text)) {
+  } else if (timeOnly && !picking) {
+    selected = recent;
+  } else if (BARE_REFERENCE.test(text)) {
     selected = recent.length === 1 ? recent : [];
   } else if (!picking && recent.length > 1 && recent.length <= 6 && SCENE_REFERENCE.test(text) &&
     recent.every(s => s.source.videoId === recent[0]!.source.videoId) && contentTokens(tokenizeText(question).tokens).length >= 3) {
@@ -297,8 +299,13 @@ export async function answerFromScenes(pool: Pool, question: string, mode: Answe
   } else selected = recent.length === 1 ? recent : [];
   if (!selected.length) return clarify();
   const anchors = selected.map(s => s.source);
+  if (timeOnly) {
+    const source = sharedTimeSource(anchors);
+    if (!source) return clarify();
+    return result(selected, [source], reference(source) + ' — « ' + source.title + ' »', false);
+  }
   const locations = anchors.map(s => `« ${s.title} » ${reference(s)}`).join('\n');
-  if (timeOnly || !picking && (BARE_REFERENCE.test(text) || ordinal)) return result(selected, anchors, locations, false);
+  if (!picking && (BARE_REFERENCE.test(text) || ordinal)) return result(selected, anchors, locations, false);
   if (!llm) {
     if (mode !== 'extractif') issue = 'LLM indisponible : extraits des scènes citées';
     return result(selected, anchors, extractiveAnswer(anchors, null), false);

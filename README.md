@@ -339,6 +339,7 @@ flowchart LR
 
 - **La recherche** combine un index lexical BM25 (mots exacts, marques, noms propres, correction orthographique) et une recherche par vecteurs (sens), sur les phrases et sur des blocs de 30 s enrichis. Les listes sont fusionnées (RRF).
 - **Les citations** renvoient aux lignes numérotées des extraits. Pour les réponses par vidéo, le rédacteur recopie la preuve et Ragator vérifie qu’elle figure dans les lignes de cette vidéo avant de l’afficher.
+- **Les relances de minutage** réutilisent les scènes citées dans le chat. Si la parole et l’image couvrent le même instant dans la même vidéo, Ragator donne un seul lien à cet instant. Si les passages sont distincts, il demande lequel revoir.
 - **Les questions sur un geste** distinguent le geste montré, l’objet utilisé et sa marque. Pour une question précise, si seule une partie est établie, Ragator peut relire une fois les passages voisins et signaler ce qui reste incertain.
 - **Les questions générales** passent par un modèle de *décision* (Aplomb en local, [JEV](https://openrouter.ai/typesafe/jev-1.13) par OpenRouter) qui donne pour chaque vidéo candidate la probabilité qu'elle réponde à la question, prise au mot.
 

@@ -96,6 +96,81 @@ const MANOIR = 'cKRqOdTi5yE';
   const manorScene = { videoId: MANOIR, sourceId: MANOIR + ':t00017', startS: 39 };
   const compared = { question: 'Compare les deux extraits.', videoIds: [MANOIR, GLACIERE], scenes: [manorScene, coolerScene] };
 
+  it('donne un seul minutage pour la parole et le plan synchrones, et garde les deux preuves en mémoire', async () => {
+    const speech = { videoId: GLACIERE, sourceId: GLACIERE + ':t00087', startS: 316 };
+    const scenes = [coolerScene, speech];
+    const llm = fakeLlm('aucun appel attendu');
+    const history = [{ question: 'Comment règlent-ils le convertisseur ?', videoIds: [GLACIERE], scenes }];
+    for (const question of ['Tu me redonnes le minutage de cette scène ?', 'À quel moment montrent-ils ce réglage ?', 'À quelle minute on les voit faire ça ?']) {
+      const result = await repondre(pool, { question, history }, { llm });
+      expect(result.route).toBe('chercher');
+      expect(result.refused).toBe(false);
+      expect(result.sources).toMatchObject([coolerScene]);
+      expect(result.answer.match(/05:16/g)).toHaveLength(1);
+      expect(turnOf(result).scenes).toEqual(scenes);
+      expect(result.model).toBeNull();
+    }
+    expect(llm.calls).toBe(0);
+  });
+
+  it('cite le début présent dans les deux intervalles, quel que soit l’ordre des sources', async () => {
+    const speech = { videoId: GLACIERE, sourceId: GLACIERE + ':t00019', startS: 70 };
+    const plan = { videoId: GLACIERE, sourceId: GLACIERE + ':v00021', startS: 63 };
+    for (const scenes of [[speech, plan], [plan, speech]]) {
+      const result = await repondre(pool, { question: 'Tu peux me rappeler le timecode de ce passage ?', mode: 'extractif',
+        history: [{ question: 'Que comparent-ils ?', videoIds: [GLACIERE], scenes }] });
+      expect(result.route).toBe('chercher');
+      expect(result.sources).toMatchObject([speech]);
+      expect(result.answer).toContain('01:10');
+      expect(turnOf(result).scenes).toEqual(scenes);
+    }
+  });
+
+  it('rattache le nom du geste au verbe inversé du tour précédent même si la citation donne seulement la valeur', async () => {
+    const speech = { videoId: GLACIERE, sourceId: GLACIERE + ':t00089', startS: 326 };
+    const history = [{ question: 'À quelle tension règlent-ils la sortie ?', videoIds: [GLACIERE], scenes: [speech] }];
+    const llm = fakeLlm('aucun appel attendu');
+    const result = await repondre(pool, { question: 'À quel moment montrent-ils ce réglage ?', history }, { llm });
+    expect(result.route).toBe('chercher');
+    expect(result.retrieval).toBe('scènes citées');
+    expect(result.sources).toMatchObject([speech]);
+    expect(result.answer).toContain('05:26');
+    expect(llm.calls).toBe(0);
+  });
+
+  it('distingue des plans qui se touchent, deux répliques successives dans un plan et deux vidéos à la même seconde', async () => {
+    const scene = (videoId: string, id: string, startS: number) => ({ videoId, sourceId: videoId + ':' + id, startS });
+    for (const scenes of [
+      [coolerScene, scene(GLACIERE, 't00088', 322)],
+      [scene(GLACIERE, 'v00022', 71), scene(GLACIERE, 't00020', 72), scene(GLACIERE, 't00021', 75)],
+      [scene(GLACIERE, 't00001', 0), scene(MANOIR, 'v00001', 0)],
+    ]) {
+      const result = await repondre(pool, { question: 'À quel instant ?', mode: 'extractif',
+        history: [{ question: 'Quels passages ?', videoIds: [...new Set(scenes.map(s => s.videoId))], scenes }] });
+      expect(result.route).toBe('clarifier');
+      expect(turnOf(result).scenes).toEqual(scenes);
+    }
+  });
+
+  it('laisse une question de durée ou un nouvel objet suivre sa propre recherche', async () => {
+    const history = [{ question: 'Comment règlent-ils le convertisseur de cette collection ?', videoIds: [GLACIERE], scenes: [coolerScene] }];
+    for (const question of ['Combien de temps dure la charge de la batterie ?', 'À quel moment montrent-ils ce hamac ?', 'À quel moment montrent-ils ce collage ?']) {
+      const result = await repondre(pool, { question, mode: 'extractif', history }, { llm: null, embedder: null, analyzer: null });
+      expect(result.retrieval).not.toBe('scènes citées');
+    }
+  });
+
+  it('choisir le minutage commun après une clarification conserve le plan et la parole de cette vidéo', async () => {
+    const speech = { videoId: GLACIERE, sourceId: GLACIERE + ':t00087', startS: 316 };
+    const original = { ...compared, scenes: [manorScene, coolerScene, speech] };
+    const ask = await repondre(pool, { question: 'À quel moment ?', mode: 'extractif', history: [original] });
+    expect(ask.route).toBe('clarifier');
+    const picked = await repondre(pool, { question: 'Celle à 05:16.', mode: 'extractif', history: [original, turnOf(ask)] });
+    expect(picked.route).toBe('chercher');
+    expect(picked.sources).toMatchObject([coolerScene]);
+    expect(turnOf(picked).scenes).toEqual([coolerScene, speech]);
+  });
+
   it('une comparaison garde seulement le minutage qui justifie la réponse à « laquelle »', async () => {
     const llm = { model: 'choix de test', calls: 0, available: async () => true, async chat(system: string) {
       this.calls++;
@@ -233,5 +308,10 @@ const MANOIR = 'cKRqOdTi5yE';
       expect(answer.route).toBe('clarifier');
       expect(answer.sources).toEqual([]);
     }
+    const stale = { ...coolerScene, startS: 17 };
+    const partial = await repondre(pool, { question: 'À quel moment exactement ?', mode: 'extractif',
+      history: [{ ...compared, scenes: [stale, manorScene] }] });
+    expect(partial.route).toBe('clarifier');
+    expect(partial.sources).toMatchObject([manorScene]);
   });
 });
