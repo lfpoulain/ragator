@@ -582,9 +582,9 @@ function fillList(ul, items, ctx, perItem = false) {
   });
   if (rows || (perItem && ids.some(Boolean))) ul.classList.add('vlist');
 }
-function renderBlocks(target, blocks, ctx) {
+function renderBlocks(target, blocks, ctx, perItem = false) {
   let host = target, ul = null, items = [];
-  const close = () => { if (ul) fillList(ul, items, ctx); ul = null; items = []; };
+  const close = () => { if (ul) fillList(ul, items, ctx, perItem); ul = null; items = []; };
   for (const b of blocks) {
     if (b.kind === 'li') { if (!ul) { ul = el('ul'); host.append(ul); } items.push(b); continue; }
     close();
@@ -684,6 +684,7 @@ function renderAnswer(box, data) {
     corpus: 'lecture exhaustive du corpus',
     chronologique: 'lecture du corpus, puis juge moment par moment',
     'série': 'vidéos de la série lues en entier',
+    'scènes citées': 'relecture des scènes citées',
   };
   const parts = [produced, RETRIEVAL[data.retrieval], data.claims?.some((c) => c.relevance !== undefined) ? 'vidéos triées par ' + (data.judge || 'JEV') : null, (data.timings.totalMs / 1000).toFixed(1).replace('.', ',') + ' s'];
   for (const p of parts) if (p) meta.append(el('span', null, p));
@@ -745,16 +746,16 @@ async function ask(question) {
   const tick = () => { label.textContent = step + ' ' + Math.round((Date.now() - started) / 1000) + ' s'; };
   const timer = setInterval(tick, 1000);
   // Lignes déjà rédigées (questions générales), affichées avant la réponse finale qui les remplace, triée.
-  const partial = el('ul', 'partial'); let written = 0;
+  const partial = el('div', 'answer partial');
+  const written = new Set();
   const onProgress = (event) => {
     if (STEPS[event.étape]) step = STEPS[event.étape];
     else if (event.étape === 'jugement') step = 'Tri de ' + event.vidéos + ' vidéos candidates…';
     else if (event.étape === 'rédaction') step = 'Rédaction (' + plural(event.lots, 'lot') + ' de vidéos)…';
     else if (event.étape === 'lignes') {
-      const items = parseAnswer(event.answer).filter((b) => b.kind === 'li');
-      following(() => { fillList(partial, items, contextOf(event.sources, null), true); if (!partial.isConnected) box.append(partial); });
-      written += items.length;
-      step = 'Rédaction : ' + plural(written, 'vidéo') + ' décrite' + (written > 1 ? 's' : '') + '…';
+      following(() => { renderBlocks(partial, parseAnswer(event.answer), contextOf(event.sources, null), true); if (!partial.isConnected) box.append(partial); });
+      for (const source of event.sources) written.add(source.videoId);
+      step = 'Rédaction : ' + plural(written.size, 'vidéo') + ' décrite' + (written.size > 1 ? 's' : '') + '…';
     }
     tick();
   };
@@ -764,7 +765,7 @@ async function ask(question) {
     const data = (await askStream(payload, onProgress)) ?? (await api('/api/ask', payload));
     if (data.resolvedQuestion !== data.question) q.append(el('small', null, 'compris : ' + data.resolvedQuestion));
     renderAnswer(box, data);
-    history = [...history, data.turn].slice(-5);
+    if (turn.isConnected) history = [...history, data.turn].slice(-5);
   } catch (err) {
     box.textContent = '';
     const failed = el('div', 'failed'); failed.append(el('div', 'warn', 'Erreur : ' + err.message));
@@ -778,7 +779,8 @@ const grow = () => { const t = $('question'); t.style.height = 'auto'; t.style.h
 $('question').addEventListener('input', grow);
 $('ask').onsubmit = (e) => { e.preventDefault(); const v = $('question').value.trim(); if (!v || $('send').disabled) return; $('question').value = ''; grow(); ask(v); };
 $('question').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('ask').requestSubmit(); } });
-$('reset').onclick = () => { history = []; $('thread').textContent = ''; $('search').classList.remove('started'); window.scrollTo(0, 0); $('question').focus(); };
+function resetChat() { history = []; $('thread').textContent = ''; $('search').classList.remove('started'); }
+$('reset').onclick = () => { resetChat(); window.scrollTo(0, 0); $('question').focus(); };
 // « / » : revenir à la question depuis n'importe où dans la recherche.
 document.addEventListener('keydown', (e) => {
   if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || $('search').hidden) return;
@@ -1009,7 +1011,7 @@ function showCorpus() {
   const years = stat?.dateRange ? ' · ' + (stat.dateRange.from || '?').slice(0, 4) + '–' + (stat.dateRange.to || '?').slice(0, 4) : '';
   $('corpus').textContent = name + (stat ? ' · ' + num(stat.videos) + ' vidéos' + years : '');
 }
-$('collection').onchange = () => { try { localStorage.setItem('ragator-collection', $('collection').value); } catch {} showCorpus(); };
+$('collection').onchange = () => { resetChat(); try { localStorage.setItem('ragator-collection', $('collection').value); } catch {} showCorpus(); };
 api('/api/stats').then((s) => { stat = s; showCorpus(); }).catch(() => {});
 api('/api/collections').then((r) => {
   collections = r.collections;

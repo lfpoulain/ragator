@@ -4,6 +4,7 @@ import { closePool } from '../../src/db/pool.js';
 import { ingestPaths } from '../../src/core/ingest.js';
 import { listerVideos } from '../../src/core/list-videos.js';
 import { chercher } from '../../src/core/search.js';
+import { buildPassages } from '../../src/core/passages.js';
 import { chercherPlan } from '../../src/core/search-plans.js';
 import { lireContexte } from '../../src/core/read-context.js';
 import { chercherInfosVideo } from '../../src/core/video-info.js';
@@ -29,6 +30,19 @@ import {
 
   afterAll(async () => {
     await closePool(pool);
+  });
+
+  it('un plan déjà commencé au début de la fenêtre garde la suite de la scène dans le passage', async () => {
+    const videoId = 'Gu8bnHQaG5s';
+    const frame = (id: string, startS: number, endS: number) => ({ sourceId: `${videoId}:${id}`, kind: 'visuel' as const, startS, endS, text: '', uncertainties: [] });
+    const opening = frame('v00033', 179, 197);
+    const action = frame('v00045', 257, 270);
+    const [passage] = await buildPassages(pool, [{
+      videoId, title: 'Glacière', publishedAt: null, startS: 190, endS: 310, windowId: 0, score: 1,
+      bestEntry: opening, evidence: [opening, action], windowText: '', link: '',
+    }], Infinity, undefined, 'complet');
+    expect(passage).toMatchObject({ startS: 190, endS: 280 });
+    expect(passage!.entries.map((e) => e.sourceId)).toEqual(expect.arrayContaining([opening.sourceId, action.sourceId]));
   });
 
   it('« nordvpn » scope paroles : 9 entrées, première à 81 s, lien à 78 s', async () => {
@@ -73,6 +87,12 @@ import {
     expect(resolved.canonical).toBe('peltier');
     const page = await listerVideos(pool, { term: 'peltie', scope: 'tout' });
     expect(page.data.totalEntries).toBe(6);
+  });
+
+  it('retrouve la ligne Peltier avec une faute initiale et sans vecteurs', async () => {
+    const page = await chercher(pool, { query: 'xeltier' }, { embedder: null, enrichment: false });
+    expect(page.data.results[0]?.videoId).toBe('Gu8bnHQaG5s');
+    expect(page.data.results[0]?.evidence.some((entry) => /peltier/i.test(entry.text))).toBe(true);
   });
 
   it('terme inconnu : réponse vide explicite, jamais une liste partielle', async () => {

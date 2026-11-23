@@ -9,9 +9,8 @@ import { printAnswer } from './ask.js';
 import { applyStoredSettings } from '../settings.js';
 
 /**
- * `npm run chat` : conversation en terminal. L'historique (5 échanges) sert
- * seulement à résoudre les relances (« et dans cette vidéo ? ») ; il vit en
- * mémoire et disparaît avec la session ou `/reset`.
+ * `npm run chat` conserve en mémoire les vidéos et les scènes citées des cinq derniers
+ * échanges. La fin de la session ou `/reset` efface ces références.
  */
 export async function chat(pool: Pool, args: Args): Promise<number> {
   const mode = args.has('--detaille') ? 'détaillé' : 'court';

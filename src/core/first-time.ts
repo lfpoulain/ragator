@@ -3,12 +3,17 @@ import { getMetaString } from '../db/meta.js';
 import { readSnapshot, type Db } from '../db/pool.js';
 import { vectorLiteral, type EmbeddingClient } from '../providers/embedding.js';
 import type { RelevanceJudge } from '../providers/judge.js';
-import { renderPassage } from '../prompts/answer.js';
+import { OCCURRENCE_PROMPT, promptLine, renderPassage } from '../prompts/answer.js';
+import type { LlmClient } from '../providers/llm.js';
 import type { RequiredTerm } from './analyze.js';
-import { passagesForSpans, type Passage, type PassageSpan } from './passages.js';
+import { evidenceBudgetChars, passagesForSpans, type Passage, type PassageSpan } from './passages.js';
 import { wordPatterns } from './resolve.js';
 import { sortByDate } from './video-rank.js';
 import { tokenizeText } from '../norm/normalize.js';
+import { contentTokens } from '../norm/stopwords.js';
+import { missingRequiredGroups, requiredGroups } from './requirements.js';
+import type { Claim } from './citations.js';
+import { entrySource, type AnswerSource } from './sources.js';
 
 /**
  * « La première / dernière fois qu'ils… » : parcours chronologique. Le chemin des questions générales
@@ -52,16 +57,107 @@ const SENSE_RRF_K = 60;
  */
 const SENSE_THRESHOLD = 0.7;
 
-export interface FirstTimeResult {
+export interface ChronologicalVideo {
+  videoId: string;
+  /** Contexte éditorial et introduction, utiles pour identifier un hôte ou un projet annoncé. */
+  context: string;
   /** Moments retenus de la vidéo, dans l'ordre du film. */
   passages: Passage[];
-  /** Meilleure probabilité rendue par le juge pour cette vidéo. */
+  /** Meilleure probabilité parmi ces moments. */
   relevance: number;
+  /** Affirmation et preuve relues dans cette vidéo, avec les identifiants du corpus. */
+  claim?: Claim;
+}
+
+/** « Ils versent X dans un Y » impose aussi la destination du geste ; une vidéo ou un épisode
+ * désigne plutôt la portée de la recherche. Les autres formulations restent évaluées par le relecteur. */
+export function chronologicalRequirements(question: string, required: RequiredTerm[]): RequiredTerm[] {
+  const target = /\bdans (?:un|une|des) ([\p{L}-]+)\s*[?.!]*$/iu.exec(question)?.[1];
+  if (!target) return required;
+  const noun = tokenizeText(target).norm;
+  if (/^(?:video|episode|extrait|passage|chaine)s?$/.test(noun) || required.some((term) => term.forms.includes(noun))) return required;
+  const forms = new Set([noun]);
+  if (noun.endsWith('al')) forms.add(noun.slice(0, -2) + 'aux');
+  else if (noun.endsWith('aux')) forms.add(noun.slice(0, -3) + 'al').add(noun.slice(0, -1));
+  else if (/(?:eau|eu)$/.test(noun)) forms.add(noun + 'x');
+  else if (/[sx]$/.test(noun)) forms.add(noun.slice(0, -1));
+  else if (!noun.endsWith('z')) forms.add(noun + 's');
+  return [...required, { term: target, forms: [...forms] }];
+}
+
+/** Le modèle choisit la ligne qui montre le geste. Le verdict et l'affichage utilisent exactement
+ * cette ligne du corpus, sans recopier du texte libre ni extrapoler une date. */
+export async function reviewOccurrence(
+  video: ChronologicalVideo, question: string, required: RequiredTerm[], llm: LlmClient, subject?: RequiredTerm,
+): Promise<Claim | null> {
+  const sources = new Map<string, AnswerSource>();
+  const seen = new Set<string>();
+  const details = required.map((r) => r.term).join(', ');
+  const lines = [`Question : ${question}\nVidéo : ${video.passages[0]!.title}\nObjet du geste : ${subject?.term ?? ''}. Détails à rattacher à cet objet : ${details}.\nContexte pour identifier les personnes et l’épisode (non citable) :\n${video.context}\n\nPassages à vérifier :`];
+  const asksUse = /(?<!\p{L})(?:utilis|emplo|servent|sert|testent|essaient)\p{L}*/iu.test(question) && !/déball|emball/iu.test(question);
+  const groups = requiredGroups(question, required);
+  let screenClue: AnswerSource | undefined;
+  let remaining = evidenceBudgetChars(100) - lines[0]!.length;
+  for (const passage of video.passages) {
+    for (const entry of passage.entries) {
+      if (seen.has(entry.sourceId)) continue;
+      seen.add(entry.sourceId);
+      // La présentation du carton permet d'identifier l'objet. Pour une question d'usage,
+      // garder ce plan comme contexte et proposer comme citation le geste qui suit.
+      const unboxing = asksUse && /^(?:déballage|ouverture (?:du|de la) (?:carton|bo[iî]te)|présentation du carton)/iu.test(entry.planTitle ?? '') &&
+        !/essai|test|utilisation/iu.test(entry.planTitle ?? '');
+      const alias = unboxing ? 'contexte' : `s${sources.size + 1}`;
+      const line = promptLine(entry, () => alias);
+      // Schéma fermé : réserver une valeur pour « aucun » dans la limite de 1 000 du fournisseur.
+      if (line.length + 1 > remaining || sources.size >= 999) continue;
+      remaining -= line.length + 1;
+      if (!unboxing) {
+        const source = entrySource(entry, passage);
+        sources.set(alias, source);
+        if (!screenClue && subject && groups.length && entry.kind === 'visuel' && entry.screenText?.length) {
+          const scene = tokenizeText([entry.planTitle, entry.text].join(' ')).norm;
+          if (!missingRequiredGroups([[subject]], scene).length && missingRequiredGroups(groups, scene).length &&
+              !missingRequiredGroups(groups, tokenizeText(source.excerpt).norm).length) screenClue = source;
+        }
+      }
+      lines.push(line);
+    }
+  }
+  const raw = await llm.chat(OCCURRENCE_PROMPT, lines.join('\n'), {
+    maxTokens: 80, temperature: 0, jsonSchema: { name: 'occurrence', schema: {
+      type: 'object', properties: {
+        statut: { type: 'string', enum: ['observe', 'indice', 'absent'] },
+        sourceId: { type: 'string', enum: ['aucun', ...sources.keys()] },
+      }, required: ['statut', 'sourceId'], additionalProperties: false,
+    } },
+  });
+  let verdict: { statut?: string; sourceId?: string } | null;
+  try { verdict = JSON.parse(raw); } catch { return null; }
+  const selected = (verdict?.statut === 'observe' || verdict?.statut === 'indice') ? sources.get(verdict.sourceId ?? '') : undefined;
+  // Un plan citant l'objet avec la seule marque à l'écran reste une piste datée, même si le
+  // relecteur n'y voit pas une démonstration complète. Le texte exact indique ce qui est visible.
+  const source = selected ?? screenClue;
+  if (!source) return null;
+  const missing = missingRequiredGroups(groups, tokenizeText(source.excerpt).norm);
+  // Un logo à l'écran peut appartenir à un autre outil du même plan.
+  const description = source.excerpt.split(' | ÉCRAN :')[0]!;
+  const onlyOnScreen = source.kind === 'visuel' && description !== source.excerpt &&
+    missingRequiredGroups(groups, tokenizeText(description).norm).length > missing.length;
+  const uncertain = !selected || verdict?.statut === 'indice' || missing.length > 0 || onlyOnScreen;
+  return {
+    sourceIds: [source.sourceId], preuve: source.excerpt, text: `« ${source.excerpt} »`, relevance: video.relevance,
+    ...(uncertain ? { missing: onlyOnScreen ? 'le texte à l’écran ne permet pas d’attribuer avec certitude ce détail à l’objet utilisé' : 'le geste ou son lien avec le détail demandé reste à confirmer dans cet extrait' } : {}),
+  };
+}
+
+export interface FirstTimeResult {
+  /** Première candidate avec un passage qui répond et qui relie sujet et exigence. */
+  confirmed: ChronologicalVideo | null;
   /**
-   * Vidéos plus anciennes (ou récentes) retenues par le juge, mais où l'exigence n'est jamais sur la même
-   * ligne que le sujet (« Ryobi » sur un cloueur, une scie circulaire à côté) : signalées, pas retenues.
+   * Pistes plus anciennes (ou récentes) dont les moments retenus ne relient pas l'exigence au sujet
+   * (« Ryobi » sur un cloueur, une scie circulaire à côté).
    */
-  earlier: Array<{ videoId: string; passages: Passage[] }>;
+  earlier: ChronologicalVideo[];
   /** Vidéos examinées avant de conclure, et candidates au total. */
   examined: number;
   candidates: number;
@@ -72,11 +168,11 @@ export interface FirstTimeResult {
 interface Candidate {
   videoId: string;
   title: string;
-  moments: Passage[];
-  /** Le sujet et une exigence sont sur une même ligne (même plan, même phrase, même texte à l'écran), ou le titre cite l'exigence. */
-  linked: boolean;
-  /** Trouvée par le sens : elle ne cite pas le sujet. */
-  bySense: boolean;
+  context: string;
+  /** Le passage contient une ligne reliant sujet et exigence, ou aucune exigence n'est imposée. */
+  moments: Array<{ passage: Passage; linked: boolean }>;
+  /** Trouvée par le sens ou par les mots répartis dans une fenêtre, sans mention exacte du sujet. */
+  indirect: boolean;
 }
 
 /** Vidéos faiblement prouvées gardées au plus avant la réponse, en « éventuellement ». */
@@ -104,11 +200,6 @@ function spansOf(
     .slice(0, MAX_MOMENTS)
     .sort((a, b) => a.startS - b.startS)
     .map((m) => ({ videoId: video.video_id, title: video.title, publishedAt: video.published_at, startS: m.startS, endS: m.endS, rank: m.i }));
-}
-
-function titleCites(title: string, required: RequiredTerm[]): boolean {
-  const norm = ` ${tokenizeText(title).norm} `;
-  return required.some((r) => r.forms.some((form) => norm.includes(` ${form} `)));
 }
 
 /** Un voisin de la question : une phrase ou un bloc de 30 s, et son rang dans sa liste (0 : le plus proche). */
@@ -201,6 +292,7 @@ async function candidatesOf(
   db: Db,
   subject: RequiredTerm,
   required: RequiredTerm[],
+  groups: RequiredTerm[][],
   order: 'premiere' | 'derniere',
   collection: string | null,
   /** Vecteurs de la question et de l'extrait hypothétique ; vide : candidates exactes seules. */
@@ -208,11 +300,8 @@ async function candidatesOf(
 ): Promise<{ total: number; list: Candidate[] }> {
   const subjectPatterns = wordPatterns(subject.forms);
   const requiredPatterns = wordPatterns(required.flatMap((r) => r.forms));
-  const { rows: videos } = await db.query<{ video_id: string; title: string; published_at: string | null; linked: boolean }>(
-    `SELECT v.video_id, v.title, v.published_at::text AS published_at,
-            cardinality($2::text[]) = 0
-              OR EXISTS (SELECT 1 FROM entries e WHERE e.video_id = v.video_id
-                           AND e.norm_text ~* ANY($1::text[]) AND e.norm_text ~* ANY($2::text[])) AS linked
+  const { rows: videos } = await db.query<{ video_id: string; title: string; published_at: string | null }>(
+    `SELECT v.video_id, v.title, v.published_at::text AS published_at
      FROM videos v
      WHERE EXISTS (SELECT 1 FROM entries e WHERE e.video_id = v.video_id AND e.norm_text ~* ANY($1::text[]))
        AND (cardinality($2::text[]) = 0
@@ -221,12 +310,33 @@ async function candidatesOf(
      ORDER BY v.published_at ${order === 'premiere' ? 'ASC' : 'DESC'} NULLS LAST, v.video_id`,
     [subjectPatterns, requiredPatterns, collection],
   );
-  // Sans candidate exacte, le chemin général (vecteurs et juge sur 150 vidéos et plus) prend le relais.
-  if (videos.length === 0) return { total: 0, list: [] };
-
-  // Par le sens : des vidéos proches qui ne citent pas le sujet, mais citent l'exigence s'il y en a une.
   const exactIds = new Set(videos.map((v) => v.video_id));
-  const picked = vectors.length > 0 ? pickBySense(await senseHits(db, vectors, collection), exactIds, order) : [];
+  // Un sujet composé (« imprimante 3D résine ») peut être décrit en plusieurs lignes.
+  // La conjonction BM25 fournit le passage à relire ; son texte indexé ne devient pas une citation.
+  // Le tokenizer BM25 porte sur le texte brut des fenêtres : conserver « 3D » tel quel.
+  const words = subject.term.split(/\s+/u).filter((word) => contentTokens(tokenizeText(word).tokens).length > 0);
+  type WordWindow = { video_id: string; title: string; published_at: string | null; start_s: number; end_s: number; rank: number };
+  const wordWindows = words.length < 2 ? [] : (await db.query<WordWindow>(
+    `WITH matches AS (
+       SELECT w.video_id, v.title, v.published_at::text AS published_at, w.start_s, w.end_s, pdb.score(w.id) AS score
+       FROM windows w JOIN videos v USING (video_id)
+       WHERE w.text &&& $1 AND ($2::text IS NULL OR v.collection = $2) AND NOT (w.video_id = ANY($3::text[]))
+         AND (cardinality($4::text[]) = 0 OR EXISTS (
+           SELECT 1 FROM entries e WHERE e.video_id = w.video_id AND e.norm_text ~* ANY($4::text[])))
+     ), ranked AS (
+       SELECT *, dense_rank() OVER (ORDER BY published_at ${order === 'premiere' ? 'ASC' : 'DESC'} NULLS LAST, video_id) AS video_rank,
+              row_number() OVER (PARTITION BY video_id ORDER BY score DESC, start_s)::int AS rank
+       FROM matches
+     )
+     SELECT video_id, title, published_at, start_s, end_s, rank FROM ranked
+     WHERE video_rank <= ${MAX_EXAMINED} AND rank <= ${MAX_MOMENTS}
+     ORDER BY video_rank, start_s`,
+    [words.join(' '), collection, [...exactIds], requiredPatterns],
+  )).rows;
+  const wordVideos = new Map(wordWindows.map((w) => [w.video_id, w]));
+  const lexicalIds = new Set([...exactIds, ...wordVideos.keys()]);
+  // Par le sens : des vidéos proches qui ne citent pas le sujet, mais citent l'exigence s'il y en a une.
+  const picked = vectors.length > 0 ? pickBySense(await senseHits(db, vectors, collection), lexicalIds, order) : [];
   const { rows: senseVideos } = await db.query<{ video_id: string; title: string; published_at: string | null }>(
     `SELECT v.video_id, v.title, v.published_at::text AS published_at
      FROM videos v
@@ -237,12 +347,19 @@ async function candidatesOf(
   );
   const senseMoments = new Map(picked.map((p) => [p.videoId, p.moments]));
   const examined = sortByDate(
-    [...videos, ...senseVideos.map((v) => ({ ...v, linked: false }))].map((v) => ({ ...v, publishedAt: v.published_at })),
+    [...videos, ...wordVideos.values(), ...senseVideos].map((v) => ({ ...v, publishedAt: v.published_at })),
     order,
   ).slice(0, MAX_EXAMINED);
+  const { rows: contexts } = await db.query<{ video_id: string; context: string }>(
+    `SELECT v.video_id, concat_ws(E'\n', v.channel, left(split_part(v.description, E'\n\n', 1), 500),
+            left((SELECT string_agg(e.text, E'\n' ORDER BY e.start_s, e.source_id) FROM entries e
+                  WHERE e.video_id = v.video_id AND e.start_s < 90), 3500)) AS context
+     FROM videos v WHERE v.video_id = ANY($1::text[])`, [examined.map((v) => v.video_id)],
+  );
+  const context = new Map(contexts.map((row) => [row.video_id, row.context]));
 
-  const { rows: moments } = await db.query<{ video_id: string; start_s: number; subject: boolean; required: boolean }>(
-    `SELECT e.video_id, e.start_s,
+  const { rows: moments } = await db.query<{ video_id: string; source_id: string; start_s: number; norm_text: string; subject: boolean; required: boolean }>(
+    `SELECT e.video_id, e.source_id, e.start_s, e.norm_text,
             e.norm_text ~* ANY($2::text[]) AS subject,
             cardinality($3::text[]) > 0 AND e.norm_text ~* ANY($3::text[]) AS required
      FROM entries e
@@ -250,30 +367,38 @@ async function candidatesOf(
      ORDER BY e.video_id, e.start_s`,
     [examined.filter((v) => exactIds.has(v.video_id)).map((v) => v.video_id), subjectPatterns, requiredPatterns],
   );
-  const spans = examined.flatMap((video) =>
-    exactIds.has(video.video_id)
-      ? spansOf(video, moments.filter((m) => m.video_id === video.video_id))
-      : spansOf(video, (senseMoments.get(video.video_id) ?? []).map((startS) => ({ start_s: startS, subject: true, required: false }))),
-  );
+  const spans = examined.flatMap((video) => {
+    if (exactIds.has(video.video_id)) return spansOf(video, moments.filter((m) => m.video_id === video.video_id));
+    if (wordVideos.has(video.video_id)) {
+      return wordWindows.filter((w) => w.video_id === video.video_id).map((w) => ({
+        videoId: w.video_id, title: w.title, publishedAt: w.published_at, startS: w.start_s, endS: w.end_s, rank: w.rank,
+      }));
+    }
+    return spansOf(video, (senseMoments.get(video.video_id) ?? []).map((startS) => ({ start_s: startS, subject: true, required: false })));
+  });
   const passages = await passagesForSpans(db, spans);
   return {
-    total: videos.length + senseVideos.length,
-    list: examined.map((video) => ({
-      videoId: video.video_id,
-      title: video.title,
-      moments: passages.filter((p) => p.videoId === video.video_id),
-      // Ou le titre cite l'exigence : la vidéo porte sur elle (« La Bambu Lab X1 Carbon… »). Une vidéo trouvée
-      // par le sens n'a aucune ligne qui réunisse sujet et exigence : seul son titre peut la lier.
-      linked: video.linked || required.length === 0 || titleCites(video.title, required),
-      bySense: !exactIds.has(video.video_id),
-    })),
+    total: lexicalIds.size + senseVideos.length,
+    list: examined.map((video) => {
+      const links = new Map(moments.filter((m) => m.video_id === video.video_id && m.required).map((m) => [m.source_id, m.norm_text]));
+      return {
+        videoId: video.video_id,
+        title: video.title,
+        context: context.get(video.video_id) ?? '',
+        moments: passages.filter((p) => p.videoId === video.video_id).map((passage) => ({
+          passage,
+          linked: required.length === 0 || missingRequiredGroups(groups, passage.entries.map((e) => links.get(e.sourceId) ?? '').join(' | ')).length === 0,
+        })),
+        indirect: !exactIds.has(video.video_id),
+      };
+    }),
   };
 }
 
 /**
  * Première (ou dernière) vidéo dont un moment est retenu par le juge, en partant de la plus ancienne (ou
- * récente) ; `null` si aucune candidate ou aucune retenue parmi les `MAX_EXAMINED` premières : l'appelant
- * revient alors au chemin général.
+ * récente). Une recherche avec des pistes insuffisantes les rend avec `confirmed: null`. Si aucun
+ * moment n'a franchi le seuil du juge, `null` laisse l'appelant revenir au chemin général.
  */
 export async function scanChronologically(
   pool: Pool,
@@ -288,17 +413,18 @@ export async function scanChronologically(
   /** Candidates par le sens en plus des candidates exactes ; `null` : exactes seules. */
   sense: SenseQuery | null = null,
   onJudge?: (videos: number) => void,
+  review?: (video: ChronologicalVideo) => Promise<Claim | null>,
 ): Promise<FirstTimeResult | null> {
   const vectors = await senseVectors(pool, question, sense);
   const { candidates, corpusVersion, indexVersion } = await readSnapshot(pool, async (db, versions) => ({
-    candidates: await candidatesOf(db, subject, required, order, collection, vectors),
+    candidates: await candidatesOf(db, subject, required, requiredGroups(question, required), order, collection, vectors),
     ...versions,
   }));
   const usable = candidates.list.filter((c) => c.moments.length > 0);
   const earlier: FirstTimeResult['earlier'] = [];
-  const answer = (passages: Passage[], relevance: number, examined: number): FirstTimeResult => ({
-    passages,
-    relevance,
+  let reviewed = false;
+  const answer = (confirmed: ChronologicalVideo | null, examined: number): FirstTimeResult => ({
+    confirmed,
     earlier,
     examined,
     candidates: candidates.total,
@@ -309,23 +435,35 @@ export async function scanChronologically(
     const wave = usable.slice(start, start + WAVE);
     onJudge?.(start + wave.length);
     // Une décision par moment ; une vidéo vaut son meilleur moment.
-    const moments = wave.flatMap((c, video) => c.moments.map((passage) => ({ video, passage, title: c.title })));
+    const moments = wave.flatMap((c, video) => c.moments.map((moment) => ({ ...moment, video, title: c.title })));
     const probabilities = await judge.judge(question, moments.map((m) => ({ title: m.title, text: renderPassage(m.passage, (id) => id, false) })));
+    const scored = moments.map((m, i) => ({ ...m, relevance: probabilities[i] ?? 0 }));
     for (let video = 0; video < wave.length; video++) {
-      const own = moments.map((m, i) => ({ ...m, p: probabilities[i] ?? 0 })).filter((m) => m.video === video);
-      const best = Math.max(0, ...own.map((m) => m.p));
-      const needed = wave[video]!.bySense ? Math.max(threshold, SENSE_THRESHOLD) : threshold;
-      if (best < needed) continue;
-      const passages = own.filter((m) => m.p >= needed).map((m) => m.passage);
-      // Exigence jamais sur la même ligne que le sujet : signalée, et le parcours continue.
-      if (!wave[video]!.linked && earlier.length < MAX_EARLIER) {
-        earlier.push({ videoId: wave[video]!.videoId, passages });
-        continue;
+      const candidate = wave[video]!;
+      const needed = candidate.indirect ? Math.max(threshold, SENSE_THRESHOLD) : threshold;
+      const retained = scored.filter((m) => m.video === video && m.relevance >= needed);
+      if (retained.length === 0) continue;
+      const linked = retained.filter((m) => m.linked);
+      if (!candidate.indirect && linked.length === 0 && earlier.length >= MAX_EARLIER) continue;
+      const selected = linked.length > 0 ? linked : retained;
+      const match: ChronologicalVideo = {
+        videoId: candidate.videoId,
+        context: candidate.context,
+        passages: selected.map((m) => m.passage),
+        relevance: Math.max(...selected.map((m) => m.relevance)),
+      };
+      if (review) {
+        reviewed = true;
+        const claim = await review(match);
+        if (!claim) continue;
+        // Le relecteur peut reconnaître le sujet reformulé d'une candidate indirecte ; la preuve
+        // doit alors porter toutes les exigences dans la ligne choisie (reviewOccurrence).
+        if (!candidate.indirect && !linked.length) claim.missing ??= 'les passages retenus ne relient pas clairement les détails demandés au sujet';
+        match.claim = claim;
       }
-      return answer(passages, best, start + video + 1);
+      if ((linked.length > 0 || (candidate.indirect && match.claim)) && !match.claim?.missing) return answer(match, start + video + 1);
+      if (earlier.length < MAX_EARLIER) earlier.push(match);
     }
   }
-  // Aucune vidéo où l'exigence accompagne le sujet : la première retenue répond, sans autre signalement.
-  const first = earlier.shift();
-  return first ? answer(first.passages, threshold, usable.length) : null;
+  return earlier.length > 0 || reviewed ? answer(null, usable.length) : null;
 }

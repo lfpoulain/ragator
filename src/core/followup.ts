@@ -9,6 +9,23 @@ export interface Turn {
   question: string;
   /** Vidéos des sources citées dans la réponse. */
   videoIds: string[];
+  /** Repères dans le corpus, dans l'ordre de la réponse. Le texte est relu côté serveur. */
+  scenes?: SceneRef[];
+  /** La question est en attente du choix d'une des scènes présentées. */
+  choosingScene?: boolean;
+  offeredEpisodeSearch?: boolean;
+}
+
+export interface SceneRef {
+  videoId: string;
+  sourceId: string;
+  startS: number;
+}
+
+export const MAX_TURN_SCENES = 48;
+
+export function sceneRefs(sources: ReadonlyArray<{ videoId: string; sourceId: string; startS: number | null }>): SceneRef[] {
+  return sources.flatMap(({ videoId, sourceId, startS }) => startS === null ? [] : [{ videoId, sourceId, startS }]).slice(0, MAX_TURN_SCENES);
 }
 
 export interface FollowUp {

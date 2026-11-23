@@ -214,6 +214,7 @@ function signal(): { promise: Promise<void>; resolve: () => void } {
         const videos = user.split('<video id="').slice(1).map((block) => ({
           videoId: block.slice(0, block.indexOf('"')),
           affirmation: block.includes('Ancienne perceuse') ? 'Vidéo ancienne.' : 'Vidéo récente.',
+          preuve: 'On utilise une perceuse pour percer le bois.',
           sourceIds: [block.match(/^\[(s\d+) /m)![1]],
         }));
         return JSON.stringify({ videos: videos.reverse() });

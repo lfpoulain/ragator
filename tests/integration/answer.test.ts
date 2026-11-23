@@ -189,11 +189,16 @@ function failingLlm(): LlmClient {
       async chat(_system, user, options) {
         prompts.push(user);
         schemas.push(options?.jsonSchema);
-        const videos = user.split('<video id="').slice(1).map((block) => ({
-          videoId: block.slice(0, block.indexOf('"')),
-          firstId: block.match(/^\[(s\d+) /m)?.[1] ?? '',
-        }));
-        return JSON.stringify({ videos: videos.map(({ videoId, firstId }) => ({ videoId, affirmation: 'Retenue.', sourceIds: [firstId] })) });
+        const videos = user.split('<video id="').slice(1).map((block) => {
+          const line = block.match(/^\[(s\d+) [^\]]+\] PAROLE[^\n]*? : (.+)$/m)!;
+          return {
+            videoId: block.slice(0, block.indexOf('"')),
+            preuve: line[2]!.split(' ').slice(0, 12).join(' '),
+            affirmation: 'Retenue.',
+            sourceIds: [line[1]],
+          };
+        });
+        return JSON.stringify({ videos });
       },
     };
     // Le juge garde la première vidéo candidate et écarte les autres.
@@ -222,6 +227,38 @@ function failingLlm(): LlmClient {
     expect(result.degraded).toBe(true);
     expect(result.degradedReason).toContain('sans juge');
     expect(result.sources.length).toBeGreaterThan(0);
+  });
+
+  it('un rédacteur sans aucune citation valable ne réintroduit pas les vidéos de la recherche brute', async () => {
+    const writer = fakeLlm(JSON.stringify({ videos: [
+      { videoId: 'v1', preuve: 'Des mots fictifs.', sourceIds: ['s99999'], affirmation: 'Assertion hors corpus.' },
+    ] }));
+    const result = await repondre(pool, { question: 'Quand parlent-ils de NordVPN ?', mode: 'détaillé' }, {
+      llm: writer, analyzer: null, embedder: null, judgeThreshold: 0.4,
+      judge: { model: 'juge', judge: async (_question, videos) => videos.map((_, i) => i ? 0.1 : 0.9) },
+    });
+    expect(result.refused).toBe(true);
+    expect(result.sources).toEqual([]);
+    expect(result.degradedReason).toContain('preuve vérifiable');
+  });
+
+  it('retente une rédaction générale tronquée une fois et conserve les exclusions du juge', async () => {
+    const writer = fakeLlm('{"videos":[{"videoId":');
+    let keptTitle = '';
+    const result = await repondre(pool, { question: 'Quand parlent-ils de NordVPN ?', mode: 'détaillé' }, {
+      llm: writer, analyzer: null, embedder: null, judgeThreshold: 0.4,
+      judge: { model: 'juge', judge: async (_question, videos) => {
+        keptTitle = videos[0]!.title;
+        return videos.map((_, i) => i ? 0.1 : 0.9);
+      } },
+    });
+    expect(writer.calls).toBe(2);
+    expect(result.degradedReason).toContain('hors du format');
+    expect(result.claims).toHaveLength(1);
+    const source = result.sources[0]!;
+    expect(source.title).toBe(keptTitle);
+    expect(result.claims[0]).toMatchObject({ missing: expect.any(String), preuve: source.excerpt, sourceIds: [source.sourceId] });
+    expect(result.answer).toContain('Éventuellement');
   });
 
   it('sortie structurée : identifiants courts du prompt rattachés aux vraies sources, schéma fermé', async () => {

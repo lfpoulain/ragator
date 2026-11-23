@@ -7,7 +7,7 @@ export interface NormalizedText {
   tokens: string[];
 }
 
-function foldAccents(input: string): string {
+export function foldAccents(input: string): string {
   return input
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')

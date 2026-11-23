@@ -6,7 +6,7 @@ export default defineConfig({
     testTimeout: 30_000,
     hookTimeout: 60_000,
     fileParallelism: false,
-    // Tests hors ligne : les clés de `.env` ne sont jamais lues (valeur vide = absente).
-    env: { OPENROUTER_API_KEY: '' },
+    // Les serveurs de test écoutent sur la boucle locale, y compris dans l’image Docker.
+    env: { OPENROUTER_API_KEY: '', WEB_HOST: '127.0.0.1', RAGATOR_BIND_ADDRESS: '127.0.0.1' },
   },
 });

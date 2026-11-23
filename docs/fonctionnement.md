@@ -22,8 +22,9 @@ changent, tous réunis dans `loadConfig` (`src/config.ts`) :
 - le parallélisme et le contexte, ceux de llama-server (8 places, 81 920 tokens partagés) ;
 - des délais plus longs, et pas de rédaction lancée par anticipation (la carte est partagée) ;
 - le seuil du juge (0,4, car Aplomb note plus haut) ;
-- la preuve recopiée mot pour mot avant chaque affirmation. Dans les questions générales, elle sert
-  au rédacteur à revérifier chaque vidéo retenue par le juge (§3.5).
+- la preuve recopiée pour chaque affirmation du modèle local. Dans les deux modes, le rédacteur
+  des questions générales cite une ligne de la vidéo qu’il décrit. La rédaction locale comprend
+  aussi une seconde décision sur la pertinence de chaque vidéo retenue (§3.5).
 
 ## 1. Le corpus d'entrée
 
@@ -115,9 +116,14 @@ leur module dans `src/core/`.
    `AND v.collection = …`. La chaîne complète, ou la liste des chaînes,
    ouvre chaque prompt (« Corpus : vidéos YouTube de la chaîne « … » ») : les
    prompts eux-mêmes ne nomment aucune chaîne.
-1. **Relance** (`src/core/followup.ts`) : dans une conversation, « et dans cette
-   vidéo ? » est rattachée à la vidéo de l'échange précédent. L'historique (5
-   échanges au plus) ne donne que des références, jamais des preuves.
+1. **Relance**. Le chat web et le terminal conservent les références des scènes citées pendant
+   cinq échanges. « À quel moment exactement ? » restitue le minutage du passage. Si plusieurs
+   passages conviennent, Ragator affiche leurs titres et minutages pour permettre le choix.
+   Pour une question sur le contenu, il relit la scène dans la collection active, puis les
+   paroles et les plans voisins si nécessaire. Quand le détail manque, la réponse conserve le repère
+   et propose une recherche dans les autres épisodes du projet. « Oui » reprend la question en
+   attente dans les titres apparentés de la même collection. « Non merci » garde le repère initial.
+   « Et dans cette vidéo ? » peut aussi porter sur l'épisode entier.
 2. **Règles** (`src/core/classify.ts`) : un premier aiguillage déterministe,
    testable sans LLM, qui reconnaît les décomptes (« toutes les vidéos où… »),
    les demandes de description YouTube (« le lien du firmware »), les plans
@@ -128,6 +134,11 @@ leur module dans `src/core/`.
    repère aussi les **exigences** (marque, modèle ou nom propre imposé : « Ryobi »,
    « xTool P2 ») et, pour « la première / dernière fois qu'ils… », le **sujet**
    (« scie circulaire »), ramenés à une forme du corpus.
+   Pour une question précise, elle relève les noms de projets donnés par le spectateur.
+   Un nom retrouvé dans un à trois titres de la collection peut cibler la recherche.
+   Si un des projets d’une comparaison reste indéterminé, la recherche reste ouverte.
+   Sur un geste matériel, le rédacteur peut examiner les descriptions des plans avant de
+   relire les paroles. Une demande sur un affichage ou une mesure conserve le texte à l’écran.
    Le code valide : un décompte exige un terme présent dans le corpus, les
    mots-clés absents du corpus sont écartés, une route étroite (plans seuls,
    descriptions seules) ou « clarifier » n'est acceptée que si les règles l'ont
@@ -181,8 +192,9 @@ l'instant cité.
   repli extractif signalé. Une sortie hors du format imposé (texte libre) ne
   garde aucune affirmation : repli extractif, jamais de phrase sans preuve. Les
   références `[id @ mm:ss]` et les liens horodatés sont ajoutés par le code,
-  jamais écrits par le modèle. La validation garantit qu'une citation désigne un
-  extrait fourni, pas que l'extrait confirme la phrase : cette fidélité se relit, sans filtre automatique.
+  jamais écrits par le modèle. Pour un geste, la rédaction identifie la preuve du lien entre
+  l’action et son objet. Une piste partielle peut déclencher une seule relecture dans la même
+  vidéo. Si la relation reste incertaine, la réponse en donne l’extrait avec son motif d’incertitude.
 
 ### 3.4 Décompte exhaustif : sans LLM (`src/core/exhaustive.ts`)
 
@@ -242,12 +254,11 @@ doit repérer 40 vidéos dans un long contexte en oublie. D'où trois temps :
    et l'incertitude est signalée sur la ligne concernée.
    Quand la question impose une marque ou un modèle (« une scie circulaire Ryobi »), l'analyse la
    repère (« exigences ») et le code la ramène à une forme du corpus (alias, correction
-   orthographique). Une vidéo dont le titre et les extraits ne la citent pas (paroles, plans ou texte à
-   l'écran) n'est pas retirée, mais présentée à part, sous « éventuellement ».
-   En mode local, le rédacteur recopie d'abord la ligne qui répond (« preuve »), puis dit si elle
-   répond vraiment à la question prise au mot (« répond ») ; sinon la vidéo est écartée. Ce second
-   filtre rattrape les erreurs grossières d'Aplomb (précision 46 → 64 %) ; derrière JEV, il ne
-   faisait pas mieux qu'un seuil plus haut.
+   orthographique). La vérification porte sur les lignes citées dans la vidéo. Un lien incertain
+   avec une marque est signalé sous « éventuellement ». Une question d’usage imposant un matériau
+   ou un type d’objet restreint aussi les affirmations aux preuves qui le désignent.
+   Dans les deux modes, le rédacteur fournit un extrait de sa vidéo. En local, il indique aussi si cette
+   preuve établit le geste demandé. Les vidéos pour lesquelles il répond non sont écartées.
 
 Sans juge (aucun mode choisi, ou mode OpenRouter sans clé), une question générale répond en extractif.
 
@@ -259,7 +270,9 @@ L'analyse de la question fournit le sujet (« scie circulaire ») et les exigenc
 
 1. **Candidates exactes, dans l'ordre du temps** : toutes les vidéos qui citent le sujet et, s'il y en
    a, une exigence (paroles, plans ou texte à l'écran), de la plus ancienne à la plus récente, ou
-   l'inverse pour « la dernière fois ».
+   l'inverse pour « la dernière fois ». Pour un sujet composé, BM25 ajoute les fenêtres où ses mots
+   apparaissent sur plusieurs lignes, par exemple quand une imprimante et son procédé sont décrits
+   dans des phrases différentes.
    **Et candidates par le sens** : le même geste dit avec d'autres mots (« graveuse laser » pour
    « gravure au laser », une équerre imprimée cassée au marteau sans le mot « crash test »). Ce sont
    les vidéos des phrases et des blocs les plus proches de la question et de l'extrait hypothétique
@@ -269,13 +282,13 @@ L'analyse de la question fournit le sujet (« scie circulaire ») et les exigenc
 2. **Chaque moment jugé séparément** : chaque endroit où le sujet apparaît est élargi (20 s avant,
    90 s après, puisque l'usage suit souvent l'annonce) et reçoit sa propre décision du juge. Une
    introduction bavarde ne cache plus la scène d'usage.
-3. **On s'arrête à la première vidéo retenue**, examinée par vagues de 4. La rédaction la décrit sans
-   la rejuger.
-
-Une vidéo retenue où l'exigence n'est jamais sur la même ligne que le sujet, et que son titre ne nomme
-pas (« Ryobi » sur un cloueur, une scie à côté), est signalée en « éventuellement », et le parcours
-continue. Sans candidate exacte, ou sans vidéo retenue parmi les 24 premières, la question repart par
-le chemin général (§3.5).
+3. **Le LLM sélectionne la ligne qui montre le geste.** La description de l’épisode et son
+   introduction l’aident à distinguer les animateurs des invités. La ligne sélectionnée dans les
+   passages jugés fournit le texte et l’horodatage affichés. La recherche continue si la scène
+   montre un autre geste ou si une marque lue à l’écran reste difficile à attribuer.
+4. Le parcours examine au plus 24 candidates par vagues de quatre et affiche jusqu’à trois pistes
+   incertaines. Si le relecteur a examiné des scènes sans confirmer d’occurrence, la réponse
+   l’indique. Si aucune scène n’atteint le seuil du juge, la recherche générale prend le relais.
 
 ### 3.6 Replis
 

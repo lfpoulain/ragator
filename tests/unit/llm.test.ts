@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { EMBEDDING_MODEL, loadConfig } from '../../src/config.js';
 import { chatBody } from '../../src/providers/llm.js';
-import { answerSchema, buildWritePrompt, parseWritten, promptLine, renderPassage, writeSchema, WRITE_SYSTEM_PROMPT, WRITE_SYSTEM_PROMPT_DECIDED, WRITE_SYSTEM_PROMPT_PROOF } from '../../src/prompts/answer.js';
+import { answerSchema, buildWritePrompt, parseWritten, promptLine, renderPassage, writeSchema, WRITE_SYSTEM_PROMPT, WRITE_SYSTEM_PROMPT_PROOF } from '../../src/prompts/answer.js';
 
 const schema = { name: 's', schema: { type: 'object' } };
 
@@ -105,7 +105,7 @@ describe('rédaction des questions générales', () => {
 
   it('le schéma n’autorise que les vidéos et les lignes du lot', () => {
     const properties = writeSchema(['v1'], ['s3']).schema.properties.videos.items.properties;
-    expect(Object.keys(properties)).toEqual(['videoId', 'affirmation', 'sourceIds', 'nature']);
+    expect(Object.keys(properties)).toEqual(['videoId', 'preuve', 'affirmation', 'sourceIds', 'nature']);
     expect(properties.videoId).toEqual({ type: 'string', enum: ['v1'] });
   });
 
@@ -118,7 +118,6 @@ describe('rédaction des questions générales', () => {
     );
     expect(written!.map((w) => w.nature)).toEqual([undefined, 'promotion', 'en_passant', undefined]);
     expect(WRITE_SYSTEM_PROMPT).toContain('"nature"');
-    expect(WRITE_SYSTEM_PROMPT_DECIDED).toContain('"nature"');
     expect(WRITE_SYSTEM_PROMPT_PROOF).not.toContain('"nature"');
   });
 
@@ -132,6 +131,7 @@ describe('rédaction des questions générales', () => {
         '{"videoId":"v2","preuve":"","repond":false,"affirmation":"Rien.","sourceIds":["s1"]}]}',
     );
     expect(written!.map((w) => w.affirmation)).toEqual(['Ils vissent.', '']);
+    expect(written!.map((w) => w.preuve)).toEqual(['Artus visse', '']);
   });
 });
 

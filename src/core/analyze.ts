@@ -5,9 +5,13 @@ import { getMetaString } from '../db/meta.js';
 import type { LlmClient } from '../providers/llm.js';
 import { ANALYZE_SCHEMA, ANALYZE_SYSTEM_PROMPT, parseAnalysis } from '../prompts/analyze.js';
 import { classify, type RoutedQuery } from './classify.js';
+import { asksAboutAction } from './action-proof.js';
 import { lexique, resolveTerm } from './resolve.js';
 import { aliasCanonical, isCanonicalBrand } from '../norm/brands.js';
 import { findSeries, withoutSeries, type Series } from './series.js';
+import { mentionsProject } from './projects.js';
+import { actionTargetForms, coordinatedTargets } from './requirements.js';
+import { sharedToolTargets } from './tool-functions.js';
 
 /** Mots-clés gardés au plus (chacun devient une liste lexicale de la fusion). */
 const MAX_KEYWORDS = 6;
@@ -25,7 +29,11 @@ export interface RequiredTerm {
 }
 
 export interface QuestionAnalysis {
+  projects: string[];
+  observed: boolean;
   routed: RoutedQuery;
+  /** L'information demandée exige de vérifier une action ou son lien avec un objet. */
+  action: boolean;
   /** Mots-clés proposés par le LLM et présents dans le corpus. */
   keywords: string[];
   /** Extrait hypothétique (HyDE), encodé pour la recherche sémantique ; jamais une preuve. */
@@ -35,6 +43,8 @@ export interface QuestionAnalysis {
   note: string | null;
   /** Marques, modèles ou noms propres imposés par la question. */
   required: RequiredTerm[];
+  /** Cibles explicites du geste dans les questions générales ; alternatives au sein d'un groupe. */
+  actionTargets: RequiredTerm[][];
   /** Objet d'une question « première / dernière fois qu'ils… » (parcours chronologique), présent dans le corpus. */
   subject: RequiredTerm | null;
   /**
@@ -56,7 +66,7 @@ function inCorpus(term: string, words: ReadonlySet<string>): boolean {
 }
 
 /** Sans LLM : les marques connues (src/norm/brands.ts) citées dans la question. */
-function knownBrands(question: string): RequiredTerm[] {
+export function knownBrands(question: string): RequiredTerm[] {
   const tokens = tokenizeText(question).tokens;
   const found = new Set<string>();
   for (let i = 0; i < tokens.length; i++) {
@@ -103,19 +113,27 @@ export async function analyzeQuestion(
   corpus: string | null = null,
 ): Promise<QuestionAnalysis> {
   const rules = classify(question);
-  const fallback = (note: string | null): QuestionAnalysis => ({ routed: rules, keywords: [], hypothetical: null, source: 'règles', note, required: knownBrands(question), subject: null, series: null });
+  const explicitToolUse = sharedToolTargets(question) !== null;
+  const fallback = (note: string | null): QuestionAnalysis => {
+    const action = explicitToolUse || asksAboutAction(question);
+    return { routed: rules, action, projects: [], observed: false, keywords: [], hypothetical: null, source: 'règles', note, required: knownBrands(question),
+      actionTargets: rules.general && action && !rules.order ? coordinatedTargets(question, []) : [], subject: null, series: null };
+  };
   if (!llm) return fallback(null);
 
-  let raw: string;
+  const prompt = corpus ? `${corpus}\nQuestion : ${question}` : `Question : ${question}`;
+  const request = (maxTokens: number) => llm.chat(ANALYZE_SYSTEM_PROMPT, prompt, { maxTokens, jsonSchema: ANALYZE_SCHEMA, temperature: 0 });
+  let analysis: ReturnType<typeof parseAnalysis>;
   try {
     // Température 0 : la même question doit être aiguillée de la même façon (mesuré : sans elle, une question
     // mal orthographiée partait une fois sur deux en « clarifier »).
-    raw = await llm.chat(ANALYZE_SYSTEM_PROMPT, `${corpus ? `${corpus}
-` : ''}Question : ${question}`, { maxTokens: 400, jsonSchema: ANALYZE_SCHEMA, temperature: 0 });
+    const raw = (await request(400)).trim();
+    analysis = parseAnalysis(raw);
+    // Une sortie tronquée perd les contraintes du geste au repli. Reprendre une seule fois avec de la marge.
+    if (!analysis && raw.startsWith('{') && !raw.endsWith('}')) analysis = parseAnalysis(await request(800));
   } catch (err) {
     return fallback(`analyse LLM impossible (${err instanceof Error ? err.message : String(err)}) : règles`);
   }
-  const analysis = parseAnalysis(raw);
   if (!analysis) return fallback('analyse LLM illisible : règles');
 
   const corpusVersion = (await getMetaString(pool, 'corpus_version')) ?? '';
@@ -132,6 +150,15 @@ export async function analyzeQuestion(
   // question générale). Mesuré : « à quel moment… » envoyé en `plan` faisait perdre des citations précises,
   // et une question mal orthographiée (« quand parle ton de moutique ») partait en « clarifier ».
   let downgraded = false;
+  // « Combien de pièces ont cassé ? » se résout dans la scène. Compter les lignes qui
+  // mentionnent les pièces donnerait un entier plausible, mais dans une autre unité.
+  const countedNoun = /\bcombien\s+(?:de\s+|d['’])([\p{L}-]+)/iu.exec(question)?.[1];
+  const quantityMisrouted = route === 'lister' && countedNoun !== undefined && rules.route === 'chercher' && !rules.order
+    && !/^(?:fois|vidéos?|épisodes?|moments?|passages?|extraits?|mentions?|occurrences?|apparitions?|citations?)$/iu.test(countedNoun);
+  if (quantityMisrouted) {
+    notes.push('quantité demandée dans le contenu : recherche de la valeur dans les extraits');
+    route = 'chercher';
+  }
   // « Quand parlent-ils de X » est une question générale pour les règles, sans demande de décompte : le
   // LLM ne la transforme pas en liste de mentions (il hésitait d'un appel à l'autre, même à température 0).
   if (route === 'lister' && rules.route === 'chercher' && rules.general && !rules.order && !analysis.ordre) {
@@ -146,7 +173,7 @@ export async function analyzeQuestion(
   }
   // Une question que les règles reconnaissent comme générale (« quand parlent-ils de… », « qu'est-ce qu'ils
   // pensent de… ») le reste : le LLM la classait « précise » de façon constante (mesuré sur 3 passages).
-  let general = route === 'chercher' && (analysis.generale || rules.general);
+  let general = route === 'chercher' && (rules.general || (analysis.generale && !quantityMisrouted));
   let term: string | null = rules.order && rules.term ? rules.term : analysis.terme ? normalized(analysis.terme) : null;
   // Un sigle de moins de 3 lettres se confond avec un mot court ou une interjection (« ha » pour Home
   // Assistant comptait une enceinte de 2018) : écarté des variantes.
@@ -184,6 +211,14 @@ export async function analyzeQuestion(
   if (dropped.length > 0) notes.push(`mots-clés absents du corpus écartés : ${dropped.join(', ')}`);
 
   const required = await resolveRequired(pool, analysis.exigences, corpusVersion, notes);
+  const action = explicitToolUse || (analysis.action ?? asksAboutAction(question));
+  const questionWords = ` ${normalized(question)} `;
+  const targetable = general && action && !analysis.ordre && !rules.order;
+  const actionTargets = targetable ? analysis.ciblesGeste.slice(0, MAX_REQUIRED).map((group) =>
+    group.slice(0, MAX_REQUIRED).map((term) => ({ term, form: normalized(term) }))
+      .filter(({ form }) => form.length > 1 && !STOPWORDS.has(form) && questionWords.includes(` ${form} `))
+      .map(({ term, form }) => ({ term, forms: actionTargetForms(form) })),
+  ).filter((group) => group.length > 0) : [];
   // Sujet d'une « première / dernière fois » : seulement s'il existe dans le corpus (sinon, chemin général).
   const subject = analysis.sujet ? ((await resolveRequired(pool, [analysis.sujet], corpusVersion, notes))[0] ?? null) : null;
   const order = rules.order ?? (route === 'lister' || general ? analysis.ordre : null);
@@ -205,11 +240,15 @@ export async function analyzeQuestion(
   };
   return {
     routed,
+    action,
+    projects: analysis.projets.filter(p => mentionsProject(question, p)),
+    observed: analysis.gesteObserve && routed.scope !== 'ecran' && routed.scope !== 'paroles',
     keywords: subjectKeywords,
     hypothetical: analysis.passage || null,
     source: 'llm',
     note: notes.length > 0 ? notes.join(' ; ') : null,
     required,
+    actionTargets: targetable ? coordinatedTargets(question, actionTargets) : [],
     subject: subject && inCorpus(subject.forms[0]!, words) ? subject : null,
     series,
   };

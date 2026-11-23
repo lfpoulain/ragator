@@ -6,6 +6,7 @@ import { request, type Server } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Pool } from 'pg';
 import { updateCorpus } from '../../src/core/update.js';
+import type { SceneRef, Turn } from '../../src/core/followup.js';
 import { createWebServer } from '../../src/web/server.js';
 import { closePool } from '../../src/db/pool.js';
 import { dbAvailable, FIXTURES_DIR, getTestPool, resetDatabase, setupDatabase } from './helpers.js';
@@ -68,6 +69,23 @@ import { dbAvailable, FIXTURES_DIR, getTestPool, resetDatabase, setupDatabase } 
     expect(empty.status).toBe(400);
   });
 
+  it('le chat relit le repère du tour JSON lors de la relance en streaming', async () => {
+    const post = (route: string, body: unknown) => fetch(base + route, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const first = await (await post('/api/ask', { question: 'Toutes les vidéos où on parle de NordVPN', mode: 'extractif' })).json() as { turn: Turn & { scenes: SceneRef[] } };
+    expect(first.turn.scenes).toHaveLength(1);
+    const scene = first.turn.scenes[0]!;
+    const response = await post('/api/ask/stream', { question: 'À quel moment exactement ?', mode: 'extractif',
+      history: [{ ...first.turn, scenes: [{ ...scene, excerpt: 'Texte fourni par le client' }] }] });
+    const data = JSON.parse((await response.text()).trim().split('\n').at(-1)!).data;
+    expect(data.retrieval).toBe('scènes citées');
+    expect(data.turn.scenes).toEqual([scene]);
+    expect(data.sources[0]).toMatchObject(scene);
+    expect(data.sources[0].excerpt).not.toContain('Texte fourni par le client');
+    expect(data.answer).toContain('01:21');
+  });
+
   it('web : réponse au fil de l’eau, une ligne JSON par étape puis la réponse complète', async () => {
     const response = await fetch(`${base}/api/ask/stream`, {
       method: 'POST',
@@ -89,7 +107,9 @@ import { dbAvailable, FIXTURES_DIR, getTestPool, resetDatabase, setupDatabase } 
     const unreadable = await ask('{"question":');
     expect(unreadable.status).toBe(400);
     expect(await unreadable.json()).toEqual({ error: 'JSON illisible' });
-    expect((await ask(JSON.stringify({ question: 'x'.repeat(300_000) }))).status).toBe(413);
+    const oversized = await ask(JSON.stringify({ question: 'x'.repeat(300_000) }));
+    expect(oversized.status).toBe(413);
+    expect(await oversized.json()).toEqual({ error: 'requête trop longue' });
 
     const health = await fetch(`${base}/healthz`);
     expect(health.status).toBe(200);

@@ -32,10 +32,26 @@ describe('preuve recopiée (mode local)', () => {
     expect(answer('le module Peltier transfère la chaleur', 'Gu8bnHQaG5s:t00001').claims[0]!.sourceIds).toEqual(['Gu8bnHQaG5s:t00002']);
   });
 
-  it('une citation juste, une preuve reformulée ou trop courte gardent les identifiants écrits', () => {
+  it('accepte une citation exacte, même brève, et écarte une preuve absente de la ligne', () => {
     expect(answer('le module Peltier transfère la chaleur', 'Gu8bnHQaG5s:t00002').claims[0]!.sourceIds).toEqual(['Gu8bnHQaG5s:t00002']);
-    expect(answer('il refroidit la glacière en déplaçant la chaleur', 'Gu8bnHQaG5s:t00001').claims[0]!.sourceIds).toEqual(['Gu8bnHQaG5s:t00001']);
-    expect(answer('le capot', 'Gu8bnHQaG5s:t00002').claims[0]!.sourceIds).toEqual(['Gu8bnHQaG5s:t00002']);
+    expect(answer('LE CAPÔT', 'Gu8bnHQaG5s:t00001').claims[0]!.preuve).toBe('LE CAPÔT');
+    expect(answer('il refroidit la glacière en déplaçant la chaleur', 'Gu8bnHQaG5s:t00001').claims).toEqual([]);
+    expect(answer('le capot', 'Gu8bnHQaG5s:t00002').claims).toEqual([]);
+    expect(answer('', 'Gu8bnHQaG5s:t00002').claims).toEqual([]);
+  });
+
+  it('ne change pas de vidéo pour rattacher une citation et ne transforme pas les nombres', () => {
+    const other = 'cKRqOdTi5yE:t00001';
+    const more = new Map(sources).set(other, withText(other, 40, 'Nous avons mesuré -54 °C et 154 € sur le devis.'));
+    const check = (preuve: string, id: string) =>
+      validateClaims(JSON.stringify({ claims: [{ text: 'Mesure.', preuve, sourceIds: [id] }] }), more, 'court').claims;
+    expect(check('sur le devis', other)).toHaveLength(1);
+    expect(check('nous avons mesuré -54', 'Gu8bnHQaG5s:t00002')).toEqual([]);
+    expect(check('54 °C', other)).toEqual([]);
+    expect(check('54 €', other)).toEqual([]);
+    expect(check('-54 °C', other)).toHaveLength(1);
+    const mixed = { text: 'Les deux projets utilisent ce module.', preuve: 'Le module Peltier', sourceIds: ['Gu8bnHQaG5s:t00002', other] };
+    expect(validateClaims(JSON.stringify({ claims: [mixed] }), more, 'court').claims).toEqual([]);
   });
 });
 
@@ -227,6 +243,20 @@ describe('renderClaims : ordre du juge du tri', () => {
     );
     expect(answer.split('\n')[0]).toContain('Prouvée.');
     expect(answer).toMatch(/Éventuellement \(« Ryobi » n’apparaît pas dans leurs extraits, à vérifier\) :\n- Plus ancienne, sans la marque\./);
+  });
+
+  it('affiche la raison propre à chaque piste même en mode court', () => {
+    const answer = renderClaims(
+      [
+        { text: 'Ils déballent une scie.', sourceIds: ['aaaaaaaaaaa:t00001'], missing: 'geste non confirmé' },
+        { text: 'Ils scient une planche.', sourceIds: ['bbbbbbbbbbb:t00001'], missing: 'marque incertaine' },
+      ],
+      sources,
+      'court',
+      true,
+    );
+    expect(answer).toMatch(/geste non confirmé, à vérifier\) :\n- Ils déballent/);
+    expect(answer).toMatch(/marque incertaine, à vérifier\) :\n- Ils scient/);
   });
 
   it('les mentions en passant et les passages promotionnels suivent les vidéos qui traitent le sujet', () => {

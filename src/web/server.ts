@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { Pool } from 'pg';
 import { logQuestion } from '../db/question-log.js';
 import { repondre, turnOf, type AnswerMode, type AnswerResult } from '../core/answer.js';
-import { MAX_HISTORY_TURNS, type Turn } from '../core/followup.js';
+import { MAX_HISTORY_TURNS, MAX_TURN_SCENES, type Turn, type SceneRef } from '../core/followup.js';
 import { channelStats, stats } from '../core/stats.js';
 import { listCollections, resolveCollection } from '../core/collections.js';
 import { nearbyVideos } from '../core/nearby-videos.js';
@@ -55,7 +55,11 @@ class HttpError extends Error {
  * pour que la réponse parvienne au client.
  */
 function readJson(req: IncomingMessage, limit = MAX_BODY_BYTES): Promise<unknown> {
-  if (Number(req.headers['content-length'] ?? 0) > limit) return Promise.reject(new HttpError(413, 'requête trop longue'));
+  if (Number(req.headers['content-length'] ?? 0) > limit) {
+    // Le client peut encore écrire pendant l’envoi du 413. Vider le flux sans le stocker.
+    req.resume();
+    return Promise.reject(new HttpError(413, 'requête trop longue'));
+  }
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks: Buffer[] = [];
@@ -110,16 +114,23 @@ export function passwordOk(header: string | undefined, password: string): boolea
   return timingSafeEqual(digest(given), digest(password));
 }
 
-/** Historique renvoyé par la page : seules des références (question, vidéos), jamais des preuves. */
+/** Seules les coordonnées renvoyées par le client servent à la relecture dans le corpus. */
 function parseHistory(raw: unknown): Turn[] {
   if (!Array.isArray(raw)) return [];
   return raw
-    .filter((t): t is { question: string; videoIds: unknown } => typeof (t as { question?: unknown })?.question === 'string')
-    .map((t) => ({
-      question: t.question.slice(0, MAX_QUESTION_CHARS),
-      videoIds: Array.isArray(t.videoIds) ? t.videoIds.filter((v): v is string => typeof v === 'string' && /^[A-Za-z0-9_-]{11}$/.test(v)) : [],
-    }))
-    .slice(-MAX_HISTORY_TURNS);
+    .filter((t): t is { question: string; videoIds?: unknown; scenes?: unknown; choosingScene?: unknown; offeredEpisodeSearch?: unknown } => typeof t?.question === 'string')
+    .slice(-MAX_HISTORY_TURNS)
+    .map((t) => {
+      const videoIds = Array.isArray(t.videoIds) ? t.videoIds.filter((v): v is string => typeof v === 'string' && /^[A-Za-z0-9_-]{11}$/.test(v)) : [];
+      const scenes: SceneRef[] = Array.isArray(t.scenes) ? t.scenes.slice(0, MAX_TURN_SCENES).flatMap((s) => {
+        if (!s || !videoIds.includes(s.videoId) || typeof s.sourceId !== 'string' || !s.sourceId || s.sourceId.length > 200 ||
+          !Number.isSafeInteger(s.startS) || s.startS < 0 || s.startS > 2_147_483_647) return [];
+        return [{ videoId: s.videoId, sourceId: s.sourceId, startS: s.startS }];
+      }) : [];
+      return { question: t.question.slice(0, MAX_QUESTION_CHARS), videoIds, ...(scenes.length ? { scenes } : {}),
+        ...(t.choosingScene === true && scenes.length ? { choosingScene: true } : {}),
+        ...(t.offeredEpisodeSearch === true && scenes.length ? { offeredEpisodeSearch: true } : {}) };
+    });
 }
 
 /** Réponse envoyée à la page : ce qu'elle affiche, et la référence du tour pour la relance suivante. */
@@ -347,7 +358,7 @@ export function createWebServer(
         }
         send(res, 404, { error: 'introuvable' });
       } catch (err) {
-        if (err instanceof HttpError) return send(res, err.status, { error: err.message }, undefined, err.status === 413 ? { Connection: 'close' } : {});
+        if (err instanceof HttpError) return send(res, err.status, { error: err.message });
         send(res, 500, { error: err instanceof Error ? err.message : String(err) });
       }
     })();

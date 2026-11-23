@@ -76,6 +76,8 @@ const ORDINAL_OBJECT =
  * un usage réel, qu'une mention du mot ne prouve pas (la question est prise au mot).
  */
 const ACTION_VERB = /(?<!\p{L})(?:utilis|test|fabriqu|construi|soud|imprim|install|répar|découp|programm)\p{L}*/iu;
+const ORDINAL_CLAUSE = /(?:\bqu['’]|\b(?:où|que)\s+)(?:ils?|elles?|on|nous|vous)\s+\p{L}+/iu;
+const MENTION_VERB = /(?<!\p{L})(?:parl\p{L}*|mentionn\p{L}*|cit[éae]\p{L}*|évoqu\p{L}*|voit|voient|vu|vue|aperç\p{L}*)(?!\p{L})/iu;
 
 function extractOrdinalTerm(question: string): string | null {
   const stripped = question.replace(ORDINAL_PHRASE, ' ').replace(/\s+/g, ' ').trim();
@@ -119,6 +121,13 @@ const QUOTED = /«\s*(.+?)\s*»|"([^"]+)"/g;
  */
 const GENERAL_PATTERN =
   /(?<!\p{L})(?:qu['’]est-ce\s+qu['’](?:ils|on)\s+pens|que\s+pensent|(?:ils\s+ont|ont-ils|on\s+a|avez-vous|vous\s+avez)\s+déjà\s+(?:parl|utilis|test|fait|essay|évoqu|mentionn)|quand\s+(?:est-ce\s+qu['’](?:on|ils)\s+)?(?:parl|évoqu|abord|mentionn|utilis|montr|est-il question)|dans\s+quel(?:le)?s\s+(?:projets?|vidéos|épisodes|cas)|(?:avec\s+)?quel(?:le)?s\s+(?:autres\s+)?(?:projets|youtubeurs|créateurs|vidéos|épisodes|sujets|moments)|tous\s+les\s+(?:moments|passages|projets)|à\s+quels\s+moments)/iu;
+
+// Un geste au présent sur une catégorie d'objets (« tournent-ils du bois ? ») peut se répéter.
+// L'article défini ou possessif (« leur pied de lampe ») peut au contraire désigner un projet.
+const WHEN_GENERIC_OBJECT = /^quand\s+((?:se\s+|s['’])?\p{L}+ent[-‑](?:ils|elles)|(?:est-ce\s+qu['’])?(?:ils|elles)\s+(?:se\s+|s['’])?\p{L}+ent)\s+(?:(?:du|des|un|une|de\s+la)\s+|de\s+l['’])([^,;:?!]+)[?!]*$/iu;
+const ALTERNATIVE_ARTICLE = /\s+(?:ou|et)\s+(?:(?:du|des|de\s+la)\s+|de\s+l['’])/giu;
+// Un autre référent précis dans la suite (« du bois pour le pied de lampe ») rend le cas ambigu.
+const SPECIFIC_CONTEXT = /(?<!\p{L})(?:ce|cet|cette|ces|leur|leurs|son|sa|ses|quand|comment|pourquoi|quel|quelle|du)(?!\p{L})|(?<!\p{L})(?:dans|sur|pour|de)\s+(?:la\b|le\b|les\b|l['’])/iu;
 
 /**
  * L'objet suit le marqueur : « on parle de X », « on voit X », « mentionné X ».
@@ -209,12 +218,19 @@ export function classify(question: string): RoutedQuery {
     : extractTerms(question);
   const [term = null, ...alternatives] = terms;
   const scope = scopeOf(question);
-  const base = { term, alternatives, scope, videoId: extractVideoReference(question), general: GENERAL_PATTERN.test(question), order: null };
+  const videoId = extractVideoReference(question);
+  const when = WHEN_GENERIC_OBJECT.exec(question.trim());
+  const general = !videoId && (when && !MENTION_VERB.test(when[1]!)
+    ? !SPECIFIC_CONTEXT.test(when[2]!.replace(ALTERNATIVE_ARTICLE, ' '))
+    : GENERAL_PATTERN.test(question));
+  const base = { term, alternatives, scope, videoId, general, order: null };
 
   if (matches(INFOS_PATTERNS, question)) {
     return { ...base, route: 'infos', reason: 'demande de lien, fichier ou référence en description' };
   }
-  if (order && ACTION_VERB.test(question)) {
+  // Une demande de « première fois » sans terme de mention identifiable reste chronologique,
+  // même avec un verbe de geste absent du lexique (« ils coulent de la résine »).
+  if (order && (ACTION_VERB.test(question) || term === null || (ORDINAL_CLAUSE.test(question) && !MENTION_VERB.test(question)))) {
     const when = order === 'premiere' ? 'première' : 'dernière';
     return { ...base, term: null, alternatives: [], order, route: 'chercher', general: true, reason: `${when} fois qu’ils font quelque chose : question générale triée par date` };
   }

@@ -55,6 +55,30 @@ describe('routage déterministe', () => {
     expect(classify('comment on a mesuré la consommation de la glacière ?').route).toBe('chercher');
   });
 
+  it.each([
+    'Quand soudent-ils du métal ?',
+    'Quand est-ce qu’ils cintrent du bois ?',
+    'Quand brunissent-elles de l’acier ?',
+    'Quand plient-ils de la tôle à la main ?',
+    'Quand brunissent-elles du cuivre ou de la tôle ?',
+    'Quand utilisent-ils de la résine ou de la colle époxy ?',
+    'Quand ils tournent une poignée ?',
+    'Quand parlent-ils de l’avenir de la chaîne ou de son financement ?',
+  ])('cherche les occurrences du geste dans « %s »', (question) => {
+    expect(classify(question)).toMatchObject({ route: 'chercher', general: true });
+  });
+
+  it.each([
+    'Quand soudent-ils le cadre de leur remorque ?',
+    'Quand cintrent-ils du bois pour le fauteuil ?',
+    'Quand soudent-ils du métal dans cette vidéo ?',
+    'Quand utilisent-ils du métal pour leur portail ?',
+    'Quand ils soudent du métal, comment protègent-ils le sol ?',
+    'Quand ont-ils terminé leur manoir ?',
+  ])('conserve le cadrage précis dans « %s »', (question) => {
+    expect(classify(question)).toMatchObject({ route: 'chercher', general: false });
+  });
+
   it('« écran » seul et « épisode » sont reconnus malgré l’accent initial', () => {
     expect(classify('quel texte est affiché sur l’écran de la glacière ?').scope).toBe('ecran');
     expect(classify('dans quelle vidéo voit-on un écran LCD ?').scope).toBe('ecran');
@@ -129,5 +153,6 @@ describe('routage déterministe', () => {
   it('première / dernière fois qu’ils FONT quelque chose : question générale, pas un décompte de mots', () => {
     expect(classify('La dernière fois où ils utilisent une visseuse')).toMatchObject({ route: 'chercher', general: true, order: 'derniere', term: null });
     expect(classify('Quand ont-ils testé une imprimante résine pour la première fois ?')).toMatchObject({ route: 'chercher', general: true, order: 'premiere' });
+    expect(classify("La première fois qu'ils coulent de la résine dans un moule")).toMatchObject({ route: 'chercher', general: true, order: 'premiere' });
   });
 });

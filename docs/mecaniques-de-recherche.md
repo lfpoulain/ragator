@@ -62,10 +62,18 @@ Le temps de l'aiguillage est compris : l'analyse par LLM prend ~1 s.
 `repondre()` (`src/core/answer.ts`) est la seule fonction de réponse : l'interface web, la ligne de
 commande et le serveur MCP l'appellent tous.
 
-1. **Relance** (`src/core/followup.ts`). « Et dans cette vidéo ? », « et celle du manoir ? » sont
-   rattachées à la vidéo de l'échange précédent, retrouvée par le code (5 échanges gardés au plus).
-   L'historique ne sert qu'à retrouver la référence, jamais de preuve. Si plusieurs vidéos
-   conviennent, Ragator demande laquelle.
+1. **Relance** (`src/core/followup.ts`, `src/core/scene-memory.ts`). Le chat garde pendant cinq
+   échanges l’identifiant de vidéo, l’identifiant de source et la seconde de début de chaque scène
+   citée. Le serveur retrouve la source à ces coordonnées dans la collection active. Une demande
+   de minutage avec un seul repère se résout directement. Un choix comme « la deuxième » reprend
+   la question en attente. Pour répondre sur le contenu, le modèle lit les extraits et fournit une
+   citation vérifiée. Une précision trouvée dans le voisinage a sa propre citation et laisse le
+   repère initial disponible au tour suivant. Les relances portant sur toute une vidéo ou sur
+   un décompte reprennent la recherche correspondante. Si le détail manque au passage,
+   une proposition permet d’élargir aux autres épisodes. En cas d’accord au tour suivant,
+   Ragator retrouve les vidéos dont le titre partage des mots distinctifs avec le projet,
+   puis le modèle sélectionne les suites parmi ces seuls titres. La recherche reprend la
+   question en attente dans ces vidéos. Un refus conserve les repères précédents.
 2. **Règles** (`src/core/classify.ts`), déterministes et testables sans LLM. Elles reconnaissent :
    - les décomptes (« toutes les vidéos où… ») ;
    - les formules « première / dernière » ;
@@ -84,9 +92,14 @@ commande et le serveur MCP l'appellent tous.
    | passage | un extrait inventé qui ressemblerait à la réponse (HyDE) | jamais une preuve, seulement un vecteur de recherche |
    | exigences | marque, modèle, nom propre imposé (« Ryobi », « xTool P2 ») | ramené à une forme du corpus (alias, correction orthographique) |
    | sujet | l'objet d'une « première / dernière fois » (« scie circulaire ») | présent dans le corpus |
+   | projets | réalisations nommées par le spectateur | termes présents dans la question et titres de la collection, avec prise en compte des dimensions et des pluriels |
+   | geste observé | action matérielle ou résultat sur un objet | la lecture des plans utilise leurs descriptions et titres. Les questions sur une inscription, une étiquette ou une mesure conservent le texte affiché |
    | série | le nom d'une série que la question désigne par ses titres (« les vidéos de la régie/gaming room » → « régie », « gaming room ») | ramené aux vidéos dont le titre le contient (voir [Séries](#séries-nommées-par-la-question)) |
 
-   Sans LLM, c'est-à-dire en mode « Extraits seuls » ou sans modèle configuré, les règles décident seules.
+   Le schéma limite les listes produites, dont huit mots-clés et quatre variantes orthographiques.
+   Si le modèle s'interrompt au milieu de l'objet JSON, Ragator lui redemande une fois l'analyse avec
+   un budget de réponse doublé. Une analyse toujours illisible entraîne le retour aux règles.
+   En mode « Extraits seuls » ou sans modèle configuré, les règles décident seules.
 
 ### Séries nommées par la question
 
@@ -132,6 +145,9 @@ série n'oublie aucun plan.
 2. **Passages** (`src/core/passages.ts`). Les 50 meilleures fenêtres deviennent des extraits :
    - complets autour des preuves pour les 3 premières, courts ensuite ;
    - 3 au plus par vidéo, ~25 000 caractères en tout.
+
+   Si le plan le plus pertinent a déjà commencé au début de la fenêtre, l’extrait complet part du
+   début de cette fenêtre. Il peut ainsi inclure le plan suivant, où le geste annoncé devient visible.
 3. **Rédaction en sortie structurée** : `{ refus, claims: [{ text, sourceIds }] }`. Chaque ligne des
    extraits porte un identifiant court (`s12`), et le schéma n'autorise que les identifiants fournis.
 4. **Validation** (`src/core/citations.ts`). Le code :
@@ -158,15 +174,41 @@ par vidéo (`src/core/general.ts`).
    la question, prise au mot ? » et rend une probabilité. « Quand utilisent-ils X » exige qu'ils
    l'utilisent : en parler ne suffit pas. Il juge **par vagues** : 150 vidéos, puis 100 de plus tant
    que la vague précédente en a gardé au moins un quart.
-3. **Rédaction** : une phrase par vidéo retenue, par lots de 6, en parallèle. Le juge trie déjà ; luna
-   peut seulement laisser vide une vidéo dont les extraits ne répondent pas.
+3. **Rédaction.** Le modèle traite les vidéos retenues par lots de six. Il donne pour chacune une
+   affirmation, une preuve recopiée et les identifiants des lignes correspondantes. Ragator vérifie
+   leur appartenance à la vidéo avant l’affichage progressif.
 4. **Présentation** :
    - les vidéos les plus sûres d'abord ;
    - celles retenues de justesse (probabilité < 0,5) sous « Pertinence incertaine, à vérifier » ;
    - si la question impose une marque ou un modèle, les vidéos qui ne le citent pas sous
      « Éventuellement ».
 
-**Garantie** : rien n'est retiré en silence ; ce qui est douteux est signalé comme tel.
+Le score du juge mesure la pertinence de la vidéo. Pour une demande d’utilisation d’un matériau ou
+d’un type d’objet précis, Ragator vérifie aussi sa présence dans les lignes qui étayent l’affirmation.
+Quand deux matériaux sont reliés par « ou », chacun peut suffire. Pour « du feutre ou du cuir épais
+au laser », un passage sur du feutre découpé au laser convient. Pour le cuir, le passage doit aussi
+en établir l’épaisseur. La contrainte du laser s’applique aux deux matériaux.
+Dans « utilisent-ils une découpeuse ou une graveuse laser ? », le laser qualifie les deux outils.
+Une scène où la machine « grave le bois au laser » peut donc répondre même si personne ne dit
+« graveuse ». Pour les questions générales de ce type, une des deux fenêtres retenues par vidéo
+peut être recentrée sur une entrée qui décrit le geste. Cela permet au juge de lire la scène de
+travail même si la présentation de la machine est mieux classée. Lors de la rédaction, le titre
+d’un plan peut identifier la technologie et sa description doit étayer le geste. La mention
+d’un scanner laser à côté d’une scie ne suffit pas.
+Si le rédacteur écarte explicitement une vidéo alors qu’un plan décrit le geste demandé, Ragator
+peut lui soumettre une seconde fois un ou deux plans de cette vidéo. Une confirmation exige alors
+qu’il désigne le plan et en cite la preuve. Un second refus clôt l’examen de cette vidéo.
+Une question comme « Quand soudent-ils du métal ? » peut porter sur plusieurs vidéos.
+Pour cette matière, un plan qui nomme l’acier, l’inox ou l’aluminium peut établir la nature de la
+pièce. Si la question impose l’acier, la seule mention de métal est insuffisante. Dans les deux cas,
+la citation doit aussi situer le geste sur la pièce.
+Pour des opérations comme souder, percer ou graver, Ragator vérifie le geste dans la parole ou la
+description du plan. Si le modèle cite l’inspection d’une pièce terminée, une ligne du même passage
+peut fournir l’instant du geste. Les pistes qu’il affiche après une panne de rédaction restent
+explicitement signalées pendant l’affichage progressif et dans la réponse complète.
+Lorsqu’on cherche les vidéos ou les moments d’utilisation, il affiche la parole ou le plan d’origine,
+avec une deuxième ligne de la même scène si elle aide à identifier le geste ou l’objet. Un passage
+qui décrit uniquement l’état d’une pièce déjà assemblée peut figurer parmi les pistes incertaines.
 
 ## 4. Parcours chronologique
 
@@ -178,7 +220,9 @@ ancienne fausse la réponse : le tri global du chemin 3 n'y suffit pas (`src/cor
    en a, une exigence (paroles, plans ou texte à l'écran). Elles sont triées de la plus ancienne à la
    plus récente, ou l'inverse pour « la dernière fois ». Sans sujet, l'exigence en tient lieu (« la
    xTool P2 »).
-2. **Candidates par le sens**, s'il y a des candidates exactes : une vidéo plus ancienne peut montrer
+   Avec un sujet composé, les fenêtres qui contiennent tous ses mots selon BM25 peuvent aussi
+   rejoindre la liste, même si ces mots sont répartis sur plusieurs entrées.
+2. **Candidates par le sens** : une vidéo plus ancienne peut montrer
    le geste avec d'autres mots (« graveuse laser » pour « gravure au laser »). La question et son
    extrait hypothétique (HyDE) sont encodés ; leurs phrases et blocs les plus proches (HNSW, collection
    respectée) désignent des vidéos, classées par RRF. Des 24 plus proches, les 8 plus anciennes (ou
@@ -188,14 +232,17 @@ ancienne fausse la réponse : le tri global du chemin 3 n'y suffit pas (`src/cor
    90 s après) et reçoit sa propre décision du juge. Une introduction bavarde ne cache
    plus la scène d'usage. Une vidéo trouvée par le sens ne cite pas le sujet : le
    juge doit lui donner au moins 0,7 au lieu du seuil habituel.
-4. **Arrêt à la première vidéo retenue**, examinée par vagues de 4 : en général après 1 à 5 vidéos.
-5. **Lien entre la marque et le sujet** : une vidéo retenue où la marque n'est jamais sur la même
-   ligne que le sujet, et que son titre ne nomme pas (« Ryobi » sur un cloueur, une scie à côté), est
-   signalée en « Éventuellement, plus tôt », et le parcours continue.
-6. **Rédaction** de la vidéo retenue, sans la rejuger.
+4. **Le LLM relit les scènes retenues et choisit la ligne qui prouve le geste.** Il dispose de
+   l’introduction et de la description pour identifier les personnes. Une scène où un invité
+   utilise l’outil peut ainsi précéder celle où les animateurs s’en servent eux-mêmes.
+5. **La réponse cite cette ligne à son horodatage.** Le parcours continue tant que le geste ou
+   le détail demandé reste incertain. Il peut afficher trois pistes, dont les plans où la marque
+   apparaît à l’écran et peut appartenir à un autre outil. Le rang annoncé se rapporte aux vidéos
+   examinées, selon leur date de publication.
 
-Sans candidate exacte, ou sans vidéo retenue parmi les 24 premières, la question repart par le
-chemin 3.
+La recherche examine au plus 24 candidates, par vagues de quatre. Si aucune scène n’atteint le
+seuil du juge, elle reprend le chemin 3. Si le relecteur a examiné des scènes sans trouver
+d’occurrence confirmée, la réponse le précise.
 
 ## 5. Décompte exact
 
@@ -286,4 +333,4 @@ Une étape indisponible dégrade la réponse sans l'empêcher, et la raison est 
 | Pas de clé, ou encodeur injoignable | recherche par mots seule |
 | LLM en erreur | réponse extractive : les meilleurs extraits, cités, sans rédaction |
 | Juge en erreur | parcours chronologique abandonné pour le chemin 3 ; si le juge reste en panne, réponse extractive |
-| Un lot de rédaction en échec | réponse partielle, signalée |
+| Un lot de rédaction en échec ou illisible | les réponses vérifiées des autres lots sont conservées. Jusqu’à six passages retrouvés dans les vidéos retenues par le juge peuvent apparaître comme pistes à vérifier |

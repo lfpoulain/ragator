@@ -149,10 +149,11 @@ function unique(values: string[]): string[] {
 }
 
 /** Remplace chaque mot absent du corpus par ses plus proches voisins (distance ≤ 2). */
-async function correctTokens(db: Db, tokens: string[], corpusVersion: string): Promise<string[]> {
+async function correctTokens(db: Db, tokens: string[], corpusVersion: string) {
   const words = await lexique(db, 'tout', corpusVersion);
   const known = new Set(words);
   const corrected: string[] = [];
+  const evidenceForms: string[] = [];
   for (const token of tokens) {
     if (known.has(token)) {
       corrected.push(token);
@@ -160,9 +161,15 @@ async function correctTokens(db: Db, tokens: string[], corpusVersion: string): P
     }
     const candidates = nearestWords(token, words, FUZZY_MAX_DISTANCE);
     const best = candidates[0];
-    corrected.push(...(best ? candidates.filter((c) => c.distance === best.distance).map((c) => c.word) : [token]));
+    const closest = best ? candidates.filter((c) => c.distance === best.distance).map((c) => c.word) : [];
+    corrected.push(...(closest.length ? closest : [token]));
+    // Une faute de frappe univoque peut mener à la vraie ligne. Les valeurs, références et
+    // corrections ambiguës servent uniquement à repérer des fenêtres candidates.
+    if (/^[a-z]{4,}$/.test(token) && contentTokens([token]).length && closest.length === 1 && best?.distance === 1) {
+      evidenceForms.push(...contentTokens(closest));
+    }
   }
-  return unique(corrected);
+  return { correctedTokens: unique(corrected), evidenceForms };
 }
 
 /**
@@ -621,7 +628,9 @@ export async function chercher(
     );
     const offset = pageOffset(key, input.cursor);
 
-    const correctedTokens = tokens.length > 0 ? await correctTokens(db, tokens, versions.corpusVersion) : [];
+    const { correctedTokens, evidenceForms } = tokens.length > 0
+      ? await correctTokens(db, tokens, versions.corpusVersion)
+      : { correctedTokens: [], evidenceForms: [] };
     const { rewritten: joinedQuery, joined } = joinedWords(
       tokenizeText(input.query).tokens,
       new Set(tokens.length > 0 ? await lexique(db, 'tout', versions.corpusVersion) : []),
@@ -664,7 +673,7 @@ export async function chercher(
       pageIds,
       new Map(fused),
       mergeEntryDistances(entryHits.entriesByWindow, chunkHits.entriesByWindow, enrichmentHits.entriesByWindow),
-      unique([...(evidenceTokens.length > 0 ? evidenceTokens : tokens), ...joined]),
+      unique([...(evidenceTokens.length > 0 ? evidenceTokens : tokens), ...joined, ...evidenceForms]),
       input.kind,
       options.windowText !== false,
     );

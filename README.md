@@ -23,7 +23,7 @@ Ragator indexe les transcriptions et les descriptions visuelles des vidéos d'un
 - 🎯 **Réponses citées** : chaque phrase renvoie au moment exact de la vidéo, vérifié par le code.
 - 🔎 **Recherche hybride** : mots exacts (BM25 : marques, noms propres, fautes de frappe) et sens (vecteurs).
 - 🧭 **Plusieurs types de questions** : précises, générales, décomptes, « la première fois que… ».
-- 💬 **Relances** : « et dans cette vidéo ? », « et la dernière fois ? ».
+- 💬 **Relances sur une scène**. Demandez « comment vérifient-ils le résultat ? » ou « à quel moment exactement ? ». Si deux passages conviennent, choisissez « la première » ou son minutage. Si le détail manque, Ragator propose de chercher dans les autres épisodes du projet. Répondez « oui » pour lancer cette recherche.
 - 📚 **Plusieurs chaînes** dans une même base, avec un filtre par chaîne.
 - 🖥️ **Interface web**, ligne de commande et **serveur MCP** pour Claude, Cursor et les autres clients IA.
 
@@ -153,7 +153,7 @@ Chaque famille de questions suit son propre chemin :
 | **Générale** | « Quand utilisent-ils une imprimante 3D ? » | une ligne par vidéo pertinente, les plus sûres d'abord |
 | **Décompte** | « Toutes les vidéos où on parle de Raspberry Pi » | liste exacte calculée par la base, sans IA, ~2 s |
 | **Première / dernière mention** | « La première mention du PLA » | la plus ancienne (ou récente) vidéo avec son extrait, puis toutes par date |
-| **Première / dernière fois** | « La première fois qu'ils utilisent une scie circulaire » | les vidéos examinées dans l'ordre du temps jusqu'à celle qui montre l'action |
+| **Première / dernière fois** | « La première fois qu'ils utilisent une scie circulaire » | la première ou dernière occurrence confirmée parmi les vidéos examinées, avec les pistes encore incertaines |
 
 ## Configuration requise
 
@@ -185,7 +185,7 @@ docker compose --profile local pull && docker compose --profile local up -d
 docker compose pull && docker compose up -d
 ```
 
-Les images sont publiées sur ghcr.io ([`ragator`](https://github.com/lfpoulain/ragator/pkgs/container/ragator), [`ragator-juge`](https://github.com/lfpoulain/ragator/pkgs/container/ragator-juge)) à chaque mise à jour de `main`. Pour les construire depuis le code : `docker compose up -d --build` (avec ou sans `--profile local`).
+Après les tests d’un push sur `main`, GitHub Actions publie `latest` et `sha-<commit court>` pour les deux images. Ragator est disponible pour Linux amd64 et arm64, le juge GPU pour Linux amd64. Pour construire la pile depuis le code, utilisez `docker compose up -d --build`, avec le profil `local` si vous utilisez les modèles locaux. [Image Ragator](https://github.com/lfpoulain/ragator/pkgs/container/ragator) · [Image du juge](https://github.com/lfpoulain/ragator/pkgs/container/ragator-juge)
 
 Ouvrez <http://localhost:3210>. Par défaut, le port est publié sur la boucle locale. Sur un serveur, vous pouvez garder cette configuration et ouvrir un tunnel depuis votre poste avec `ssh -L 3210:127.0.0.1:3210 utilisateur@serveur`. Pour publier le port sur un réseau privé, suivez la section [Sécurité](#sécurité) avant le premier démarrage.
 
@@ -338,7 +338,8 @@ flowchart LR
 ```
 
 - **La recherche** combine un index lexical BM25 (mots exacts, marques, noms propres, correction orthographique) et une recherche par vecteurs (sens), sur les phrases et sur des blocs de 30 s enrichis. Les listes sont fusionnées (RRF).
-- **Le modèle ne voit que des extraits numérotés** et doit citer leurs identifiants dans une sortie JSON imposée ; le code vérifie chaque citation et retire toute affirmation sans preuve valable. Pas de preuve : refus.
+- **Les citations** renvoient aux lignes numérotées des extraits. Pour les réponses par vidéo, le rédacteur recopie la preuve et Ragator vérifie qu’elle figure dans les lignes de cette vidéo avant de l’afficher.
+- **Les questions sur un geste** distinguent le geste montré, l’objet utilisé et sa marque. Pour une question précise, si seule une partie est établie, Ragator peut relire une fois les passages voisins et signaler ce qui reste incertain.
 - **Les questions générales** passent par un modèle de *décision* (Aplomb en local, [JEV](https://openrouter.ai/typesafe/jev-1.13) par OpenRouter) qui donne pour chaque vidéo candidate la probabilité qu'elle réponde à la question, prise au mot.
 
 | Rôle | Mode local | Mode OpenRouter |
@@ -361,6 +362,10 @@ npm run db:migrate
 npm run web              # http://127.0.0.1:3210
 npm run check            # types + tests (les tests d'intégration demandent la base)
 ```
+
+Pour évaluer les réponses avec de vrais modèles, ingérez les deux vidéos des Frères Poulain de `tests/fixtures` dans une base dédiée, puis lancez `npm run embed`. Avec la même `DATABASE_URL` et le même mode, `node --import tsx tests/evaluation/poulain.mjs` produit une ligne JSON par question avec la réponse attendue, chaque affirmation, ses sources, la durée et le coût LLM et juge communiqué par le fournisseur. Les deux modes peuvent ainsi être comparés sur le même index.
+
+Le banc du premier tour mesure séparément la vidéo citée, le minutage et le fait demandé. Sur la collection locale de 404 vidéos des Frères Poulain, 16 réponses sur 20 remplissent automatiquement tous les critères, contre 11 avant les correctifs. [Protocole, résultats de réserve et exemple de dialogue](docs/evaluation.md)
 
 ```text
 src/core/       pipeline : ingestion, enrichissement, vecteurs, recherche, aiguillage, réponse

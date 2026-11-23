@@ -11,6 +11,10 @@ export type AnswerMode = 'court' | 'détaillé' | 'extractif';
 export interface Claim {
   text: string;
   sourceIds: string[];
+  /** Extrait recopié par le rédacteur et retrouvé dans les sources attribuées. */
+  preuve?: string;
+  /** Valeur alternative effectivement présente dans une ligne citée, si la réponse rectifie la prémisse. */
+  correction?: string;
   relevance?: number;
   /** Pourquoi la vidéo ne prouve pas la réponse : marque absente de ses extraits, ou pas sur le même plan que le sujet. */
   missing?: string;
@@ -36,7 +40,7 @@ export interface ParsedCitation {
   startS: number | null;
 }
 
-function parseTimestamp(value: string): number {
+export function parseTimestamp(value: string): number {
   return value
     .trim()
     .split(':')
@@ -142,10 +146,13 @@ export function validateClaims(
       if (id === null) invalid.push(written);
       else if (!ids.includes(id)) ids.push(id);
     }
-    // Preuve recopiée (`llm.proof`) : si elle n'est dans aucune ligne citée, la ligne qui la contient fait foi.
-    if (claim.preuve) {
-      const owner = proofOwner(claim.preuve, ids, sources);
-      if (owner !== null) ids.splice(0, ids.length, owner);
+    if (claim.preuve !== undefined) {
+      const checked = sourcesForProof(claim.preuve, ids, sources);
+      if (!checked.length) {
+        invalid.push(...ids);
+        continue;
+      }
+      ids.splice(0, ids.length, ...checked);
     }
     // Le texte ne doit porter aucune référence : le code les ajoute.
     const text = claim.text.replace(CITATION_PATTERN, '').replace(/\s{2,}/g, ' ').trim();
@@ -153,6 +160,8 @@ export function validateClaims(
       claims.push({
         text,
         sourceIds: ids,
+        ...(claim.preuve === undefined ? {} : { preuve: claim.preuve }),
+        ...(claim.correction && ids.some((id) => sourceContainsProof(sources.get(id)!, claim.correction!)) ? { correction: claim.correction } : {}),
         ...(claim.relevance === undefined ? {} : { relevance: claim.relevance }),
         ...(claim.missing === undefined ? {} : { missing: claim.missing }),
         ...(claim.nature === undefined ? {} : { nature: claim.nature }),
@@ -162,19 +171,38 @@ export function validateClaims(
   return { claims, invalid, refused: structured.refus || structured.claims.length === 0, answer: renderClaims(claims, sources, mode, preserveOrder) };
 }
 
-const proofText = (text: string) => text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+// Les accents et la ponctuation d'une transcription varient. Les nombres signés, décimales et unités
+// restent distincts : « 54 € » ne prouve ni « 154 € » ni « -54 € ».
+function proofText(text: string): string {
+  const normalized = text.toLowerCase().normalize('NFKD').replace(/\p{M}+/gu, '').replace(/−/g, '-').replace(/(\d),(?=\d)/g, '$1.');
+  return (normalized.match(/-?\d+(?:\.\d+)?|\p{L}+|[%€$£°±+]/gu) ?? []).join(' ');
+}
+
+export function sourceContainsProof(source: Pick<AnswerSource, 'excerpt'>, proof: string): boolean {
+  const wanted = proofText(proof);
+  return /[\p{L}\d]/u.test(wanted) && ` ${proofText(source.excerpt)} `.includes(` ${wanted} `);
+}
 
 /**
- * Ligne qui contient la preuve recopiée par le modèle, quand aucune des lignes qu'il cite ne la
- * contient ; `null` si une ligne citée la contient déjà, ou si aucune ligne ne la contient (preuve
- * reformulée : les identifiants écrits restent). Preuves de moins de 4 mots ignorées.
+ * Vérifie la citation exacte en priorité dans les lignes indiquées. Une preuve assez longue et unique
+ * peut corriger une erreur de ligne dans la même vidéo. Une preuve ambiguë, absente ou provenant
+ * d'une autre vidéo ne justifie aucune affirmation.
  */
-function proofOwner(proof: string, cited: string[], sources: Map<string, AnswerSource>): string | null {
+export function sourcesForProof(proof: string, cited: string[], sources: ReadonlyMap<string, AnswerSource>): string[] {
   const wanted = proofText(proof);
-  if (wanted.split(' ').length < 4) return null;
-  if (cited.some((id) => proofText(sources.get(id)?.excerpt ?? '').includes(wanted))) return null;
-  for (const [id, source] of sources) if (proofText(source.excerpt).includes(wanted)) return id;
-  return null;
+  if (!/[\p{L}\d]/u.test(wanted) || cited.length === 0) return [];
+  const matches = (source: AnswerSource) => sourceContainsProof(source, proof);
+  const videoId = sources.get(cited[0]!)?.videoId;
+  if (!videoId || cited.some((id) => sources.get(id)?.videoId !== videoId)) return [];
+  if (cited.some((id) => matches(sources.get(id)!))) return cited;
+  if (wanted.split(' ').length < 4) return [];
+  let found: string | undefined;
+  for (const [id, source] of sources) {
+    if (source.videoId !== videoId || !matches(source)) continue;
+    if (found !== undefined) return [];
+    found = id;
+  }
+  return found === undefined ? [] : [found];
 }
 
 /** En dessous, une vidéo retenue par JEV est présentée à part, « à vérifier ». */
@@ -191,15 +219,21 @@ export function renderClaims(claims: Claim[], sources: Map<string, AnswerSource>
   // Ordre imposé (par date) : la nature de la mention se lit sur la ligne, faute de pouvoir la regrouper.
   const aside = (c: Claim) => (!preserveOrder ? '' : c.nature === 'promotion' ? ' (passage sponsorisé ou promotionnel)' : c.nature === 'en_passant' ? ' (évoqué en passant)' : '');
   const line = (c: Claim) => `${c.text}${aside(c)}${preserveOrder && uncertain(c) ? ' (pertinence incertaine, à vérifier)' : ''} ${groupSources(c.sourceIds.map((id) => sources.get(id)!)).map(reference).join(' ')}`;
-  if (mode === 'court') return claims.map(line).join(' ');
   const list = (items: Claim[]) => items.map((c) => `- ${line(c)}`).join('\n');
   // Vidéos qui ne citent pas la marque ou le modèle demandé : à part, après les vidéos prouvées.
-  const unproven = claims.filter((c) => c.missing !== undefined);
-  if (unproven.length > 0) {
+  const unproven = new Map<string, Claim[]>();
+  for (const claim of claims) {
+    if (claim.missing === undefined) continue;
+    const group = unproven.get(claim.missing) ?? [];
+    group.push(claim);
+    unproven.set(claim.missing, group);
+  }
+  if (unproven.size > 0) {
     const proven = claims.filter((c) => c.missing === undefined);
-    const tail = `Éventuellement (${unproven[0]!.missing}, à vérifier) :\n${list(unproven)}`;
+    const tail = [...unproven].map(([reason, group]) => `Éventuellement (${reason}, à vérifier) :\n${list(group)}`).join('\n\n');
     return proven.length === 0 ? tail : `${renderClaims(proven, sources, mode, preserveOrder)}\n\n${tail}`;
   }
+  if (mode === 'court') return claims.map(line).join(' ');
   if (preserveOrder) return list(claims);
   // Les vidéos qui traitent le sujet d'abord ; les simples mentions et les passages promotionnels ensuite,
   // sous leur titre : rien n'est retiré, mais un sponsor ne passe plus pour une vidéo sur le sujet.

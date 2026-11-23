@@ -43,6 +43,16 @@ function analyst(analysis: Record<string, unknown>): LlmClient & { calls: number
     expect(a.routed).toMatchObject({ route: 'lister', term: 'nordvpn' });
   });
 
+  it('garde le projet cité par la question et distingue la lecture à l’écran du geste matériel', async () => {
+    const model = analyst({ route: 'chercher', projets: ['caisson pour atelier', 'hélicoptère'], gesteObserve: true });
+    const physical = await analyzeQuestion(pool, 'Comment assemblent-ils les côtés du caisson de leur atelier ?', model);
+    expect(physical.projects).toEqual(['caisson pour atelier']);
+    expect(physical.observed).toBe(true);
+    const screen = await analyzeQuestion(pool, 'Quel texte à l’écran apparaît sur le caisson ?', model);
+    expect(screen.routed.scope).toBe('ecran');
+    expect(screen.observed).toBe(false);
+  });
+
   it('un terme absent du corpus ne donne jamais de décompte : recherche générale', async () => {
     const a = await analyzeQuestion(pool, 'Combien de fois disent-ils Zorglub ?', analyst({ route: 'lister', terme: 'Zorglub' }));
     expect(a.routed).toMatchObject({ route: 'chercher', general: true, term: null });
@@ -67,6 +77,38 @@ function analyst(analysis: Record<string, unknown>): LlmClient & { calls: number
   it('le LLM ne renonce pas à chercher (« clarifier ») si les règles, elles, cherchent', async () => {
     const a = await analyzeQuestion(pool, 'Quand parle ton de moutique ?', analyst({ route: 'clarifier', ordre: 'aucun' }));
     expect(a.routed).toMatchObject({ route: 'chercher', general: true });
+  });
+
+  it('distingue la quantité observée du nombre de mentions dans le corpus', async () => {
+    const model = analyst({ route: 'lister', generale: true, terme: 'module' });
+    const quantity = await analyzeQuestion(pool, 'Combien de petits modules ont grillé pendant le test ?', model);
+    expect(quantity.routed).toMatchObject({ route: 'chercher', general: false, term: null });
+    const mentions = await analyzeQuestion(pool, 'Combien de mentions du module figurent dans le corpus ?', model);
+    expect(mentions.routed.route).toBe('lister');
+  });
+
+  it('conserve l’analyse fraîche et corrige les lectures concurrentes de deux outils de même technologie', async () => {
+    const question = 'Quand utilisent-ils une ponceuse ou une fraiseuse pneumatique ?';
+    const first = analyst({ route: 'chercher', action: true, generale: true, ciblesGeste: [['ponceuse', 'fraiseuse', 'pneumatique']], passage: 'Premier passage proposé.' });
+    const second = analyst({ route: 'chercher', action: false, generale: true, ciblesGeste: [['ponceuse', 'fraiseuse'], ['pneumatique']], passage: 'Nouveau passage proposé.' });
+    const a = await analyzeQuestion(pool, question, first);
+    const b = await analyzeQuestion(pool, question, second);
+    expect(a.source).toBe('llm');
+    expect(b.source).toBe('llm');
+    expect(a.hypothetical).toBe('Premier passage proposé.');
+    expect(b.hypothetical).toBe('Nouveau passage proposé.');
+    expect(a.actionTargets).toEqual(b.actionTargets);
+    expect(a.actionTargets.map(g => g.map(t => t.term))).toEqual([['ponceuse', 'fraiseuse'], ['pneumatique']]);
+    expect((await analyzeQuestion(pool, question, null)).actionTargets).toEqual(a.actionTargets);
+  });
+
+  it('conserve la cible et le parcours multi-vidéo si le modèle juge précise une question de geste récurrent', async () => {
+    const model = analyst({ route: 'chercher', generale: false, action: true, ciblesGeste: [['bois']] });
+    const repeated = await analyzeQuestion(pool, 'Quand tournent-ils du bois ?', model);
+    expect(repeated.routed).toMatchObject({ route: 'chercher', general: true });
+    expect(repeated.actionTargets[0]?.[0]?.term).toBe('bois');
+    const particular = await analyzeQuestion(pool, 'Quand tournent-ils du bois pour le pied de lampe ?', model);
+    expect(particular.routed).toMatchObject({ route: 'chercher', general: false });
   });
 
   it('« quand parlent-ils de X » reste une question générale, jamais un décompte de mentions', async () => {
@@ -123,6 +165,33 @@ function analyst(analysis: Record<string, unknown>): LlmClient & { calls: number
     const none = await analyzeQuestion(pool, 'Quand parlent-ils du module Peltier ?', analyst({ route: 'chercher', generale: true }));
     expect(none.required).toEqual([]);
     expect((await analyzeQuestion(pool, 'La première fois qu’ils utilisent une visseuse Ryobi', null)).required).toEqual([{ term: 'ryobi', forms: ['ryobi'] }]);
+  });
+
+  it('conserve des matières alternatives imposées par un geste sans inventer celle proposée par l’analyse', async () => {
+    const answer = await analyzeQuestion(pool, 'Quand découpent-ils du feutre ou du cuir ?', analyst({
+      route: 'chercher', generale: true, action: true, ciblesGeste: [['feutre', 'cuir', 'zinc']],
+    }));
+    expect(answer.actionTargets.map((group) => group.map((term) => term.term))).toEqual([['feutre', 'cuir']]);
+  });
+
+  it('reprend une analyse tronquée une seule fois et conserve la cible du geste', async () => {
+    const limits: number[] = [];
+    const truncated = '{"route":"chercher","motsCles":["module",';
+    const complete = JSON.stringify({ route: 'chercher', generale: true, action: true, ciblesGeste: [['module']] });
+    let second = complete;
+    const llm: LlmClient = { model: 'analyse simulée', available: async () => true, chat: async (_system, _prompt, options) => {
+      limits.push(options?.maxTokens ?? 0);
+      return limits.length === 1 ? truncated : second;
+    } };
+    const question = 'Quand utilisent-ils un module ?';
+    const recovered = await analyzeQuestion(pool, question, llm);
+    expect(recovered.source).toBe('llm');
+    expect(recovered.actionTargets[0]?.[0]?.term).toBe('module');
+    expect(limits).toEqual([400, 800]);
+    second = truncated;
+    limits.length = 0;
+    expect((await analyzeQuestion(pool, question, llm)).source).toBe('règles');
+    expect(limits).toEqual([400, 800]);
   });
 
   it('sans LLM, ou si sa sortie est illisible, les règles décident', async () => {

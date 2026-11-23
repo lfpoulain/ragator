@@ -20,4 +20,11 @@ describe('recherche par vidéo', () => {
     expect(rankByVideo(windows, { perVideo: 1, maxVideos: 3 }).map((x) => x.videoId)).toEqual(['A', 'B', 'C']);
     expect(rankByVideo(windows, { perVideo: 2, maxVideos: 2 }).map((x) => x.score)).toEqual([0.9, 0.8, 0.6]);
   });
+
+  it('garde le contexte le mieux classé et peut recentrer une seconde fenêtre sur une preuve', () => {
+    const windows = [w('A', 0.9), w('A', 0.8), w('A', 0.7), w('B', 0.6)];
+    const ranked = rankByVideo(windows, { perVideo: 2, maxVideos: 2 }, (window) =>
+      window.score === 0.7 ? { ...window, source: 'geste observé' } : undefined);
+    expect(ranked).toEqual([windows[0], { ...windows[2], source: 'geste observé' }, windows[3]]);
+  });
 });

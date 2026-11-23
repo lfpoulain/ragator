@@ -44,16 +44,17 @@ export function sourceOf(
 
 /** Source d'une entrée (parole ou plan) d'une fenêtre de résultat. */
 export function entrySource(
-  entry: { sourceId: string; kind: Kind; startS: number; endS: number | null; text: string; screenText?: string[] | null },
+  entry: { sourceId: string; kind: Kind; startS: number; endS: number | null; text: string; planTitle?: string | null; screenText?: string[] | null },
   video: { videoId: string; title: string; publishedAt: string | null },
 ): AnswerSource {
   // Le texte à l'écran fait partie de la preuve montrée au modèle : l'extrait le garde (contrôle d'appui, affichage).
   const screen = entry.screenText?.length ? ` | ÉCRAN : ${entry.screenText.map((t) => `« ${t} »`).join(' | ')}` : '';
+  const title = entry.kind === 'visuel' && entry.planTitle ? `${entry.planTitle} | ` : '';
   return sourceOf(
     { sourceId: entry.sourceId, videoId: video.videoId, title: video.title, publishedAt: video.publishedAt, kind: entry.kind },
     entry.startS,
     entry.endS,
-    entry.text + screen,
+    title + entry.text + screen,
   );
 }
 

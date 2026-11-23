@@ -34,7 +34,7 @@ export const JUDGE_QUESTION = 'Do the `excerpts` of this video answer the `quest
 export const JUDGE_CRITERIA = {
   true: {
     what:
-      'The excerpts show exactly what the question asks for, following its verb: if it asks when they use, test, build or do something, they actually do it in the video; if it asks when they talk about something, they genuinely discuss it, even briefly or in a sponsored segment.',
+      'The excerpts show exactly what the question asks for, following its verb: if it asks when they use, test, build or do something, they actually do it in the video; if it asks when they talk about something, they genuinely discuss it, even briefly or in a sponsored segment. A required property (brand, material or model) must belong to the object involved in that action.',
     examples: [
       'question « Quand utilisent-ils une visseuse ? » ; excerpt « On visse les tasseaux avec la visseuse Ryobi. »',
       'question « Quand parlent-ils de leur chat ? » ; excerpt « On vous présente Khéops, notre chatte, qui dort sur l’établi. »',
@@ -46,6 +46,7 @@ export const JUDGE_CRITERIA = {
     examples: [
       'question « Quand utilisent-ils une visseuse ? » ; excerpt « Le sponsor du jour propose une visseuse à prix réduit. »',
       'question « Quand parlent-ils de leur chat ? » ; excerpt « Posez vos questions dans le chat du live. »',
+      'question « Quand découpent-ils une plaque de cuivre ? » ; excerpt « On découpe la plaque en aluminium et on range le fil de cuivre. »',
     ],
   },
 };
@@ -58,7 +59,7 @@ export const JUDGE_CRITERIA = {
 export const JUDGE_CRITERIA_LOCAL = {
   true: {
     what:
-      'The excerpts show exactly what the question asks for, following its verb. For use, test, build, make or do: the action is actually performed in this video, on screen or described as being done now. For talk about: they genuinely discuss the subject, even briefly or in a sponsored segment.',
+      'The excerpts show exactly what the question asks for, following its verb. For use, test, build, make or do: the action is actually performed in this video, on screen or described as being done now. A required brand, material or model refers to the object being used. For talk about: they genuinely discuss the subject, even briefly or in a sponsored segment.',
     examples: [
       ...JUDGE_CRITERIA.true.examples,
       'question « Quand utilisent-ils une scie circulaire ? » ; excerpt « PLAN : un homme découpe le panneau de contreplaqué à la scie circulaire. »',

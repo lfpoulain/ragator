@@ -37,14 +37,29 @@ export function videoScore(scores: number[]): number {
  * Réordonne des fenêtres par vidéo : vidéos par score décroissant, et pour
  * chacune ses `perVideo` meilleures fenêtres. Les fenêtres au-delà sont écartées.
  */
-export function rankByVideo<W extends RankedWindow>(windows: W[], options: VideoRankOptions): W[] {
+export function rankByVideo<W extends RankedWindow>(
+  windows: W[], options: VideoRankOptions, focusProof?: (window: W) => W | undefined,
+): W[] {
   const byVideo = new Map<string, W[]>();
   for (const window of windows) byVideo.set(window.videoId, [...(byVideo.get(window.videoId) ?? []), window]);
   return [...byVideo.values()]
     .map((list) => ({ list: [...list].sort((a, b) => b.score - a.score), score: videoScore(list.map((w) => w.score)) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, options.maxVideos)
-    .flatMap(({ list }) => list.slice(0, options.perVideo));
+    .flatMap(({ list }) => {
+      const selected = list.slice(0, options.perVideo);
+      if (!focusProof || !selected.length) return selected;
+      // Réserver une des places au geste observé, même si l'introduction et la présentation
+      // de l'outil constituent les deux premières fenêtres. Le classement des vidéos est conservé.
+      for (const [index, window] of list.entries()) {
+        const proof = focusProof(window);
+        if (proof) {
+          selected[Math.min(index, selected.length - 1)] = proof;
+          break;
+        }
+      }
+      return selected;
+    });
 }
 
 /** Vidéos triées par date de publication (croissante pour « première »), date inconnue en dernier. */

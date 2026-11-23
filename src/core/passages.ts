@@ -122,9 +122,11 @@ function spanOf(result: SearchResult, rank: number): Span {
     const covered = (from: number): number =>
       result.evidence.reduce((sum, e, i) => (e.startS >= from + CONTEXT_BEFORE_S / 2 && e.startS <= from + MAX_PASSAGE_S - CONTEXT_AFTER_S / 2 ? sum + (weights[i] ?? 1) : sum), 0);
     // Débuts possibles : un peu avant chaque preuve, tant que la meilleure preuve reste dans la tranche.
-    const centered = best - CONTEXT_BEFORE_S * 2;
+    // Un plan peut commencer avant la fenêtre et continuer dedans. Dans ce cas, centrer l’extrait
+    // sur son début hors fenêtre puis le tronquer ferait perdre la suite du geste.
+    const centered = Math.max(result.startS, best - CONTEXT_BEFORE_S * 2);
     const candidates = [centered, ...starts.map((s) => s - CONTEXT_BEFORE_S)].filter(
-      (from) => from <= best - CONTEXT_BEFORE_S / 2 && best <= from + MAX_PASSAGE_S - CONTEXT_AFTER_S / 2,
+      (from) => from >= result.startS && from <= best - CONTEXT_BEFORE_S / 2 && best <= from + MAX_PASSAGE_S - CONTEXT_AFTER_S / 2,
     );
     // À couverture égale, la tranche centrée d'origine, puis la plus proche d'elle.
     startS = candidates.reduce((chosen, from) => {

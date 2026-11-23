@@ -1,19 +1,26 @@
 import type { Pool } from 'pg';
 import { classify, type Route, type RoutedQuery } from './classify.js';
-import { MAX_HISTORY_TURNS, resolveFollowUp, type Turn } from './followup.js';
+import { MAX_HISTORY_TURNS, resolveFollowUp, sceneRefs, type SceneRef, type Turn } from './followup.js';
+import { answerFromScenes } from './scene-memory.js';
 import { chercher, type SearchResult } from './search.js';
 import { rankByVideo } from './video-rank.js';
-import { analyzeQuestion, type QuestionAnalysis } from './analyze.js';
+import { questionOperation } from './operation.js';
+import { sharedToolTargets } from './tool-functions.js';
+import { mentionsActionTargets } from './requirements.js';
+import { timestampedLink } from '../links.js';
+import { analyzeQuestion, knownBrands, type QuestionAnalysis } from './analyze.js';
 import { buildPassages, CorpusChangedError, evidenceBudgetChars } from './passages.js';
 import { chercherPlan } from './search-plans.js';
 import { chercherInfosVideo } from './video-info.js';
 import { expandQuery, type ExpansionResult } from './expansion.js';
-import { validateClaims, type AnswerMode, type Claim } from './citations.js';
+import { extractParsedCitations, renderClaims, validateClaims, type AnswerMode, type Claim } from './citations.js';
 import { answerCredits, creditQuestion } from './credits.js';
 import { answerExhaustive } from './exhaustive.js';
-import { answerByVideo } from './general.js';
-import { scanChronologically, type FirstTimeResult } from './first-time.js';
+import { answerByVideo, retrievedClues } from './general.js';
+import { ACTION_SYSTEM_PROMPT, SPECULATIVE_SYSTEM_PROMPT, actionNeighborhood, asksAboutAction, assessAction, corroboratedAlternative, uncertainAction } from './action-proof.js';
+import { chronologicalRequirements, reviewOccurrence, scanChronologically, type FirstTimeResult } from './first-time.js';
 import { corpusLine } from './collections.js';
+import { namedProjectVideos } from './projects.js';
 import { readSeries } from './series.js';
 import { judgeFromConfig, type RelevanceJudge } from '../providers/judge.js';
 import { entrySource, extractiveAnswer, groupSources, sourceOf, type AnswerSource } from './sources.js';
@@ -32,7 +39,7 @@ export type { AnswerMode, AnswerSource, Claim };
  * lecture du corpus puis juge moment par moment (« la première / dernière fois qu'ils… ») ; `série`, les
  * vidéos d'une série nommée par la question (« les vidéos de la régie ») lues en entier.
  */
-export type Retrieval = 'vecteurs' | 'mots' | 'corpus' | 'chronologique' | 'série';
+export type Retrieval = 'vecteurs' | 'mots' | 'corpus' | 'chronologique' | 'série' | 'scènes citées';
 
 export interface AnswerResult {
   question: string;
@@ -43,10 +50,12 @@ export interface AnswerResult {
   /** Analyse de la question par LLM, quand elle a eu lieu : mots-clés gardés, repli ou écarts. */
   analysis: {
     source: 'llm' | 'règles';
+    action: boolean;
     keywords: string[];
     note: string | null;
     /** Marques ou modèles imposés, et objet d'une « première / dernière fois » (parcours chronologique). */
     required: string[];
+    actionTargets: string[][];
     subject: string | null;
     /** Série nommée par la question et ses vidéos (filtre de la recherche). */
     series: { terms: string[]; videoIds: string[] } | null;
@@ -61,6 +70,10 @@ export interface AnswerResult {
   citedSourceIds: string[];
   invalidCitations: string[];
   sources: AnswerSource[];
+  /** Scènes auxquelles répond une relance. Une parole voisine peut fournir sa preuve. */
+  sceneAnchors?: SceneRef[];
+  /** Une relance peut accepter de consulter les autres épisodes du projet. */
+  offeredEpisodeSearch?: boolean;
   /** Vidéos dont des passages ont été transmis au LLM (ou listés), dans l'ordre de pertinence. */
   consideredVideoIds: string[];
   /** Comment les preuves ont été trouvées ; `null` sans recherche (demande de précision). */
@@ -156,6 +169,8 @@ interface Gathered {
   windows: PromptWindow[];
   /** Sources citables, les plus pertinentes d'abord. */
   sources: Map<string, AnswerSource>;
+  /** Lignes classées par la recherche, en excluant les lignes voisines ajoutées pour le contexte. */
+  rankedIds?: ReadonlySet<string>;
   corpusVersion: string;
   indexVersion: string;
   degradedReason: string | null;
@@ -187,6 +202,16 @@ async function gatherSearch(
       ? await expandQuery(pool, question, llm)
       : null;
   const wide = routed.general && input.wide && input.maxEvidence === undefined;
+  const toolUse = wide && routed.scope !== 'ecran' && sharedToolTargets(question) ? questionOperation(question) : null;
+  const focusToolScene = toolUse ? (window: SearchResult): SearchResult | undefined => {
+    // Les descriptions complètes et leurs titres seront relus dans le même état du corpus.
+    // Une entrée qui établit déjà le geste dans son propre texte peut guider le cadrage des 90 s.
+    const entry = window.evidence.find((e) =>
+      e.kind === (routed.scope === 'paroles' ? 'parole' : 'visuel') &&
+      e.startS >= window.startS && toolUse.shown(e.text) &&
+      mentionsActionTargets(analysis?.actionTargets ?? [], [e.text]));
+    if (entry) return { ...window, bestEntry: entry, link: timestampedLink(window.videoId, entry.startS) };
+  } : undefined;
   const searchInput: Parameters<typeof chercher>[1] = {
     // Série nommée par la question : la recherche porte sur le reste de la question, dans ses vidéos.
     query: (routed.videoIds && analysis?.series?.query) || question,
@@ -218,10 +243,13 @@ async function gatherSearch(
     if (byVideo) {
       // Recherche par vidéo : une passe profonde, puis les meilleures fenêtres des meilleures vidéos.
       page = await chercher(pool, { ...searchInput, limit: BY_VIDEO_DEPTH }, { ...searchOptions, deep: true });
-      results = rankByVideo(page.data.results, wide ? BY_VIDEO.judged : BY_VIDEO.extractive);
+      results = rankByVideo(page.data.results, wide ? BY_VIDEO.judged : BY_VIDEO.extractive, focusToolScene);
     } else {
       page = await chercher(pool, searchInput, searchOptions);
       results = page.data.results;
+      if (kind === 'visuel' && analysis?.observed && routed.scope === 'tout' && !results.length) {
+        return gatherSearch(pool, question, routed, input, llm, embedder, undefined, analysis);
+      }
     }
     try {
       passages = await buildPassages(
@@ -254,6 +282,7 @@ async function gatherSearch(
     items: [],
     windows: passages.map((p) => ({ videoId: p.videoId, title: p.title, publishedAt: p.publishedAt, startS: p.startS, endS: p.endS, entries: p.entries })),
     sources,
+    rankedIds: evidenceIds,
     corpusVersion: page.corpusVersion,
     indexVersion: page.indexVersion,
     degradedReason: [page.data.degraded ? page.data.degradedReason : null, changedNote].filter(Boolean).join(' ; ') || null,
@@ -263,11 +292,11 @@ async function gatherSearch(
   };
 }
 
-/** Preuves d'une « première / dernière fois » trouvée par le parcours chronologique : la vidéo retenue seule. */
+/** Preuves du parcours chronologique, suivies des pistes moins certaines. */
 function gatheredFromScan(scan: FirstTimeResult): Gathered {
   const sources = new Map<string, AnswerSource>();
   // La vidéo retenue, et les vidéos plus anciennes (ou récentes) signalées en « éventuellement ».
-  const passages = [...scan.passages, ...scan.earlier.flatMap((e) => e.passages)];
+  const passages = [...(scan.confirmed?.passages ?? []), ...scan.earlier.flatMap((e) => e.passages)];
   for (const passage of passages) {
     for (const entry of passage.entries) if (!sources.has(entry.sourceId)) sources.set(entry.sourceId, entrySource(entry, passage));
   }
@@ -278,7 +307,7 @@ function gatheredFromScan(scan: FirstTimeResult): Gathered {
     corpusVersion: scan.corpusVersion,
     indexVersion: scan.indexVersion,
     degradedReason: null,
-    note: null,
+    note: scan.confirmed ? null : 'Ces extraits constituent des pistes. Aucun passage examiné ne confirme la relation demandée.',
     expansion: null,
     retrieval: 'chronologique',
   };
@@ -341,6 +370,60 @@ function aliasSources(gathered: Pick<Gathered, 'windows' | 'items'>): Aliases {
   return { idOf: (sourceId) => aliasOf.get(sourceId) ?? sourceId, sourceOf, ids: [...sourceOf.keys()] };
 }
 
+/** Pour un geste matériel, l'incrustation seule ne dit pas ce qui a été appliqué à l'objet.
+ * Le rédacteur et la validation lisent la même description, avec son identifiant original. */
+function observedEvidence(gathered: Gathered): Gathered {
+  const description = (text: string) => text.split(' | ÉCRAN : ')[0]!;
+  return { ...gathered,
+    windows: gathered.windows.map(w => ({ ...w, entries: w.entries.map(e => e.screenText?.length ? { ...e, screenText: null } : e) })),
+    items: gathered.items.map(item => item.kind === 'visuel' ? { ...item, text: description(item.text) } : item),
+    sources: new Map([...gathered.sources].map(([id, s]) => [id, s.kind === 'visuel' ? { ...s, excerpt: description(s.excerpt) } : s])),
+  };
+}
+
+function writeFocused(
+  llm: LlmClient,
+  mode: 'court' | 'détaillé',
+  question: string,
+  action: boolean | 'conditional',
+  evidence: Pick<Gathered, 'items' | 'windows' | 'note'>,
+  aliases: Aliases,
+  corpus: string | null,
+  observed = false,
+) {
+  const proof = action || (getConfig().llm?.proof ?? false);
+  let system = proof ? SYSTEM_PROMPT_PROOF : SYSTEM_PROMPT;
+  if (action === true) system = ACTION_SYSTEM_PROMPT;
+  if (action === 'conditional') system = SPECULATIVE_SYSTEM_PROMPT;
+  if (observed) system += '\nPrivilégie le plan qui décrit le geste sur l’objet demandé, la personne qui le fait ou la vérification effective de son résultat. Une annonce, une inscription voisine ou un autre objet dans la même vidéo ne démontre pas ce geste.';
+  if (/\bcombien\b/iu.test(question)) {
+    system += '\nRéponds à la quantité demandée en une affirmation. Choisis en priorité la ligne de bilan qui donne explicitement le total et son unité, en chiffres ou en lettres. Un comptage d’extraits ou un rang dans une succession ne suffit pas à établir ce total. Si aucune ligne ne donne la valeur, signale que le total reste inconnu.';
+  }
+  return llm.chat(
+    system,
+    buildUserPrompt({ ...evidence, mode, question, corpus }, aliases.idOf),
+    { maxTokens: outputTokens(mode, false), jsonSchema: answerSchema(aliases.ids, proof, action !== false), ...(observed ? { temperature: 0 } : {}) },
+  );
+}
+
+/** Dans un projet identifié, les plans peuvent montrer en une ligne un geste peu commenté.
+ * Si le plan ne l'établit pas, la lecture habituelle reprend avec les paroles et leur contexte. */
+async function readDemonstration(llm: LlmClient, mode: 'court' | 'détaillé', question: string,
+  evidence: Gathered, aliases: Aliases, corpus: string | null): Promise<string | null> {
+  const seen = new Set<string>();
+  const windows = evidence.windows.map(w => ({ ...w, entries: w.entries.filter(e => {
+    if (e.kind !== 'visuel' || seen.has(e.sourceId)) return false;
+    seen.add(e.sourceId);
+    return true;
+  }) })).filter(w => w.entries.length);
+  if (!windows.length || seen.size === evidence.sources.size) return null;
+  const visual = { windows, items: [], note: 'Quel plan montre précisément le geste demandé sur le bon objet ? Donne le détail qui répond à la question et recopie sa preuve dans la description du plan. Si seules des préparations ou un autre geste sont visibles, refuse.' };
+  const ids = [...seen].map(aliases.idOf);
+  const raw = await writeFocused(llm, mode, question, true, visual, { ...aliases, ids }, corpus, true);
+  const claims = validateClaims(raw, evidence.sources, mode, aliases.sourceOf);
+  return !claims.refused && claims.claims.length && claims.claims.every(c => c.preuve && c.sourceIds.every(id => seen.has(id))) ? raw : null;
+}
+
 async function gatherPlans(
   pool: Pool,
   question: string,
@@ -371,6 +454,7 @@ async function gatherPlans(
     items,
     windows: [],
     sources,
+    rankedIds: new Set(sources.keys()),
     corpusVersion: page.corpusVersion,
     indexVersion: page.indexVersion,
     degradedReason: null,
@@ -422,8 +506,8 @@ interface Speculation {
  * Lance la réponse d'une question précise pendant que le LLM analyse la question. Pour une telle question,
  * la recherche ne dépend pas de l'analyse (mots-clés et extrait hypothétique ne servent qu'aux questions
  * générales) : les deux appels au LLM, l'un après l'autre, faisaient l'essentiel de l'attente (mesuré :
- * 2,0 s d'analyse puis 1,9 s de rédaction sur 4,4 s). Même recherche et même prompt que le chemin
- * habituel ; `repondre` ne garde le résultat que si l'analyse confirme une question précise.
+ * 2,0 s d'analyse puis 1,9 s de rédaction sur 4,4 s). Le prompt accepte une réponse factuelle ou une
+ * preuve de geste ; `repondre` ne garde le résultat que si l'analyse confirme une question précise.
  */
 async function speculatePrecise(
   pool: Pool,
@@ -440,13 +524,7 @@ async function speculatePrecise(
   const llmStartedAt = Date.now();
   const mode = settings.mode;
   if (mode === 'extractif' || gathered.sources.size === 0 || !(await llm.available())) return { gathered, searchMs, llmStartedAt, raw: null };
-  const proof = getConfig().llm?.proof ?? false;
-  const aliases = aliasSources(gathered);
-  const raw = llm.chat(
-    proof ? SYSTEM_PROMPT_PROOF : SYSTEM_PROMPT,
-    buildUserPrompt({ mode, question, items: gathered.items, windows: gathered.windows, note: gathered.note, corpus }, aliases.idOf),
-    { maxTokens: outputTokens(mode, false), jsonSchema: answerSchema(aliases.ids, proof) },
-  );
+  const raw = writeFocused(llm, mode, question, 'conditional', gathered, aliasSources(gathered), corpus);
   // Si l'analyse écarte ce résultat, personne n'attend cet appel : son échec ne doit rien faire tomber.
   raw.catch(() => {});
   return { gathered, searchMs, llmStartedAt, raw };
@@ -462,7 +540,11 @@ async function speculatePrecise(
  * preuve : refus explicite, sans appel au LLM. Sans LLM ou sans citation
  * vérifiable : repli extractif signalé.
  */
-export async function repondre(pool: Pool, input: AnswerInput, options: AnswerOptions = {}): Promise<AnswerResult> {
+export function repondre(pool: Pool, input: AnswerInput, options: AnswerOptions = {}): Promise<AnswerResult> {
+  return answerQuestion(pool, input, options);
+}
+
+async function answerQuestion(pool: Pool, input: AnswerInput, options: AnswerOptions, otherEpisodes?: string[]): Promise<AnswerResult> {
   const startedAt = Date.now();
   const mode = input.mode ?? 'détaillé';
   const llm = mode === 'extractif' ? null : options.llm !== undefined ? options.llm : llmFromConfig(pool);
@@ -474,18 +556,22 @@ export async function repondre(pool: Pool, input: AnswerInput, options: AnswerOp
     // Questions générales jugées par JEV : bien plus de candidats que le contexte d'un seul appel.
     wide: llm !== null && judge !== null,
   };
-  const followUp = await resolveFollowUp(pool, input.question, (input.history ?? []).slice(-MAX_HISTORY_TURNS), input.collection ?? null);
+  const history = (input.history ?? []).slice(-MAX_HISTORY_TURNS);
+  const progress = options.onProgress ?? (() => {});
+  const sceneAnswer = await answerFromScenes(pool, input.question, mode, history, input.collection ?? null, llm, progress,
+    (question, ids) => answerQuestion(pool, { ...input, question, history: [] }, options, ids));
+  if (sceneAnswer) return sceneAnswer;
+  const followUp = await resolveFollowUp(pool, input.question, history, input.collection ?? null);
   const question = followUp.question;
   // Analyse par LLM (aiguillage, mots-clés, HyDE) ; jamais en mode extractif sauf demande explicite.
   const analyzer = options.analyzer !== undefined ? options.analyzer : llm;
-  const progress = options.onProgress ?? (() => {});
   if (!followUp.clarify && analyzer) progress({ étape: 'analyse' });
   // De quelle(s) chaîne(s) viennent les vidéos : première ligne des prompts (analyse, réponse, rédaction).
   const corpus = await corpusLine(pool, input.collection);
   // Question que les règles voient précise : la réponse part tout de suite, en même temps que l'analyse.
   const rules = classify(question);
   const speculative =
-    !followUp.clarify && analyzer && llm && (getConfig().llm?.speculate ?? false) &&
+    !otherEpisodes && !followUp.clarify && analyzer && llm && (getConfig().llm?.speculate ?? false) &&
     rules.route === 'chercher' && !rules.general && !rules.order && creditQuestion(question) === null;
   const speculation = speculative
     ? speculatePrecise(
@@ -507,6 +593,13 @@ export async function repondre(pool: Pool, input: AnswerInput, options: AnswerOp
   if (followUp.videoId) routed.videoId = followUp.videoId;
   if (input.collection) routed.collection = input.collection;
   if (analysis?.series) routed.videoIds = analysis.series.videoIds;
+  const comparing = /\bcompar|\bentre (?:les|ces|la|le|l['’])/iu.test(question);
+  const projects = analysis?.projects ?? [];
+  const projectIds = !otherEpisodes && !routed.videoId && !routed.videoIds && routed.route === 'chercher' && !routed.order &&
+    !routed.general && (!comparing || projects.length >= 2)
+    ? await namedProjectVideos(pool, projects, input.collection ?? null, analysis?.observed && !comparing ? question : undefined) : null;
+  if (projectIds) routed.videoIds = projectIds;
+  if (otherEpisodes) Object.assign(routed, { route: 'chercher', general: false, order: null, videoId: null, videoIds: otherEpisodes });
   const base = {
     question: input.question,
     resolvedQuestion: question,
@@ -516,9 +609,11 @@ export async function repondre(pool: Pool, input: AnswerInput, options: AnswerOp
     analysis: analysis
       ? {
           source: analysis.source,
+          action: analysis.action,
           keywords: analysis.keywords,
           note: analysis.note,
           required: analysis.required.map((r) => r.term),
+          actionTargets: analysis.actionTargets.map((group) => group.map((r) => r.term)),
           subject: analysis.subject?.term ?? null,
           series: analysis.series ? { terms: analysis.series.terms, videoIds: analysis.series.videoIds } : null,
         }
@@ -527,7 +622,7 @@ export async function repondre(pool: Pool, input: AnswerInput, options: AnswerOp
 
   // Qui a monté, cadré, mixé… : crédits des descriptions, lus par le code (ni paroles ni plans ne le disent).
   // Avant « clarifier » : les règles n'y voient aucun terme à compter.
-  const credit = followUp.clarify ? null : creditQuestion(question);
+  const credit = followUp.clarify || otherEpisodes ? null : creditQuestion(question);
   if (credit) {
     return answerCredits(pool, question, credit, { videoId: routed.videoId ?? null, videoIds: routed.videoIds ?? null, collection: routed.collection ?? null }, base, startedAt);
   }
@@ -564,6 +659,8 @@ export async function repondre(pool: Pool, input: AnswerInput, options: AnswerOp
   // ou si le juge échoue, le chemin général des questions générales prend le relais.
   // Sans sujet, la première exigence en tient lieu (« la première fois qu'ils utilisent la xTool P2 »).
   const subject = analysis?.subject ?? analysis?.required[0] ?? null;
+  const requiredForScan = chronologicalRequirements(question, analysis?.required ?? []);
+  let reviewMs = 0;
   const scan =
     routed.route === 'chercher' && routed.general && routed.order && subject && llm && judge && settings.wide
       ? await scanChronologically(
@@ -571,24 +668,32 @@ export async function repondre(pool: Pool, input: AnswerInput, options: AnswerOp
           question,
           routed.order,
           subject,
-          analysis?.required ?? [],
+          requiredForScan,
           judge,
           threshold,
           routed.collection ?? null,
           // Candidates par le sens : même encodeur que la recherche.
           { embedder: options.embedder === undefined ? embeddingFromConfig(pool) : options.embedder, hypothetical: analysis?.hypothetical ?? null },
           (vidéos) => progress({ étape: 'jugement', vidéos }),
+          async (video) => {
+            const start = Date.now();
+            try {
+              return await reviewOccurrence(video, question, requiredForScan, llm, subject);
+            } finally {
+              reviewMs += Date.now() - start;
+            }
+          },
         ).catch(() => null)
       : null;
   // Série lue en entier : une seule lecture, rédigée comme une question précise (pas de juge par vidéo).
-  const series = !scan && routed.route === 'chercher' && !routed.order ? await gatherSeries(pool, routed, mode) : null;
+  const series = !scan && !projectIds && !otherEpisodes && routed.route === 'chercher' && !routed.order ? await gatherSeries(pool, routed, mode) : null;
   if (series) routed.general = false;
   // L'analyse confirme une question précise, sans série ni ordre : la réponse déjà lancée est la bonne.
   const started =
     speculation && !series && !scan && routed.route === 'chercher' && !routed.general && !routed.order && !routed.videoIds
       ? await speculation
       : null;
-  const gathered = started
+  const initial = started
     ? started.gathered
     : series
     ? series
@@ -598,8 +703,11 @@ export async function repondre(pool: Pool, input: AnswerInput, options: AnswerOp
       ? await gatherInfos(pool, question, routed)
       : routed.route === 'plan'
         ? await gatherPlans(pool, question, routed, settings, llm, options.embedder)
-        : await gatherSearch(pool, question, routed, settings, llm, options.embedder, undefined, analysis);
-  const searchMs = started ? started.searchMs : Date.now() - startedAt;
+        : await gatherSearch(pool, question, routed, settings, llm, options.embedder,
+            analysis?.observed && (projectIds || otherEpisodes) ? 'visuel' : undefined, analysis);
+  const observed = analysis?.observed === true && !routed.general && !scan && (routed.route === 'chercher' || routed.route === 'plan');
+  const gathered = observed ? observedEvidence(initial) : initial;
+  const searchMs = started ? started.searchMs : Date.now() - startedAt - reviewMs;
   const all = [...gathered.sources.values()];
 
   const result = (fields: Partial<AnswerResult> & Pick<AnswerResult, 'answer' | 'refused' | 'sources'>): AnswerResult => ({
@@ -616,7 +724,7 @@ export async function repondre(pool: Pool, input: AnswerInput, options: AnswerOp
     model: null,
     corpusVersion: gathered.corpusVersion,
     indexVersion: gathered.indexVersion,
-    timings: { searchMs, llmMs: 0, totalMs: Date.now() - startedAt },
+    timings: { searchMs, llmMs: reviewMs, totalMs: Date.now() - startedAt },
     ...fields,
   });
   const extractive = (reason: string | null, extra: Partial<AnswerResult> = {}): AnswerResult => {
@@ -632,26 +740,42 @@ export async function repondre(pool: Pool, input: AnswerInput, options: AnswerOp
   };
 
   if (all.length === 0) {
-    return result({ answer: REFUSAL, refused: true, sources: [] });
+    return result({ answer: scan ? 'Aucune occurrence confirmée dans les passages examinés.' : REFUSAL, refused: true, sources: [] });
   }
   if (mode === 'extractif') return extractive(null);
   if (!llm) return extractive('LLM non configuré : réponse extractive');
   if (!(await llm.available())) return extractive('LLM indisponible : réponse extractive');
 
   const llmStartedAt = started ? started.llmStartedAt : Date.now();
-  // Petit modèle : chaque affirmation précédée de sa preuve recopiée (voir SYSTEM_PROMPT_PROOF).
-  const proof = getConfig().llm?.proof ?? false;
+  const action = (routed.route === 'chercher' || routed.route === 'plan') && !routed.general && (analysis?.action ?? asksAboutAction(question));
+  const writerFallback = (reason: string, extra: Partial<AnswerResult>): AnswerResult => {
+    if (!action || !gathered.rankedIds) return extractive(reason, extra);
+    const clues = retrievedClues(gathered.rankedIds, gathered.sources, routed.scope, analysis?.actionTargets ?? [], mode === 'court' ? 3 : 6, question);
+    if (!clues.length) return result({ ...extra, answer: REFUSAL, refused: true, sources: [], degraded: true, degradedReason: reason });
+    const citedSourceIds = clues.flatMap((clue) => clue.sourceIds);
+    return result({
+      ...extra, refused: false, claims: clues, citedSourceIds, sources: citedSourceIds.map((id) => gathered.sources.get(id)!),
+      answer: [gathered.note, renderClaims(clues, gathered.sources, mode)].filter(Boolean).join('\n'),
+      degraded: true, degradedReason: reason,
+    });
+  };
   const aliases = aliasSources(gathered);
   let raw: string;
   let issue: string | null = null;
   try {
-    if (routed.general && gathered.windows.length > 0) {
+    if (scan) {
+      const claims = [...(scan.confirmed ? [scan.confirmed] : []), ...scan.earlier].flatMap((v) => v.claim ? [v.claim] : []);
+      raw = JSON.stringify({ refus: claims.length === 0, claims });
+      const partial = validateClaims(raw, gathered.sources, mode, aliases.sourceOf, true);
+      if (partial.claims.length) {
+        const cited = new Set(partial.claims.flatMap((c) => c.sourceIds));
+        progress({ étape: 'lignes', answer: partial.answer, sources: groupSources([...cited].map((id) => gathered.sources.get(id)!)) });
+      }
+    } else if (routed.general && gathered.windows.length > 0) {
       if (!judge) return extractive('question générale sans juge (aucun mode choisi, ou clé absente) : réponse extractive');
-      // Vidéo déjà retenue par le parcours chronologique : le juge ne la rejuge pas.
-      const decided: RelevanceJudge | null = scan ? { model: judge.model, judge: async (_q, videos) => videos.map(() => scan.relevance) } : null;
       ({ raw, issue } = await answerByVideo(
         llm,
-        decided ?? judge,
+        judge,
         threshold,
         question,
         gathered.windows,
@@ -659,21 +783,17 @@ export async function repondre(pool: Pool, input: AnswerInput, options: AnswerOp
         {
           order: routed.order,
           required: analysis?.required ?? [],
-          decided: scan !== null,
+          actionTargets: analysis?.actionTargets ?? [],
+          rankedIds: gathered.rankedIds ?? [],
+          scope: routed.scope,
           corpus,
-          unproven: new Map(
-            (scan?.earlier ?? []).map((e) => [
-              e.videoId,
-              `« ${analysis?.required.map((r) => r.term).join(' » ou « ')} » n’y est jamais sur le même plan que « ${subject?.term} »`,
-            ]),
-          ),
         },
         {
           onJudge: (vidéos) => progress({ étape: 'jugement', vidéos }),
           onWrite: (lots) => progress({ étape: 'rédaction', lots }),
           // Chaque lot rédigé, validé comme la réponse finale, part aussitôt vers l'affichage.
           onBatch: (claims) => {
-            const partial = validateClaims(JSON.stringify({ refus: false, claims }), gathered.sources, mode, aliases.sourceOf);
+            const partial = validateClaims(JSON.stringify({ refus: false, claims }), gathered.sources, mode, aliases.sourceOf, routed.order !== null);
             if (partial.claims.length === 0) return;
             const cited = [...new Set(partial.claims.flatMap((c) => c.sourceIds))];
             progress({ étape: 'lignes', answer: partial.answer, sources: groupSources(cited.map((id) => gathered.sources.get(id)!)) });
@@ -682,19 +802,53 @@ export async function repondre(pool: Pool, input: AnswerInput, options: AnswerOp
       ));
     } else {
       progress({ étape: 'réponse' });
-      raw = await (started?.raw ??
-        llm.chat(
-        proof ? SYSTEM_PROMPT_PROOF : SYSTEM_PROMPT,
-        buildUserPrompt({ mode, question, items: gathered.items, windows: gathered.windows, note: gathered.note, corpus }, aliases.idOf),
-        { maxTokens: outputTokens(mode, routed.general), jsonSchema: answerSchema(aliases.ids, proof) },
-      ));
+      const demonstration = observed && (routed.videoId || routed.videoIds?.length)
+        ? await readDemonstration(llm, mode, question, gathered, aliases, corpus).catch(() => null) : null;
+      raw = demonstration ?? await ((!observed && started ? started.raw : null) ?? writeFocused(llm, mode, question, action || observed, gathered, aliases, corpus, observed));
     }
   } catch (err) {
-    return extractive(`erreur LLM : ${err instanceof Error ? err.message : String(err)}`, { model: llm.model });
+    return writerFallback(`erreur LLM : ${err instanceof Error ? err.message : String(err)}`, { model: llm.model });
   }
-  const timings = { searchMs, llmMs: Date.now() - llmStartedAt, totalMs: Date.now() - startedAt };
-
-  const validated = validateClaims(raw, gathered.sources, mode, aliases.sourceOf, routed.general && routed.order !== null);
+  let validated = validateClaims(raw, gathered.sources, mode, aliases.sourceOf, routed.general && routed.order !== null);
+  if (action || observed || (started?.raw && validated.refused && validated.claims.some((c) => c.preuve))) {
+    const required = analysis?.required.length ? analysis.required : knownBrands(question);
+    const first = assessAction(validated, gathered.sources, mode, question, required, routed.scope);
+    validated = first.validated;
+    if (first.clue) {
+      validated = uncertainAction(first.validated, first.clue);
+      try {
+        // Une série déjà lue en entier ne contient aucun nouvel extrait à chercher.
+        const scene = gathered.retrieval === 'série' ? null : await actionNeighborhood(
+          pool, first.clue.source, gathered.corpusVersion, gathered.sources, routed.scope, evidenceBudgetChars(outputTokens(mode, false)), question, required,
+        );
+        if (scene) {
+          if (observed) scene.entries = scene.entries.map(entry => ({ ...entry, screenText: null }));
+          const sources = new Map(scene.entries.map((entry) => [entry.sourceId, entrySource(entry, scene)]));
+          const original = first.clue.source;
+          const items: PromptItem[] = [];
+          if (!sources.has(original.sourceId)) {
+            sources.set(original.sourceId, original);
+            items.push({ ...original, text: original.excerpt, uncertainties: [] });
+          }
+          const evidence = { windows: [scene], items, note: 'Compare la piste initiale et la scène. Si la prémisse est contredite, indique ce qui est réellement établi et cite la ligne décisive. Si une parole dépend de la précédente (projet, souhait, négation), cite les deux.' };
+          const nearby = aliasSources(evidence);
+          const alternative = corroboratedAlternative(first.clue, question, scene, routed.scope);
+          if (alternative) {
+            validated = { ...validated, refused: false, claims: [alternative], answer: renderClaims([alternative], sources, mode) };
+          } else {
+            const checked = await writeFocused(llm, mode, question, true, evidence, nearby, corpus, observed);
+            const review = assessAction(validateClaims(checked, sources, mode, nearby.sourceOf), sources, mode, question, required, routed.scope);
+            if (review.validated.claims.length) validated = review.validated;
+            else if (review.clue) validated = uncertainAction(review.validated, review.clue);
+          }
+          for (const claim of validated.claims) for (const id of claim.sourceIds) gathered.sources.set(id, sources.get(id)!);
+        }
+      } catch (err) {
+        issue = `relecture du passage indisponible : ${err instanceof Error ? err.message : String(err)}`;
+      }
+    }
+  }
+  const timings = { searchMs, llmMs: reviewMs + Date.now() - llmStartedAt, totalMs: Date.now() - startedAt };
   const degradedReason = [gathered.degradedReason, issue].filter(Boolean).join(' ; ') || null;
   const common = {
     invalidCitations: validated.invalid,
@@ -704,18 +858,26 @@ export async function repondre(pool: Pool, input: AnswerInput, options: AnswerOp
   };
   if (validated.claims.length === 0) {
     if (validated.refused) return result({ answer: REFUSAL, refused: true, sources: [], ...common });
-    if (validated.offSchema) return extractive('réponse hors du format imposé : repli extractif', common);
+    if (validated.offSchema) return writerFallback('réponse hors du format imposé : repli extractif', common);
     return extractive('réponse sans citation vérifiable : repli extractif', common);
   }
   const cited = [...new Set(validated.claims.flatMap((c) => c.sourceIds))];
+  let answer = validated.answer;
+  if (routed.general && routed.order) {
+    let heading: string;
+    if (validated.claims.every((c) => c.missing !== undefined)) {
+      heading = 'Aucune occurrence confirmée dans les passages examinés.';
+    } else if (scan?.confirmed?.passages[0]?.publishedAt) {
+      heading = `${routed.order === 'premiere' ? 'Première' : 'Dernière'} occurrence confirmée parmi les vidéos indexées examinées, par date de publication.`;
+    } else if (scan?.confirmed) {
+      heading = 'Occurrence retrouvée dans une vidéo de date inconnue. Son rang chronologique reste indéterminé.';
+    } else {
+      heading = routed.order === 'premiere' ? 'Passages retrouvés, de la vidéo la plus ancienne à la plus récente.' : 'Passages retrouvés, de la vidéo la plus récente à la plus ancienne.';
+    }
+    answer = `${heading}\n${answer}`;
+  }
   return result({
-    // Question générale triée par date : dire que la première ligne répond à « la première / dernière fois ».
-    answer:
-      routed.general && routed.order
-        ? validated.claims.some((c) => c.missing === undefined)
-          ? `${routed.order === 'premiere' ? 'De la plus ancienne à la plus récente' : 'De la plus récente à la plus ancienne'} (la première ligne répond à la question) :\n${validated.answer}`
-          : `Aucune vidéo retenue ne le prouve explicitement.\n${validated.answer}`
-        : validated.answer,
+    answer,
     refused: false,
     claims: validated.claims,
     citedSourceIds: cited,
@@ -726,5 +888,15 @@ export async function repondre(pool: Pool, input: AnswerInput, options: AnswerOp
 
 /** Échange à conserver dans l'historique d'un fil pour résoudre la relance suivante. */
 export function turnOf(result: AnswerResult): Turn {
-  return { question: result.resolvedQuestion, videoIds: [...new Set(result.sources.map((s) => s.videoId))] };
+  // L'affichage peut fusionner les fiches de deux citations voisines. Garder le minutage
+  // de chaque référence effectivement imprimée, dans son ordre de lecture.
+  const byId = new Map(result.sources.flatMap(s => s.sourceIds.map(id => [id, s] as const)));
+  const printed = extractParsedCitations(result.answer).flatMap(({ ref, startS }) => {
+    const source = byId.get(ref);
+    return source && startS !== null ? [{ videoId: source.videoId, sourceId: ref, startS }] : [];
+  });
+  const scenes = result.sceneAnchors ?? sceneRefs(printed.length ? printed : result.sources);
+  return { question: result.resolvedQuestion, videoIds: [...new Set(result.sources.map((s) => s.videoId))],
+    ...(scenes.length ? { scenes } : {}), ...(result.route === 'clarifier' && scenes.length ? { choosingScene: true } : {}),
+    ...(result.offeredEpisodeSearch && scenes.length ? { offeredEpisodeSearch: true } : {}) };
 }
