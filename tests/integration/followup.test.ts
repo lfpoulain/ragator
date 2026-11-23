@@ -138,6 +138,18 @@ const MANOIR = 'cKRqOdTi5yE';
     expect(llm.calls).toBe(0);
   });
 
+  it('une réplique dont les deux bornes indiquent la même seconde pointe sur le plan en cours', async () => {
+    const speech = { videoId: MANOIR, sourceId: MANOIR + ':t00007', startS: 8 };
+    const plan = { videoId: MANOIR, sourceId: MANOIR + ':v00003', startS: 6 };
+    const result = await repondre(pool, { question: 'À quel moment exactement ?', mode: 'extractif', history: [
+      { question: 'Que disent-ils pendant ce plan ?', videoIds: [MANOIR], scenes: [plan, speech] },
+    ] });
+    expect(result.route).toBe('chercher');
+    expect(result.sources).toMatchObject([speech]);
+    expect(result.answer).toContain('00:08');
+    expect(turnOf(result).scenes).toEqual([plan, speech]);
+  });
+
   it('distingue des plans qui se touchent, deux répliques successives dans un plan et deux vidéos à la même seconde', async () => {
     const scene = (videoId: string, id: string, startS: number) => ({ videoId, sourceId: videoId + ':' + id, startS });
     for (const scenes of [
