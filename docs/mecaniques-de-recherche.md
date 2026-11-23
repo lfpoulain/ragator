@@ -64,9 +64,13 @@ commande et le serveur MCP l'appellent tous.
 
 1. **Relance** (`src/core/followup.ts`, `src/core/scene-memory.ts`). Le chat garde pendant cinq
    échanges l’identifiant de vidéo, l’identifiant de source et la seconde de début de chaque scène
-   citée. Le serveur retrouve la source à ces coordonnées dans la collection active. Une demande
-   de minutage avec un seul repère se résout directement. Un choix comme « la deuxième » reprend
-   la question en attente. Pour répondre sur le contenu, le modèle lit les extraits et fournit une
+   citée. Le serveur retrouve la source à ces coordonnées dans la collection active. Pour une
+   relance de minutage, un seul repère ou plusieurs sources au même instant dans la même vidéo
+   donnent un lien direct. Si la parole et l’image commencent à des moments différents,
+   `src/core/scene-time.ts` retient le premier instant couvert par toutes les sources.
+   Deux passages qui se suivent appellent un choix. « La deuxième » reprend la question en attente.
+   Le chat conserve les références de parole et d’image pour le tour suivant.
+   Pour répondre sur le contenu, le modèle lit les extraits et fournit une
    citation vérifiée. Une précision trouvée dans le voisinage a sa propre citation et laisse le
    repère initial disponible au tour suivant. Les relances portant sur toute une vidéo ou sur
    un décompte reprennent la recherche correspondante. Si le détail manque au passage,

@@ -23,7 +23,7 @@ Ragator indexe les transcriptions et les descriptions visuelles des vidéos d'un
 - 🎯 **Réponses citées** : chaque phrase renvoie au moment exact de la vidéo, vérifié par le code.
 - 🔎 **Recherche hybride** : mots exacts (BM25 : marques, noms propres, fautes de frappe) et sens (vecteurs).
 - 🧭 **Plusieurs types de questions** : précises, générales, décomptes, « la première fois que… ».
-- 💬 **Relances sur une scène**. Demandez « comment vérifient-ils le résultat ? » ou « à quel moment exactement ? ». Si deux passages conviennent, choisissez « la première » ou son minutage. Si le détail manque, Ragator propose de chercher dans les autres épisodes du projet. Répondez « oui » pour lancer cette recherche.
+- 💬 **Relances sur une scène**. Demandez « à quel moment exactement ? ». Si la parole et l’image désignent le même passage, le chat donne directement un lien au bon minutage. Si deux passages sont distincts, choisissez « la première » ou indiquez son minutage. Quand un détail manque, répondez « oui » à la proposition de chercher dans les autres épisodes du projet.
 - 📚 **Plusieurs chaînes** dans une même base, avec un filtre par chaîne.
 - 🖥️ **Interface web**, ligne de commande et **serveur MCP** pour Claude, Cursor et les autres clients IA.
 
@@ -303,11 +303,13 @@ docker run --rm --volumes-from ragator \
   && docker compose up -d --wait ragator
 ```
 
-Si le corpus est un montage distinct sur `/data/corpus`, reproduisez ce montage avec un dossier vide sur la machine de destination. Pour mettre à jour Ragator sur ses volumes existants :
+Si le corpus est un montage distinct sur `/data/corpus`, reproduisez ce montage avec un dossier vide sur la machine de destination. Pour mettre à jour une installation avec les modèles locaux, téléchargez les images et recréez les services sur leurs volumes existants.
 
 ```bash
-docker compose --profile local pull && docker compose --profile local up -d    # ou sans --profile local
+docker compose --profile local pull && docker compose --profile local up -d
 ```
+
+En mode OpenRouter, utilisez `docker compose pull && docker compose up -d`. Sur GHCR, les images `ghcr.io/lfpoulain/ragator` et `ghcr.io/lfpoulain/ragator-juge` portent le tag `latest` et un tag `sha-<commit court>` après publication. Ce dernier permet de retrouver la version testée pour une révision donnée.
 
 ## Sécurité
 
@@ -366,7 +368,7 @@ npm run check            # types + tests (les tests d'intégration demandent la 
 
 Pour évaluer les réponses avec de vrais modèles, ingérez les deux vidéos des Frères Poulain de `tests/fixtures` dans une base dédiée, puis lancez `npm run embed`. Avec la même `DATABASE_URL` et le même mode, `node --import tsx tests/evaluation/poulain.mjs` produit une ligne JSON par question avec la réponse attendue, chaque affirmation, ses sources, la durée et le coût LLM et juge communiqué par le fournisseur. Les deux modes peuvent ainsi être comparés sur le même index.
 
-Le banc du premier tour mesure séparément la vidéo citée, le minutage et le fait demandé. Sur la collection locale de 404 vidéos des Frères Poulain, 16 réponses sur 20 remplissent automatiquement tous les critères, contre 11 avant les correctifs. [Protocole, résultats de réserve et exemple de dialogue](docs/evaluation.md)
+Le banc du premier tour mesure séparément la vidéo citée, le minutage et le fait demandé. Sur la collection locale de 404 vidéos des Frères Poulain, 16 réponses sur 20 remplissent automatiquement tous les critères, contre 11 avant les correctifs. Un second banc vérifie les relances de minutage, avec les citations issues d’une vraie conversation ou fournies à l’avance. [Protocole et résultats des deux bancs](docs/evaluation.md)
 
 ```text
 src/core/       pipeline : ingestion, enrichissement, vecteurs, recherche, aiguillage, réponse

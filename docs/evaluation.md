@@ -27,9 +27,27 @@ Le barème fixé avant l’essai manque une bonne réponse. À 11:45 dans la vid
 
 À partir de la même offre, « non merci » conserve l’épisode 1 à 12:52. Le test a alterné les deux routes HTTP du chat, avec réponse JSON ou en flux.
 
+## Relances de minutage
+
+Le 23 novembre 2026, la version `8f53b24` et le correctif `c50617e` ont interrogé le même index des 404 vidéos avec les mêmes modèles locaux. Chaque version a produit ses propres réponses et citations au premier tour. Les questions ont été rejouées deux fois, en mode court, sur des modèles déjà chargés, en inversant l’ordre des versions au deuxième passage.
+
+| Conversations de bout en bout | Avant | Avec le correctif |
+|---|---:|---:|
+| Bon minutage donné directement, quatre relances de mise au point | 0/8 | 8/8 |
+| Temps médian de ces huit relances | 421 ms | 3,3 ms |
+| Bon minutage donné directement, quatre conversations inédites | 1/8 | 4/8 |
+| Ensemble des 34 questions du banc principal, deux passages | 26/68 | 33/68 |
+| Détails absents correctement signalés dans le banc principal | 8/24 | 8/24 |
+
+Dans les conversations inédites, deux situations limitent le résultat. Sur l’imprimante Prusa, le premier tour cite deux répliques distinctes, à 12:15 et 12:21. Le chat demande laquelle revoir. Sur le simulateur 6DOF, la première réponse cite 07:46 et 08:00. Le passage attendu à 11:22 manque donc dans la mémoire de la relance.
+
+Un contrôle séparé a fourni au chat des citations réelles de chacune des 404 vidéos pour isoler le choix du minutage. Le correctif donne le premier instant commun à la parole et à l’image dans 1 116 cas sur 1 116. Il demande un choix dans les 727 cas où les passages sont distincts et restitue les quatre repères visuels uniques. La version précédente réussissait 731 de ces 1 847 contrôles. Ce contrôle suppose que la conversation a déjà cité les bons passages.
+
+Les cas de chevauchement, de changement de sujet et de citation périmée se rejouent sur une base de test avec `npm test -- tests/integration/followup.test.ts`.
+
 ## Rejouer la mesure sur sa collection
 
-Préparez une base locale indexée, sélectionnez le mode `local` et renseignez `DATABASE_URL`, `LOCAL_LLM_URL`, `LOCAL_EMBEDDING_URL` et `LOCAL_JUDGE_URL` pour vos services. Préparez vos références avant d’examiner les réponses. Chaque entrée du manifeste indique le groupe, la vidéo attendue, les secondes acceptées et les expressions décrivant le fait attendu. Le champ facultatif `forbid` écarte les réponses contenant une confusion connue.
+Pour rejouer le banc du premier tour, préparez une base locale indexée, sélectionnez le mode `local` et renseignez `DATABASE_URL`, `LOCAL_LLM_URL`, `LOCAL_EMBEDDING_URL` et `LOCAL_JUDGE_URL` pour vos services. Préparez vos références avant d’examiner les réponses. Chaque entrée du manifeste indique le groupe, la vidéo attendue, les secondes acceptées et les expressions décrivant le fait attendu. Le champ facultatif `forbid` écarte les réponses contenant une confusion connue.
 
 ```json
 [

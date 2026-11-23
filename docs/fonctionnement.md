@@ -117,8 +117,10 @@ leur module dans `src/core/`.
    ouvre chaque prompt (« Corpus : vidéos YouTube de la chaîne « … » ») : les
    prompts eux-mêmes ne nomment aucune chaîne.
 1. **Relance**. Le chat web et le terminal conservent les références des scènes citées pendant
-   cinq échanges. « À quel moment exactement ? » restitue le minutage du passage. Si plusieurs
-   passages conviennent, Ragator affiche leurs titres et minutages pour permettre le choix.
+   cinq échanges. « À quel moment exactement ? » donne un seul lien quand le passage est identifié.
+   Si la parole et l’image se recouvrent dans le même épisode, le lien commence au premier instant
+   qu’elles ont en commun. Si les passages sont distincts, le chat affiche leurs titres et minutages
+   pour permettre le choix.
    Pour une question sur le contenu, il relit la scène dans la collection active, puis les
    paroles et les plans voisins si nécessaire. Quand le détail manque, la réponse conserve le repère
    et propose une recherche dans les autres épisodes du projet. « Oui » reprend la question en
