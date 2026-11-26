@@ -12,9 +12,11 @@ import { nearbyVideos } from '../core/nearby-videos.js';
 import { getConfig, loadConfig, MODES, PROJECT_ROOT, type Mode } from '../config.js';
 import { checkOpenRouterKey, localStatus, publicSettings, readStoredSettings, saveSettings, type SettingKey } from '../settings.js';
 import { createAdmin } from './admin.js';
+import { gatewayConfig, groupPrefix, guestIdentity, isGatewayRequest } from './gateway.js';
 
 /** Page de l'interface (recherche et administration), autonome : HTML, CSS et JS dans un seul fichier. */
 const PAGE = join(PROJECT_ROOT, 'src', 'web', 'public', 'index.html');
+const GUEST_PAGE = join(PROJECT_ROOT, 'src', 'web', 'public', 'guest.html');
 
 
 /** Corps accepté au plus : une question et son historique court ; un fichier de vidéo pour le dépôt. */
@@ -184,9 +186,45 @@ export function createWebServer(
   const admin = createAdmin(pool, options.corpusDir === undefined ? {} : { corpusDir: options.corpusDir });
   if (options.updateOnStart) admin.startUpdate();
   let asking = 0;
+  const gateway = gatewayConfig(process.env);
+  const settingsView = () => gateway.origin ? { ...publicSettings(), guestGateway: true } : publicSettings();
   return createServer((req, res) => {
     void (async () => {
+      let external = false;
       try {
+        external = isGatewayRequest(req, gateway, hostsNow());
+        if (external) {
+          // Liste fermée sur la cible brute, avant toute normalisation ou authentification interne.
+          const path = req.url;
+          const page = req.method === 'GET' && (path === '/' || path === '/invite');
+          const session = req.method === 'GET' && path === '/api/guest/session';
+          const ask = req.method === 'POST' && path === '/api/guest/ask';
+          if (!page && !session && !ask) return send(res, 404, '', 'text/plain');
+          const identity = guestIdentity(req, gateway);
+          if (!identity) return send(res, 403, 'Accès refusé.', 'text/plain; charset=utf-8');
+          if (page) {
+            if (path === '/') return send(res, 302, '', 'text/plain', { Location: '/invite' });
+            return send(res, 200, readFileSync(GUEST_PAGE, 'utf8'), 'text/html; charset=utf-8');
+          }
+          if (ask && req.headers.origin !== gateway.origin) return send(res, 403, { error: 'Origine refusée.' });
+          const collections = (await listCollections(pool)).filter(c => identity.keys.has(c.key));
+          if (!collections.length) return send(res, 403, { error: 'Accès refusé.' });
+          if (session) return send(res, 200, { authenticated: true, label: identity.label, collections: collections.map(({ key, name }) => ({ key, name })) });
+          if (req.headers['content-type']?.split(';')[0]?.trim() !== 'application/json') return send(res, 415, { error: 'JSON attendu' });
+          if (asking >= MAX_CONCURRENT_ASKS) return send(res, 429, { error: 'Trop de questions en cours.' }, undefined, { 'Retry-After': '5' });
+          asking++;
+          try {
+            const body = await readJson(req) as { collection?: unknown; question?: unknown } | null;
+            const collection = collections.find(c => c.key === body?.collection);
+            if (!collection) return send(res, 403, { error: 'Collection non autorisée.' });
+            const question = typeof body?.question === 'string' ? body.question.trim() : '';
+            if (!question || question.length > MAX_QUESTION_CHARS) return send(res, 400, { error: 'Saisissez une question de 1 à 1 000 caractères.' });
+            const result = await repondre(pool, { question, collection: collection.key });
+            return send(res, 200, { answer: result.answer, sources: result.sources.map(({ title, link, excerpt }) => ({ title, link, excerpt })) });
+          } finally {
+            asking--;
+          }
+        }
         const password = passwordNow();
         if (requiresPassword && !password?.trim()) return send(res, 503, { error: 'Mot de passe réseau requis.' });
         if (!hostAllowed(req.headers.host, hostsNow(), password !== null)) {
@@ -322,7 +360,11 @@ export function createWebServer(
 
         // Réglages : mode (local ou OpenRouter), clé OpenRouter (vérifiée avant d'être enregistrée), modèle
         // des réponses, serveurs locaux et jeton Hugging Face du juge local, mot de passe.
-        if (req.method === 'GET' && url.pathname === '/api/settings') return send(res, 200, publicSettings());
+        if (req.method === 'GET' && url.pathname === '/api/settings') return send(res, 200, settingsView());
+        if (gateway.origin && req.method === 'GET' && url.pathname === '/api/gateway') {
+          return send(res, 200, { origin: gateway.origin ?? null, secretSet: !!gateway.secret, trusted: gateway.trusted,
+            groups: (await listCollections(pool)).map(c => ({ collection: c.name, group: groupPrefix + c.key })) });
+        }
         if (req.method === 'GET' && url.pathname === '/api/settings/local') return send(res, 200, await localStatus());
         if (req.method === 'POST' && url.pathname === '/api/settings') {
           const body = (await readJson(req)) as Record<string, unknown>;
@@ -355,11 +397,12 @@ export function createWebServer(
               before.embedding?.baseUrl !== after.embedding?.baseUrl)) admin.requestUpdate();
           // Nouveau jeton : transmis tout de suite au juge local (téléchargement d'Aplomb).
           if (patch.hfToken?.trim() && after.mode === 'local') void localStatus().catch(() => {});
-          return send(res, 200, publicSettings());
+          return send(res, 200, settingsView());
         }
         send(res, 404, { error: 'introuvable' });
       } catch (err) {
         if (err instanceof HttpError) return send(res, err.status, { error: err.message });
+        if (external) return send(res, 503, { error: 'Recherche temporairement indisponible.' });
         send(res, 500, { error: err instanceof Error ? err.message : String(err) });
       }
     })();

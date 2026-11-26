@@ -38,9 +38,10 @@ export function titleHas(title: string, term: string): boolean {
  * Vidéos de la série : celles dont le titre contient l'un des noms. `null` si aucun nom n'est retrouvé,
  * ou s'ils désignent plus de `MAX_SERIES_VIDEOS` vidéos (un thème, pas une série).
  */
-export async function findSeries(db: Db, terms: string[], notes: string[]): Promise<Series | null> {
+export async function findSeries(db: Db, terms: string[], notes: string[], collection?: string): Promise<Series | null> {
   if (terms.length === 0) return null;
-  const { rows } = await db.query<{ video_id: string; title: string }>('SELECT video_id, title FROM videos ORDER BY published_at NULLS LAST, video_id');
+  const { rows } = await db.query<{ video_id: string; title: string }>(
+    'SELECT video_id, title FROM videos WHERE $1::text IS NULL OR collection = $1 ORDER BY published_at NULLS LAST, video_id', [collection ?? null]);
   const found: string[] = [];
   const videoIds = new Set<string>();
   for (const term of terms) {

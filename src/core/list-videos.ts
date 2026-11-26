@@ -59,7 +59,7 @@ export function listerVideos(pool: Pool, input: ListerVideosInput): Promise<Page
   const terms = [...new Set([input.term, ...(input.alternatives ?? [])])];
   return readSnapshot(pool, async (db, versions) => {
     const resolutions = [];
-    for (const term of terms) resolutions.push(await resolveTerm(db, term, scope, versions.corpusVersion));
+    for (const term of terms) resolutions.push(await resolveTerm(db, term, scope, versions.corpusVersion, input.collection));
     const ambiguous = resolutions.find((r) => r.status === 'ambiguous');
     const found = resolutions.filter((r) => r.status === 'resolved' && r.canonical !== null);
     const forms = [...new Set(found.flatMap((r) => [r.canonical!, ...r.aliases]))];

@@ -149,8 +149,8 @@ function unique(values: string[]): string[] {
 }
 
 /** Remplace chaque mot absent du corpus par ses plus proches voisins (distance ≤ 2). */
-async function correctTokens(db: Db, tokens: string[], corpusVersion: string) {
-  const words = await lexique(db, 'tout', corpusVersion);
+async function correctTokens(db: Db, tokens: string[], corpusVersion: string, collection?: string) {
+  const words = await lexique(db, 'tout', corpusVersion, collection);
   const known = new Set(words);
   const corrected: string[] = [];
   const evidenceForms: string[] = [];
@@ -629,11 +629,11 @@ export async function chercher(
     const offset = pageOffset(key, input.cursor);
 
     const { correctedTokens, evidenceForms } = tokens.length > 0
-      ? await correctTokens(db, tokens, versions.corpusVersion)
+      ? await correctTokens(db, tokens, versions.corpusVersion, input.collection)
       : { correctedTokens: [], evidenceForms: [] };
     const { rewritten: joinedQuery, joined } = joinedWords(
       tokenizeText(input.query).tokens,
-      new Set(tokens.length > 0 ? await lexique(db, 'tout', versions.corpusVersion) : []),
+      new Set(tokens.length > 0 ? await lexique(db, 'tout', versions.corpusVersion, input.collection) : []),
     );
     const lexicalIds = await lexicalWindows(db, correctedTokens, filters);
     // L'enrichissement a son propre vocabulaire (catégories, synonymes) : les mots de la question tels quels, et corrigés.

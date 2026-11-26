@@ -47,15 +47,16 @@ export function wordPatterns(forms: readonly string[]): string[] {
 const lexiqueCache = new Map<string, string[]>();
 
 /** Vocabulaire normalisé du corpus pour une portée, mis en cache par version de corpus. */
-export async function lexique(db: Db, scope: Scope, corpusVersion: string): Promise<string[]> {
-  const cacheKey = `${scope}|${corpusVersion}`;
+export async function lexique(db: Db, scope: Scope, corpusVersion: string, collection?: string): Promise<string[]> {
+  const cacheKey = JSON.stringify([scope, corpusVersion, collection]);
   const cached = lexiqueCache.get(cacheKey);
   if (cached) return cached;
   const column = scopeColumn(scope);
   const { rows } = await db.query<{ word: string }>(
     `SELECT DISTINCT m[1] AS word
      FROM entries e, LATERAL regexp_matches(e.${column}, '[a-z0-9]+(?:[.-][a-z0-9]+)*', 'g') m
-     WHERE ${scopeKindSql(scope)}`,
+     WHERE ${scopeKindSql(scope)} AND ($1::text IS NULL OR e.video_id IN (SELECT video_id FROM videos WHERE collection = $1))`,
+    [collection ?? null],
   );
   const words = rows.map((r) => r.word).sort();
   if (lexiqueCache.size >= 8) lexiqueCache.clear();
@@ -119,6 +120,7 @@ export async function resolveTerm(
   rawTerm: string,
   scope: Scope,
   corpusVersion: string,
+  collection?: string,
 ): Promise<ResolvedTerm> {
   const original = rawTerm.trim();
   const norm = tokenizeText(original).tokens.join(' ');
@@ -136,14 +138,15 @@ export async function resolveTerm(
   const exact = await db.query(
     `SELECT 1 FROM entries e
      WHERE ${scopeKindSql(scope)} AND e.${scopeColumn(scope)} ~* ANY($1::text[])
+       AND ($2::text IS NULL OR e.video_id IN (SELECT video_id FROM videos WHERE collection = $2))
      LIMIT 1`,
-    [wordPatterns([norm, ...aliases])],
+    [wordPatterns([norm, ...aliases]), collection ?? null],
   );
   if ((exact.rowCount ?? 0) > 0) {
     return { ...result, canonical: norm, aliases, status: 'resolved' };
   }
 
-  const candidates = nearestWords(norm, await lexique(db, scope, corpusVersion));
+  const candidates = nearestWords(norm, await lexique(db, scope, corpusVersion, collection));
   const best = candidates[0];
   if (!best) return result;
   const suggestions = candidates.slice(0, 5).map((c) => c.word);

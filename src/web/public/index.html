@@ -422,6 +422,11 @@ a.cite:hover { background: var(--accent); color: #fff; }
         <button type="button" class="btn ghost" id="pw-clear" hidden>Retirer</button>
       </form>
     </div>
+    <div class="card" id="gateway-card" hidden>
+      <h2>Accès invité</h2>
+      <p id="gateway-state" class="hint"></p>
+      <ul id="gateway-groups"></ul>
+    </div>
     <p class="hint" id="settings-msg" role="status" style="margin-top:12px"></p>
   </section>
 </main>
@@ -1077,7 +1082,20 @@ async function loadServers() {
   } catch (err) { list.textContent = err.message; }
 }
 async function loadSettings() {
-  try { showSettings(await api('/api/settings')); } catch (err) { $('settings-msg').textContent = err.message; }
+  try {
+    const st = await api('/api/settings');
+    showSettings(st);
+    $('gateway-card').hidden = !st.guestGateway;
+    if (!st.guestGateway) return;
+  } catch (err) { $('settings-msg').textContent = err.message; return; }
+  api('/api/gateway').then(g => {
+    $('gateway-state').textContent = g.origin && g.trusted && g.secretSet ? g.origin : 'Accès invité désactivé.';
+    $('gateway-groups').replaceChildren(...g.groups.map(({collection, group}) => {
+      const li = document.createElement('li');
+      li.textContent = collection + ' · ' + group;
+      return li;
+    }));
+  }).catch(() => { $('gateway-state').textContent = 'État de la passerelle indisponible.'; $('gateway-groups').replaceChildren(); });
 }
 async function saveSetting(patch, done) {
   const msg = $('settings-msg');

@@ -237,6 +237,12 @@ Le format est décrit par [schemas/corpus.schema.json](schemas/corpus.schema.jso
 
 ### Interface web
 
+**Accès invité par collection.** Une passerelle Caddy + authentik peut donner accès à la recherche depuis un second domaine, comme `https://ragator.example.org`. Dans le fichier `.env` de Ragator, renseignez `RAGATOR_PUBLIC_URL` et `RAGATOR_GATEWAY_SECRET` (secret dédié généré avec `openssl rand -hex 32`). Publiez le port sur l’adresse Tailscale avec `RAGATOR_BIND_ADDRESS` et définissez un mot de passe d’administration `RAGATOR_PASSWORD`. Pour une installation depuis ce dépôt, appliquez ces réglages avec `docker compose up -d --build ragator`.
+
+Le site Caddy conserve le Host public, efface les en-têtes d’identité reçus du navigateur, délègue la connexion à authentik et envoie à Ragator `Remote-User`, `Remote-Name`, `Remote-Groups` et `X-Ragator-Gateway` (le secret partagé). Les seules routes à relayer sont `GET /`, `GET /invite`, `GET /api/guest/session` et `POST /api/guest/ask`. Le chemin `/outpost.goauthentik.io/*` va à authentik.
+
+**Réglages → Accès invité** liste le groupe `ragator-collection-<clé>` de chaque collection. Chaque question invitée porte sur une seule collection autorisée. Pour couper l’accès invité, appliquez `RAGATOR_GATEWAY_TRUST=0` dans le déploiement Ragator. Si vous ouvrez l’administration par un nom DNS privé, ajoutez-le à `RAGATOR_HOSTS`.
+
 | Onglet | Rôle |
 |---|---|
 | **Rechercher** | questions, réponses détaillées, courtes ou faites d'extraits ; filtre par chaîne ; vidéos proches de chaque vidéo citée |

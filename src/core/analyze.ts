@@ -83,10 +83,10 @@ export function knownBrands(question: string): RequiredTerm[] {
  * Exigences proposées par le LLM, ramenées à une forme du corpus ; une exigence introuvable garde sa
  * forme normalisée (aucune vidéo ne la prouvera).
  */
-async function resolveRequired(pool: Pool, terms: string[], corpusVersion: string, notes: string[]): Promise<RequiredTerm[]> {
+async function resolveRequired(pool: Pool, terms: string[], corpusVersion: string, notes: string[], collection?: string): Promise<RequiredTerm[]> {
   const required: RequiredTerm[] = [];
   for (const term of terms.slice(0, MAX_REQUIRED)) {
-    const resolved = await resolveTerm(pool, term, 'tout', corpusVersion);
+    const resolved = await resolveTerm(pool, term, 'tout', corpusVersion, collection);
     if (resolved.status === 'resolved' && resolved.canonical) {
       if (resolved.fuzzy) notes.push(`exigence « ${term} » lue « ${resolved.canonical} »`);
       required.push({ term, forms: [resolved.canonical, ...resolved.aliases] });
@@ -111,6 +111,7 @@ export async function analyzeQuestion(
   llm: LlmClient | null,
   /** Ligne « Corpus : … » (`corpusLine`) : de quelle chaîne viennent les vidéos. */
   corpus: string | null = null,
+  collection?: string,
 ): Promise<QuestionAnalysis> {
   const rules = classify(question);
   const explicitToolUse = sharedToolTargets(question) !== null;
@@ -137,7 +138,7 @@ export async function analyzeQuestion(
   if (!analysis) return fallback('analyse LLM illisible : règles');
 
   const corpusVersion = (await getMetaString(pool, 'corpus_version')) ?? '';
-  const words = new Set(await lexique(pool, 'tout', corpusVersion));
+  const words = new Set(await lexique(pool, 'tout', corpusVersion, collection));
   const notes: string[] = [];
 
   let route = analysis.route;
@@ -215,7 +216,7 @@ export async function analyzeQuestion(
   }
   if (dropped.length > 0) notes.push(`mots-clés absents du corpus écartés : ${dropped.join(', ')}`);
 
-  const required = await resolveRequired(pool, analysis.exigences, corpusVersion, notes);
+  const required = await resolveRequired(pool, analysis.exigences, corpusVersion, notes, collection);
   const action = explicitToolUse || (analysis.action ?? asksAboutAction(question));
   const questionWords = ` ${normalized(question)} `;
   const targetable = general && action && !analysis.ordre && !rules.order;
@@ -225,11 +226,11 @@ export async function analyzeQuestion(
       .map(({ term, form }) => ({ term, forms: actionTargetForms(form) })),
   ).filter((group) => group.length > 0) : [];
   // Sujet d'une « première / dernière fois » : seulement s'il existe dans le corpus (sinon, chemin général).
-  const subject = analysis.sujet ? ((await resolveRequired(pool, [analysis.sujet], corpusVersion, notes))[0] ?? null) : null;
+  const subject = analysis.sujet ? ((await resolveRequired(pool, [analysis.sujet], corpusVersion, notes, collection))[0] ?? null) : null;
   const order = rules.order ?? (route !== 'inventorier' && (route === 'lister' || general) ? analysis.ordre : null);
   // Série nommée par la question : un filtre sur des vidéos, jamais un mot à chercher. Une vidéo citée par
   // son identifiant reste plus précise.
-  const found = rules.videoId ? null : await findSeries(pool, analysis.serie, notes);
+  const found = rules.videoId ? null : await findSeries(pool, analysis.serie, notes, collection);
   const series = found ? { ...found, query: withoutSeries(question, found.terms) } : null;
   // Le nom de la série parmi les mots-clés ramènerait les passages qui en parlent, pas le sujet.
   const seriesForms = new Set(found?.terms.map(normalized) ?? []);

@@ -35,6 +35,9 @@ services:
       RAGATOR_BIND_ADDRESS: '${RAGATOR_BIND_ADDRESS:-127.0.0.1}'
       RAGATOR_PASSWORD: '${RAGATOR_PASSWORD:-}'
       RAGATOR_HOSTS: '${RAGATOR_HOSTS:-}'
+      RAGATOR_PUBLIC_URL: '${RAGATOR_PUBLIC_URL:-}'
+      RAGATOR_GATEWAY_SECRET: '${RAGATOR_GATEWAY_SECRET:-}'
+      RAGATOR_GATEWAY_TRUST: '${RAGATOR_GATEWAY_TRUST:-1}'
     volumes:
       - ragator-data:/data
       # Facultatif : un dossier de fichiers video--<id>.json (yt2md : son dossier outputs/), lu à chaque mise à jour.

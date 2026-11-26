@@ -50,12 +50,12 @@ function result(reason: string, variants: string[] = []): ExpansionResult {
  * lexicales. Elles élargissent les candidats de `chercher`, jamais les preuves,
  * et ne participent jamais à un décompte exhaustif.
  */
-export async function expandQuery(pool: Pool, question: string, llm: LlmClient | null): Promise<ExpansionResult> {
+export async function expandQuery(pool: Pool, question: string, llm: LlmClient | null, collection?: string): Promise<ExpansionResult> {
   const tokens = contentTokensOf(question);
   if (tokens.length === 0) return result('question sans mot signifiant');
 
   const corpusVersion = (await getMetaString(pool, 'corpus_version')) ?? '';
-  const missing = vocabularyMisses(tokens, await lexique(pool, 'tout', corpusVersion));
+  const missing = vocabularyMisses(tokens, await lexique(pool, 'tout', corpusVersion, collection));
   if (missing.length === 0 || missing.length / tokens.length < MISSING_RATIO) {
     return result('vocabulaire couvert par le corpus');
   }

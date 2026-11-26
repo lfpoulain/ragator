@@ -1,6 +1,6 @@
 import type { AddressInfo } from 'node:net';
-import type { Server } from 'node:http';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { request, type Server } from 'node:http';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Pool } from 'pg';
 import { closePool } from '../../src/db/pool.js';
 import { ingestPaths } from '../../src/core/ingest.js';
@@ -31,7 +31,11 @@ import { dbAvailable, FIXTURES_DIR, getTestPool, resetDatabase, setupDatabase } 
     await pool.query(`UPDATE videos SET channel = 'L''Atelier Test, bricolage et essais' WHERE video_id = 'cKRqOdTi5yE'`);
     // Le cache des collections suit la version du corpus : la changer comme le ferait une ingestion.
     await pool.query(`UPDATE corpus_meta SET value = '"collections-test"' WHERE key = 'corpus_version'`);
-    server = createWebServer(pool, { password: null, hosts: [] });
+    vi.stubEnv('RAGATOR_PUBLIC_URL', 'https://ragator.example.org');
+    vi.stubEnv('RAGATOR_GATEWAY_SECRET', 'test-secret-for-integration-only');
+    try {
+      server = createWebServer(pool, { password: null, hosts: [] });
+    } finally { vi.unstubAllEnvs(); }
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   });
@@ -60,6 +64,42 @@ import { dbAvailable, FIXTURES_DIR, getTestPool, resetDatabase, setupDatabase } 
     const all = await corpusLine(pool);
     expect(all).toContain('des chaînes');
     expect(all).toContain('« L\'Atelier Test, bricolage et essais »');
+  });
+
+  it('invité : voit et interroge seulement sa collection, puis perd son accès au retrait du groupe', async () => {
+    const headers = { host: 'ragator.example.org', origin: 'https://ragator.example.org', 'content-type': 'application/json', 'remote-user': 'ami',
+      'remote-groups': 'ragator-collection-l-atelier-test', 'x-ragator-gateway': 'test-secret-for-integration-only' };
+    function guest(path: string, body?: object) {
+      return new Promise<{ status: number; text: string }>((resolve, reject) => {
+        const req = request(base + path, { method: body ? 'POST' : 'GET', headers }, async res => {
+          const chunks = [];
+          for await (const chunk of res) chunks.push(chunk);
+          resolve({ status: res.statusCode!, text: Buffer.concat(chunks).toString() });
+        });
+        req.on('error', reject);
+        req.end(body && JSON.stringify(body));
+      });
+    }
+    const session = await guest('/api/guest/session');
+    expect(session.status).toBe(200);
+    expect(JSON.parse(session.text).collections.map((c: { key: string }) => c.key)).toEqual(['l-atelier-test']);
+    const question = 'Toutes les vidéos où on parle de NordVPN';
+    for (const collection of ['', 'les-freres-poulain', undefined]) {
+      expect((await guest('/api/guest/ask', { question, collection })).status).toBe(403);
+    }
+    const result = await guest('/api/guest/ask', { question, collection: 'l-atelier-test' });
+    expect(result.status).toBe(200);
+    expect(JSON.parse(result.text).sources).toEqual([]);
+    headers['remote-groups'] = 'ragator-collection-les-freres-poulain';
+    const allowed = await guest('/api/guest/ask', { question, collection: 'les-freres-poulain' });
+    expect(JSON.parse(allowed.text).sources[0].link).toContain('Gu8bnHQaG5s');
+    for (const path of ['/api/settings', '/api/admin/videos', '/api/collections', '/api/gateway', '/healthz']) {
+      expect(await guest(path)).toEqual({ status: 404, text: '' });
+    }
+    headers.origin = 'https://autre.example';
+    expect((await guest('/api/guest/ask', { question, collection: 'les-freres-poulain' })).status).toBe(403);
+    headers['remote-groups'] = 'ragator-invites';
+    expect((await guest('/api/guest/session')).status).toBe(403);
   });
 
   it('décompte et recherche limités à la collection', async () => {

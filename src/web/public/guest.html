@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Recherche · Ragator</title>
+<style>
+  :root { color-scheme: light dark; font: 16px/1.55 system-ui, sans-serif; }
+  body { margin: auto; max-width: 48rem; padding: 1rem 1.25rem 4rem; }
+  header { display: flex; gap: 1rem; align-items: baseline; border-bottom: 1px solid #8886; padding-bottom: .8rem; }
+  header strong { margin-right: auto; }
+  header strong span { color: #df573e; }
+  main { margin: 3rem auto 0; }
+  form { display: grid; gap: .65rem; }
+  label { font-weight: 600; }
+  button, select, textarea { font: inherit; padding: .6rem; border-radius: .5rem; border: 1px solid #8889; }
+  textarea { resize: vertical; }
+  button { justify-self: start; background: #a43222; border: 0; color: white; cursor: pointer; padding-inline: 1.25rem; }
+  button:disabled { opacity: .6; }
+  #answer { white-space: pre-wrap; overflow-wrap: anywhere; }
+  li { margin-bottom: .8rem; }
+  [hidden] { display: none; }
+</style>
+<header><strong>Rag<span>ator</span></strong><span id="name"></span><a href="/outpost.goauthentik.io/sign_out">Se déconnecter</a></header>
+<main>
+  <h1>Interroger une collection</h1>
+  <form hidden>
+    <label for="collection">Collection</label><select id="collection" required></select>
+    <label for="question">Question</label><textarea id="question" rows="3" maxlength="1000" required></textarea>
+    <button>Rechercher</button>
+  </form>
+  <p id="status" role="status">Vérification de l’accès…</p>
+  <section hidden><h2>Réponse</h2><p id="answer"></p><h3>Sources</h3><ul></ul></section>
+</main>
+<script>
+  const select = document.querySelector('select'), form = document.querySelector('form');
+  const section = document.querySelector('section'), status = document.querySelector('#status');
+  const button = document.querySelector('button'), answer = document.querySelector('#answer');
+  const list = document.querySelector('ul'), question = document.querySelector('textarea');
+  let pending;
+  function clearResult() {
+    pending?.abort();
+    pending = undefined;
+    answer.textContent = '';
+    list.replaceChildren();
+    section.hidden = true;
+    button.disabled = false;
+    status.textContent = '';
+  }
+  function denied() {
+    clearResult();
+    form.hidden = true;
+    select.replaceChildren();
+    question.value = '';
+    document.querySelector('#name').textContent = '';
+    status.textContent = 'Accès refusé ou session expirée. Rechargez la page pour vous reconnecter.';
+  }
+  async function refresh() {
+    try {
+      const res = await fetch('/api/guest/session', { redirect: 'error', signal: AbortSignal.timeout(10000) });
+      if (!res.ok) return denied();
+      const data = await res.json();
+      const selected = select.value;
+      select.replaceChildren(...data.collections.map(c => new Option(c.name, c.key)));
+      if (data.collections.some(c => c.key === selected)) select.value = selected;
+      else clearResult();
+      form.hidden = false;
+      document.querySelector('#name').textContent = data.label;
+    } catch { denied(); }
+  }
+  select.onchange = clearResult;
+  form.onsubmit = async event => {
+    event.preventDefault();
+    clearResult();
+    const controller = new AbortController();
+    pending = controller;
+    button.disabled = true;
+    status.textContent = 'Recherche en cours…';
+    try {
+      const res = await fetch('/api/guest/ask', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, redirect: 'error', signal: controller.signal,
+        body: JSON.stringify({ question: question.value, collection: select.value })
+      });
+      if (res.status === 401 || res.status === 403) return denied();
+      const data = await res.json();
+      if (controller.signal.aborted) return;
+      if (!res.ok) throw new Error(data.error);
+      answer.textContent = data.answer;
+      for (const source of data.sources) {
+        const item = document.createElement('li'), link = document.createElement('a');
+        link.href = source.link;
+        link.textContent = source.title;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        item.append(link, document.createElement('br'), source.excerpt);
+        list.append(item);
+      }
+      section.querySelector('h3').hidden = !data.sources.length;
+      section.hidden = false;
+      status.textContent = '';
+    } catch (error) {
+      if (!controller.signal.aborted) status.textContent = error.message || 'Recherche interrompue.';
+    } finally {
+      if (pending === controller) { pending = undefined; button.disabled = false; }
+    }
+  };
+  refresh();
+  setInterval(refresh, 15000);
+</script>
+</html>

@@ -202,7 +202,7 @@ async function gatherSearch(
   const keywords = broaden ? analysis.keywords : [];
   const expansion =
     keywords.length === 0 && input.mode !== 'extractif' && input.expand && kind === undefined
-      ? await expandQuery(pool, question, llm)
+      ? await expandQuery(pool, question, llm, routed.collection)
       : null;
   const wide = routed.general && input.wide && input.maxEvidence === undefined;
   const toolUse = wide && routed.scope !== 'ecran' && sharedToolTargets(question) ? questionOperation(question) : null;
@@ -596,7 +596,7 @@ async function answerQuestion(pool: Pool, input: AnswerInput, options: AnswerOpt
       )
     : null;
   speculation?.catch(() => {});
-  const analysis = followUp.clarify || !analyzer ? null : await analyzeQuestion(pool, question, analyzer, corpus);
+  const analysis = followUp.clarify || !analyzer ? null : await analyzeQuestion(pool, question, analyzer, corpus, input.collection);
   const routed: RoutedQuery = followUp.clarify
     ? { ...classify(question), route: 'clarifier', reason: 'référence ambiguë' }
     : (analysis?.routed ?? classify(question));
