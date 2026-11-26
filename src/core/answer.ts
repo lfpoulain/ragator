@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 import { classify, type Route, type RoutedQuery } from './classify.js';
-import { MAX_HISTORY_TURNS, resolveFollowUp, sceneRefs, type SceneRef, type Turn } from './followup.js';
+import { MAX_HISTORY_TURNS, inventoryBrand, inventoryFollowUp, resolveFollowUp, sceneRefs, type SceneRef, type Turn } from './followup.js';
 import { answerFromScenes } from './scene-memory.js';
 import { chercher, type SearchResult } from './search.js';
 import { rankByVideo } from './video-rank.js';
@@ -16,6 +16,7 @@ import { expandQuery, type ExpansionResult } from './expansion.js';
 import { extractParsedCitations, renderClaims, validateClaims, type AnswerMode, type Claim } from './citations.js';
 import { answerCredits, creditQuestion } from './credits.js';
 import { answerExhaustive } from './exhaustive.js';
+import { inventoryOfModels, inventoryText, recallInventory, rememberInventory } from './inventory.js';
 import { answerByVideo, retrievedClues } from './general.js';
 import { ACTION_SYSTEM_PROMPT, SPECULATIVE_SYSTEM_PROMPT, actionNeighborhood, asksAboutAction, assessAction, corroboratedAlternative, uncertainAction } from './action-proof.js';
 import { chronologicalRequirements, reviewOccurrence, scanChronologically, type FirstTimeResult } from './first-time.js';
@@ -39,7 +40,7 @@ export type { AnswerMode, AnswerSource, Claim };
  * lecture du corpus puis juge moment par moment (« la première / dernière fois qu'ils… ») ; `série`, les
  * vidéos d'une série nommée par la question (« les vidéos de la régie ») lues en entier.
  */
-export type Retrieval = 'vecteurs' | 'mots' | 'corpus' | 'chronologique' | 'série' | 'scènes citées';
+export type Retrieval = 'vecteurs' | 'mots' | 'corpus' | 'chronologique' | 'série' | 'scènes citées' | 'inventaire';
 
 export interface AnswerResult {
   question: string;
@@ -74,6 +75,7 @@ export interface AnswerResult {
   sceneAnchors?: SceneRef[];
   /** Une relance peut accepter de consulter les autres épisodes du projet. */
   offeredEpisodeSearch?: boolean;
+  inventoryId?: string;
   /** Vidéos dont des passages ont été transmis au LLM (ou listés), dans l'ordre de pertinence. */
   consideredVideoIds: string[];
   /** Comment les preuves ont été trouvées ; `null` sans recherche (demande de précision). */
@@ -127,6 +129,7 @@ export type AnswerProgress =
   | { étape: 'analyse' }
   | { étape: 'recherche' }
   | { étape: 'jugement'; vidéos: number }
+  | { étape: 'catalogue' | 'lecture'; vidéos: number }
   | { étape: 'rédaction'; lots: number }
   | { étape: 'réponse' }
   | { étape: 'lignes'; answer: string; sources: AnswerSource[] };
@@ -558,10 +561,17 @@ async function answerQuestion(pool: Pool, input: AnswerInput, options: AnswerOpt
   };
   const history = (input.history ?? []).slice(-MAX_HISTORY_TURNS);
   const progress = options.onProgress ?? (() => {});
-  const sceneAnswer = await answerFromScenes(pool, input.question, mode, history, input.collection ?? null, llm, progress,
+  const previous = history.at(-1);
+  const inventoryTopic = inventoryFollowUp(input.question, previous);
+  if (inventoryTopic && previous?.inventory && llm) {
+    const saved = await recallInventory(pool, previous.inventory, previous.question, input.question, inventoryTopic,
+      inventoryBrand(input.question), input.collection, mode, llm.model);
+    if (saved) return saved;
+  }
+  const sceneAnswer = inventoryTopic ? null : await answerFromScenes(pool, input.question, mode, history, input.collection ?? null, llm, progress,
     (question, ids) => answerQuestion(pool, { ...input, question, history: [] }, options, ids));
   if (sceneAnswer) return sceneAnswer;
-  const followUp = await resolveFollowUp(pool, input.question, history, input.collection ?? null);
+  const followUp = inventoryTopic ? { question: inventoryTopic, videoId: null, clarify: null } : await resolveFollowUp(pool, input.question, history, input.collection ?? null);
   const question = followUp.question;
   // Analyse par LLM (aiguillage, mots-clés, HyDE) ; jamais en mode extractif sauf demande explicite.
   const analyzer = options.analyzer !== undefined ? options.analyzer : llm;
@@ -593,6 +603,7 @@ async function answerQuestion(pool: Pool, input: AnswerInput, options: AnswerOpt
   if (followUp.videoId) routed.videoId = followUp.videoId;
   if (input.collection) routed.collection = input.collection;
   if (analysis?.series) routed.videoIds = analysis.series.videoIds;
+  if (inventoryTopic) Object.assign(routed, { route: 'inventorier', general: true, order: null });
   const comparing = /\bcompar|\bentre (?:les|ces|la|le|l['’])/iu.test(question);
   const projects = analysis?.projects ?? [];
   const projectIds = !otherEpisodes && !routed.videoId && !routed.videoIds && routed.route === 'chercher' && !routed.order &&
@@ -739,6 +750,26 @@ async function answerQuestion(pool: Pool, input: AnswerInput, options: AnswerOpt
     });
   };
 
+  if (routed.route === 'inventorier') {
+    const fields = { retrieval: 'inventaire' as const, refused: true, sources: [] };
+    if (!llm || !await llm.available()) return result({ ...fields,
+      answer: 'La vérification des modèles nécessite un modèle de discussion disponible en mode court ou détaillé.',
+      degraded: mode !== 'extractif', degradedReason: mode === 'extractif' ? null : 'LLM indisponible' });
+    const readStart = Date.now();
+    try {
+      const inventory = await inventoryOfModels(pool, llm, question, routed, gathered.sources, gathered.rankedIds ?? new Set(),
+        analysis?.keywords ?? [], gathered.corpusVersion, progress);
+      const note = inventory.failed ? 'Certaines lectures ont échoué. La liste peut être incomplète.' : '';
+      return rememberInventory(pool, input.collection, result({ ...fields, model: llm.model, refused: !inventory.claims.length, claims: inventory.claims, sources: [...inventory.sources.values()],
+        citedSourceIds: [...inventory.sources.keys()], consideredVideoIds: inventory.videoIds,
+        answer: [inventoryText(inventory.claims, inventory.sources, input.question, question, inventory.brand), note].filter(Boolean).join('\n'),
+        degraded: !!note || !!gathered.degradedReason, degradedReason: [note, gathered.degradedReason].filter(Boolean).join(' · ') || null,
+        timings: { searchMs, llmMs: Date.now() - readStart, totalMs: Date.now() - startedAt } }), note);
+    } catch (err) {
+      return result({ ...fields, model: llm.model, degraded: true, degradedReason: err instanceof Error ? err.message : String(err),
+        answer: 'La lecture des essais a été interrompue. La liste des modèles n’a pas pu être vérifiée.' });
+    }
+  }
   if (all.length === 0) {
     return result({ answer: scan ? 'Aucune occurrence confirmée dans les passages examinés.' : REFUSAL, refused: true, sources: [] });
   }
@@ -897,6 +928,7 @@ export function turnOf(result: AnswerResult): Turn {
   });
   const scenes = result.sceneAnchors ?? sceneRefs(printed.length ? printed : result.sources);
   return { question: result.resolvedQuestion, videoIds: [...new Set(result.sources.map((s) => s.videoId))],
+    ...(result.inventoryId ? { inventory: result.inventoryId } : {}),
     ...(scenes.length ? { scenes } : {}), ...(result.route === 'clarifier' && scenes.length ? { choosingScene: true } : {}),
     ...(result.offeredEpisodeSearch && scenes.length ? { offeredEpisodeSearch: true } : {}) };
 }

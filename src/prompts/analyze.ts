@@ -4,11 +4,12 @@
  * hypothétique. Le modèle propose ; le code valide tout contre le corpus
  * (`src/core/analyze.ts`). Exemples génériques, jamais tirés des questions de référence.
  */
-export const ANALYZE_PROMPT_VERSION = '13';
+export const ANALYZE_PROMPT_VERSION = '14';
 
 export const ANALYZE_SYSTEM_PROMPT = `Tu prépares la recherche dans un corpus de vidéos YouTube en français ; la ligne « Corpus » en tête du message dit de quelle chaîne elles viennent. Tu ne réponds pas à la question : tu décris comment la chercher, en JSON.
 
 Routes :
+- "inventorier" : l’utilisateur attend les NOMS de produits ou modèles distincts réellement essayés, testés ou évalués. Chaque ligne de réponse devra identifier un modèle et son essai. Par exemple « liste les caméras qu’ils ont essayées ». Mets la catégorie demandée dans "terme", sans proposer les modèles à la place du corpus. Une question sur un seul modèle déjà nommé relève de "chercher". Une liste de vidéos ou de mentions garde sa propre route.
 - "lister" : l'utilisateur veut compter ou lister TOUTES les occurrences d'un mot, d'un nom ou d'un objet précis : « combien de fois », « dans combien de vidéos », « quelles vidéos citent / mentionnent X », « toutes les vidéos où on parle de X », « partout où on voit X », quand X est un nom propre, une marque, un produit ou un objet concret. "terme" = ce mot ou nom exact, tel qu'il serait prononcé ou écrit (ex. « Makita », « impression 3D »).
   Même route pour la PREMIÈRE ou la DERNIÈRE fois qu'un mot est MENTIONNÉ (« la première mention de X », « quand ont-ils parlé de X pour la première fois », « la dernière vidéo avec X ») : "ordre" = "premiere" ou "derniere". Sinon "ordre" = "aucun".
   Mais la première ou la dernière fois qu'ils FONT quelque chose (« la dernière fois qu'ils utilisent une visseuse », « leur premier test de X ») n'est pas un décompte de mots : route "chercher", "generale" true, et "ordre" = "premiere" ou "derniere".
@@ -45,7 +46,7 @@ export const ANALYZE_SCHEMA = {
   schema: {
     type: 'object',
     properties: {
-      route: { type: 'string', enum: ['lister', 'chercher', 'plan', 'infos', 'clarifier'] },
+      route: { type: 'string', enum: ['lister', 'inventorier', 'chercher', 'plan', 'infos', 'clarifier'] },
       generale: { type: 'boolean' },
       action: { type: 'boolean' },
       ciblesGeste: { type: 'array', maxItems: 3, items: { type: 'array', maxItems: 3, items: { type: 'string', pattern: '^\\S+$' } } },
@@ -66,7 +67,7 @@ export const ANALYZE_SCHEMA = {
 };
 
 export interface RawAnalysis {
-  route: 'lister' | 'chercher' | 'plan' | 'infos' | 'clarifier';
+  route: 'lister' | 'inventorier' | 'chercher' | 'plan' | 'infos' | 'clarifier';
   generale: boolean;
   action: boolean | null;
   ciblesGeste: string[][];
@@ -85,7 +86,7 @@ export interface RawAnalysis {
   gesteObserve: boolean;
 }
 
-const ROUTES = new Set(['lister', 'chercher', 'plan', 'infos', 'clarifier']);
+const ROUTES = new Set(['lister', 'inventorier', 'chercher', 'plan', 'infos', 'clarifier']);
 
 /** Lecture tolérante ; `null` si la sortie est inexploitable. */
 export function parseAnalysis(raw: string): RawAnalysis | null {

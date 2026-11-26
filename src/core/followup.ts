@@ -1,5 +1,5 @@
 import type { Pool } from 'pg';
-import { tokenizeText } from '../norm/normalize.js';
+import { foldAccents, tokenizeText } from '../norm/normalize.js';
 import { contentTokens } from '../norm/stopwords.js';
 import { classify, extractTerm } from './classify.js';
 
@@ -14,6 +14,8 @@ export interface Turn {
   /** La question est en attente du choix d'une des scènes présentées. */
   choosingScene?: boolean;
   offeredEpisodeSearch?: boolean;
+  /** Clé opaque d'une liste vérifiée conservée par le serveur. */
+  inventory?: string;
 }
 
 export interface SceneRef {
@@ -39,6 +41,51 @@ export interface FollowUp {
 
 /** Tours conservés au plus : l'historique sert aux références, jamais de preuve. */
 export const MAX_HISTORY_TURNS = 5;
+
+/** Demandes de présentation autonomes. Une nouvelle question sur un produit garde son propre sujet. */
+const FORMAT_WORDS = new Set('et oui non juste tu vous peux pourrais pouvez moi nous me le la les ca dire dis redire redis donner donne redonner redonne resumer resume reformuler reformule repondre reponds presenter presente tout reponse'.split(' '));
+export function inventoryFormat(question: string): 'phrase' | 'liste' | null {
+  const text = foldAccents(question).replace(/[^a-z0-9]+/g, ' ').trim().replace(/ (?:stp|svp|s il (?:te|vous) plait|merci)$/, '');
+  const form = /(?:^| )(?:(?:en|dans) (?:une(?: seule)?|1) (?:courte )?(phrase)|(?:en|sous forme de) (liste))$/.exec(text);
+  if (!form || text.slice(0, form.index).split(' ').some(w => w && !FORMAT_WORDS.has(w))) return null;
+  return form[1] ? 'phrase' : 'liste';
+}
+
+export function inventoryBrand(question: string): string | null {
+  const text = question.trim();
+  const bare = /^(?:et\s+)?(?:chez|de\s+chez|(?:pour\s+)?la\s+marque|(?:juste\s+)?(?:les|ceux)\s+de\s+chez)\s+([\p{L}\d][\p{L}\d .+-]{0,40}?)[ ?!.]*$/iu.exec(text);
+  if (bare) return bare[1]!.trim();
+  const label = /\b(?:chez|de la marque)\s+([\p{L}\d][\p{L}\d .+-]{0,40}?)[ ?!.]*$/iu.exec(text);
+  if (!label) return null;
+  const before = foldAccents(text.slice(0, label.index)).replace(/[^a-z0-9]+/g, ' ').trim();
+  const trial = /^(?:et )?(?:est ce (?:que|qu) )?(?:on (?:en )?a|nous (?:en )?avons|avons nous|(?:ils|elles) (?:en )?ont|ont (?:ils|elles)|j (?:en )?ai|ai je) (?:deja |aussi )?(?:teste|essaye)(?: des modeles| quelque chose)?$/;
+  return trial.test(before) ? label[1]!.trim() : null;
+}
+
+/** Filtre ajouté par le chat, remplaçable au tour suivant. */
+export function inventoryRestriction(question: string): { root: string; brand: string } | null {
+  const match = /^(.*) \(uniquement la marque ([\p{L}\d .+-]{1,41})\)$/u.exec(question);
+  return match ? { root: match[1]!, brand: match[2]! } : null;
+}
+
+/** Une correction portant sur la forme de la liste garde l'objet demandé, même après un ancien décompte. */
+export function inventoryFollowUp(question: string, previous?: Turn): string | null {
+  if (!previous) return null;
+  const before = classify(previous.question);
+  if (!previous.inventory && before.route !== 'inventorier' && before.route !== 'lister') return null;
+  const brand = inventoryBrand(question);
+  if (brand && (previous.inventory || before.route === 'inventorier')) return `${inventoryRestriction(previous.question)?.root ?? previous.question} (uniquement la marque ${brand})`;
+  const text = foldAccents(question).replace(/[^a-z0-9+]+/g, ' ').trim();
+  if ((previous.inventory || before.route === 'inventorier') &&
+      (inventoryFormat(question) || /^(?:et |oui |mais )?(?:lesquels|lesquelles)(?: (?:exactement|deja))?$/.test(text))) return previous.question;
+  if (!/\b(?:modeles?|references?|noms?|marques?)\b/.test(text)) return null;
+  const prior = new Set(tokenizeText(previous.question).tokens);
+  const rest = text.split(' ').filter(word => !prior.has(word) &&
+    !/^(?:et|non|oui|mais|plutot|en|fait|je|j|te|tu|moi|nous|voulais|veux|demande|demandais|donne|donner|redonne|precise|precisement|exactement|juste|uniquement|seulement|bien|les?|la|l|de|des|du|d|au|lieu|leurs?|ces|tous|tout|toutes|pas|qu|que|quels?|quelles?|ils|elles|ont|sont|ceux|celles|qui|ete|testees?|testes?|essayees?|essayes?|modeles?|references?|noms?|marques?|liste|exacte?s?|precis(?:es?)?|videos?|passages?|extraits?|stp|merci)$/.test(word));
+  if (rest.length) return null;
+  if (previous.inventory || before.route === 'inventorier') return previous.question;
+  return before.term ? `Quels modèles de ${before.term} ont-ils testés ?` : null;
+}
 
 const THIS_VIDEO = /(?<!\p{L})(?:(?:cette|la même|même)\s+vidéo|celle-(?:ci|là)|dedans)(?!\p{L})/iu;
 const OTHER_VIDEO = /\bcelle\s+(?:du|de la|de l['’]|des|sur\s+(?:le|la|les|l['’])?|avec\s+(?:le|la|les|l['’])?)\s*(.+?)\s*[?!.]*$/i;

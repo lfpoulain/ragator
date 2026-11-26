@@ -141,6 +141,8 @@ export async function analyzeQuestion(
   const notes: string[] = [];
 
   let route = analysis.route;
+  if (rules.route === 'inventorier') route = 'inventorier';
+  if (route === 'inventorier' && (rules.route === 'lister' || rules.route === 'infos' || rules.route === 'plan')) route = rules.route;
   // Première / dernière fois repérée par les règles : elles l'emportent sur le LLM (route, ordre, terme).
   // Mention → décompte trié par date ; action → question générale jugée par JEV, triée par date.
   if (rules.order) route = rules.route === 'lister' ? 'lister' : 'chercher';
@@ -173,7 +175,7 @@ export async function analyzeQuestion(
   }
   // Une question que les règles reconnaissent comme générale (« quand parlent-ils de… », « qu'est-ce qu'ils
   // pensent de… ») le reste : le LLM la classait « précise » de façon constante (mesuré sur 3 passages).
-  let general = route === 'chercher' && (rules.general || (analysis.generale && !quantityMisrouted));
+  let general = route === 'inventorier' || route === 'chercher' && (rules.general || (analysis.generale && !quantityMisrouted));
   let term: string | null = rules.order && rules.term ? rules.term : analysis.terme ? normalized(analysis.terme) : null;
   // Un sigle de moins de 3 lettres se confond avec un mot court ou une interjection (« ha » pour Home
   // Assistant comptait une enceinte de 2018) : écarté des variantes.
@@ -192,7 +194,10 @@ export async function analyzeQuestion(
       [term = null, ...alternatives] = present;
     }
   }
-  if (route !== 'lister' && route !== 'plan') {
+  if (route === 'inventorier') {
+    term = term && inCorpus(term, words) ? term : null;
+    alternatives = [];
+  } else if (route !== 'lister' && route !== 'plan') {
     term = null;
     alternatives = [];
   }
@@ -221,7 +226,7 @@ export async function analyzeQuestion(
   ).filter((group) => group.length > 0) : [];
   // Sujet d'une « première / dernière fois » : seulement s'il existe dans le corpus (sinon, chemin général).
   const subject = analysis.sujet ? ((await resolveRequired(pool, [analysis.sujet], corpusVersion, notes))[0] ?? null) : null;
-  const order = rules.order ?? (route === 'lister' || general ? analysis.ordre : null);
+  const order = rules.order ?? (route !== 'inventorier' && (route === 'lister' || general) ? analysis.ordre : null);
   // Série nommée par la question : un filtre sur des vidéos, jamais un mot à chercher. Une vidéo citée par
   // son identifiant reste plus précise.
   const found = rules.videoId ? null : await findSeries(pool, analysis.serie, notes);

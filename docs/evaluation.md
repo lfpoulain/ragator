@@ -45,6 +45,23 @@ Un contrôle séparé a fourni au chat des citations réelles de chacune des 404
 
 Les cas de chevauchement, de changement de sujet et de citation périmée se rejouent sur une base de test avec `npm test -- tests/integration/followup.test.ts`.
 
+## Inventaire des imprimantes 3D testées
+
+Le 26 novembre 2026, deux conversations ont interrogé le même index local de 404 vidéos des Frères Poulain. Sur la version publiée `0c732cc`, « Fais moi la liste de tout les imprimante 3d qu'ils ont téstés » déclenchait un décompte de 474 extraits dans 177 vidéos. À la relance « Non, je veux les modèles qu’ils ont testés, pas les extraits », Ragator répondait avec des lasers Atomstack X20 et X30.
+
+| Conversation avec le correctif | Résultat observé |
+|---|---|
+| Question originale | Catalogue de 404 vidéos examiné, extraits de 133 vidéos relus, 22 modèles en 2 min 15 s |
+| Demande de redonner les modèles dans le même chat | Les mêmes 22 modèles et les mêmes 36 sources en moins d’une seconde |
+| « Et chez Bambu Lab ? », puis « Et chez Prusa ? » | Deux modèles Bambu Lab puis six Prusa, avec les citations de la première réponse |
+| Nouveau chat web, décompte explicite puis correction « je veux les noms des modèles testés » | Le décompte reste disponible. Le chat retrouve le sujet des imprimantes, relit 102 vidéos et donne 20 modèles en 1 min 44 s |
+
+Les 20 modèles de la seconde liste figurent aussi dans la première après rapprochement des noms commerciaux. La seconde omet la Prusa MK4 et la Prusa XL. Les deux listes écartent le manoir, la glacière, l’imprimante thermique et les épisodes des lasers ACMER et iKier utilisés comme témoins. Les identifiants, le texte des citations et les secondes ont été contrôlés dans les fichiers du corpus. Cette mesure porte sur deux conversations et ne donne pas le nombre total d’imprimantes testées.
+
+Un contrôle manuel a retrouvé un essai de la Wanhao D9 MK2 que les deux inventaires avaient omis. Le titre utilise « D9 MK2 » et les auteurs la présentent comme la « Duplicator 9 ». [Présentation à 00:36](https://www.youtube.com/watch?v=DXUfmpIey8o&t=36s) · [Résultat imprimé à 12:22](https://www.youtube.com/watch?v=DXUfmpIey8o&t=742s)
+
+Dans un dialogue web de huit tours sur la même collection, « Quelles imprimantes 3D avons-nous testées dans nos vidéos ? » a permis d’enchaîner avec « Et chez Bambu Lab ? ». Le chat a répondu « Oui, vous avez testé les modèles Bambu Lab H2S et Bambu Lab X1-Carbon ». « Tu peux me le dire en une phrase ? », puis « Sous forme de liste » ont conservé les deux citations, respectivement à 02:19 et 00:48. Pour une marque inventée, il a signalé qu’elle était absente de la liste vérifiée.
+
 ## Rejouer la mesure sur sa collection
 
 Pour rejouer le banc du premier tour, préparez une base locale indexée, sélectionnez le mode `local` et renseignez `DATABASE_URL`, `LOCAL_LLM_URL`, `LOCAL_EMBEDDING_URL` et `LOCAL_JUDGE_URL` pour vos services. Préparez vos références avant d’examiner les réponses. Chaque entrée du manifeste indique le groupe, la vidéo attendue, les secondes acceptées et les expressions décrivant le fait attendu. Le champ facultatif `forbid` écarte les réponses contenant une confusion connue.

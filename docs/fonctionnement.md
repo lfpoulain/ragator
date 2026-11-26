@@ -126,6 +126,8 @@ leur module dans `src/core/`.
    et propose une recherche dans les autres épisodes du projet. « Oui » reprend la question en
    attente dans les titres apparentés de la même collection. « Non merci » garde le repère initial.
    « Et dans cette vidéo ? » peut aussi porter sur l'épisode entier.
+   Après un inventaire, « Et chez Prusa ? » filtre les modèles vérifiés. Le serveur garde en mémoire la liste et ses sources.
+   Il vérifie la collection, le modèle de discussion et les versions du corpus et de l’index avant de la réutiliser.
 2. **Règles** (`src/core/classify.ts`) : un premier aiguillage déterministe,
    testable sans LLM, qui reconnaît les décomptes (« toutes les vidéos où… »),
    les demandes de description YouTube (« le lien du firmware »), les plans
@@ -149,11 +151,12 @@ leur module dans `src/core/`.
    la même question est aiguillée de la même façon d'un appel à l'autre. Sans LLM — mode *Extraits seuls,
    sans analyse LLM* ou sans clé —, les règles décident seules.
 
-Cinq routes en sortent :
+L’analyse choisit parmi six routes.
 
 | Route | Quand | Suite |
 |---|---|---|
 | `lister` | décompte exhaustif, ou première / dernière mention | §3.4, sans LLM |
+| `inventorier` | modèles distincts dont les auteurs ont fait l’essai | [Lecture du catalogue et vérification des essais](mecaniques-de-recherche.md#inventaire-des-modèles-essayés) |
 | `chercher` | cas général | §3.2, puis §3.3 (précise) ou §3.5 (générale) |
 | `plan` | « à quel moment voit-on… » | recherche dans les seuls plans visuels |
 | `infos` | liens, firmware, matériel en description | titres et descriptions YouTube, sans instant |

@@ -118,7 +118,7 @@ export function passwordOk(header: string | undefined, password: string): boolea
 function parseHistory(raw: unknown): Turn[] {
   if (!Array.isArray(raw)) return [];
   return raw
-    .filter((t): t is { question: string; videoIds?: unknown; scenes?: unknown; choosingScene?: unknown; offeredEpisodeSearch?: unknown } => typeof t?.question === 'string')
+    .filter((t): t is { question: string; videoIds?: unknown; scenes?: unknown; choosingScene?: unknown; offeredEpisodeSearch?: unknown; inventory?: unknown } => typeof t?.question === 'string')
     .slice(-MAX_HISTORY_TURNS)
     .map((t) => {
       const videoIds = Array.isArray(t.videoIds) ? t.videoIds.filter((v): v is string => typeof v === 'string' && /^[A-Za-z0-9_-]{11}$/.test(v)) : [];
@@ -129,6 +129,7 @@ function parseHistory(raw: unknown): Turn[] {
       }) : [];
       return { question: t.question.slice(0, MAX_QUESTION_CHARS), videoIds, ...(scenes.length ? { scenes } : {}),
         ...(t.choosingScene === true && scenes.length ? { choosingScene: true } : {}),
+        ...(typeof t.inventory === 'string' && /^[\da-f-]{36}$/.test(t.inventory) ? { inventory: t.inventory } : {}),
         ...(t.offeredEpisodeSearch === true && scenes.length ? { offeredEpisodeSearch: true } : {}) };
     });
 }

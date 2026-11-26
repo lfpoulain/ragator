@@ -2,7 +2,7 @@ import type { Pool } from 'pg';
 import { readSnapshot } from '../db/pool.js';
 import { tokenizeText } from '../norm/normalize.js';
 import { contentTokens } from '../norm/stopwords.js';
-import { answerSchema, PROMPT_VERSION } from '../prompts/answer.js';
+import { answerSchema, CONVERSATION_VOICE, PROMPT_VERSION } from '../prompts/answer.js';
 import type { LlmClient } from '../providers/llm.js';
 import { formatTimestamp } from '../windows/format.js';
 import type { AnswerResult } from './answer.js';
@@ -36,6 +36,7 @@ const shortDetail = (text: string) => /^(?:(?:a|avec|de|en) )?(?:quelle?s?|quels
 
 function sceneQuestion(question: string, text: string, history: Turn[], timeOnly: boolean): boolean {
   if (!history.some(t => t.scenes?.length) || extractVideoReference(question)) return false;
+  if (classify(question).route === 'inventorier') return false;
   if (/\b(?:autre sujet|nouvelle question|autres videos|ailleurs dans|tout le (?:corpus|catalogue)|toute la chaine|(?:laquelle|lequel|lesquelles|lesquels) de (?:leurs|toutes les|tous les) (?:videos|episodes|projets))\b/.test(text)) return false;
   if (timeOnly || SCENE_REFERENCE.test(text) || ORDINAL.test(text) || TIMECODE.test(text) ||
     history.at(-1)?.choosingScene && choiceReply(text)) return true;
@@ -109,6 +110,7 @@ async function selectScenes(llm: LlmClient, question: string, scenes: Scene[], q
 }
 
 const SCENE_SYSTEM = `Tu réponds en français au dernier message d'un dialogue sur des extraits de vidéos.
+${CONVERSATION_VOICE}
 L'historique sert à comprendre les pronoms. Chaque fait de ta réponse vient d'un extrait, même si la question précédente suggère autre chose.
 Respecte nombres, unités, négations et incertitudes. Un texte affiché à l'écran peut différer du geste filmé.
 Si la question porte sur un geste observé, privilégie le plan où il a lieu. Une annonce d'un projet futur répond seulement à une question sur l'intention.
