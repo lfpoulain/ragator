@@ -334,7 +334,7 @@ export async function repondreAgent(pool: Pool, input: AnswerInput, options: Ans
   const totalMs = Date.now() - startedAt;
   if (!written.length) {
     // Rien de rédigé qui tienne : la réponse habituelle reste la référence, refus compris.
-    return { ...first, agent, ...(failure && !first.degradedReason ? { degraded: true, degradedReason: failure } : {}),
+    return { ...first, agent, ...(failure ? { degraded: true, degradedReason: [first.degradedReason, failure].filter(Boolean).join(' ; ') } : {}),
       timings: { ...first.timings, llmMs: totalMs - first.timings.searchMs, totalMs } };
   }
   const answer = renderWritten(written, dossier.sources);
