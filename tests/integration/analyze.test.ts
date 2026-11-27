@@ -122,6 +122,11 @@ function analyst(analysis: Record<string, unknown>): LlmClient & { calls: number
     const named = await analyzeQuestion(pool, 'Quelles marques de module utilisent-ils ?', model);
     expect(named.routed).toMatchObject({ route: 'chercher', general: true, term: null });
     expect(named.note).toContain('ni vidéos ni occurrences');
+    // Même question envoyée à l'inventaire des essais : elle ne parle pas d'essai, il ne trouverait rien.
+    const used = await analyzeQuestion(pool, 'Quelles marques de module utilisent-ils ?', analyst({ route: 'inventorier', terme: 'module' }));
+    expect(used.routed).toMatchObject({ route: 'chercher', general: true, term: null });
+    const tried = await analyzeQuestion(pool, 'Quels modules ont-ils testés ?', analyst({ route: 'chercher' }));
+    expect(tried.routed.route).toBe('inventorier');
     const counted = await analyzeQuestion(pool, 'Quelles vidéos citent le module ?', model);
     expect(counted.routed).toMatchObject({ route: 'lister', term: 'module' });
   });

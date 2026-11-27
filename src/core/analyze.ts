@@ -180,6 +180,15 @@ export async function analyzeQuestion(
     downgraded = true;
     listedInstead = true;
   }
+  // L'inventaire ne retient que des modèles dont l'ESSAI est prouvé. Une question qui ne parle pas d'essai
+  // (« quelles marques utilisent-ils ») y perdait toute réponse : il faut l'accord des règles, comme pour
+  // les autres routes étroites. Sinon, recherche générale : la réponse couvre plusieurs vidéos.
+  if (route === 'inventorier' && rules.route !== 'inventorier') {
+    notes.push('inventaire d’essais proposé pour une question qui ne parle pas d’essai : recherche générale');
+    route = 'chercher';
+    downgraded = true;
+    listedInstead = true;
+  }
   if ((route === 'plan' || route === 'infos' || route === 'clarifier') && rules.route !== route) {
     notes.push(`route « ${route} » proposée sans accord des règles : recherche classée`);
     route = 'chercher';
