@@ -64,3 +64,17 @@ describe('réponse approfondie : phrases validées et rendu', () => {
     expect(turn?.phrases).toEqual([{ forme: 'paragraphe', titre: '', texte: 't', preuve: '', sourceIds: ['s1'], incertain: false }]);
   });
 });
+
+describe('réponse approfondie : gros dossiers et sorties coupées', () => {
+  it('réunit les puces de même nom, avec toutes leurs sources', async () => {
+    const { mergeWritten } = await import('../../src/core/agent.js');
+    const w = (titre: string, keys: string[], uncertain = false) => ({ phrase: phrase({ titre, texte: 'vu.' }), keys, uncertain });
+    const merged = mergeWritten([w('Alpha 200', ['a'], true), w('Bêta', ['b']), w('alpha-200', ['c', 'a']), { phrase: phrase({ forme: 'paragraphe', texte: 'Suite.' }), keys: ['d'], uncertain: false }]);
+    expect(merged.map((m) => [m.phrase.titre, m.keys, m.uncertain])).toEqual([['Alpha 200', ['a', 'c'], false], ['Bêta', ['b'], false], ['', ['d'], false]]);
+  });
+
+  it('garde les phrases complètes d’une sortie coupée par la limite de longueur', () => {
+    const cut = '{"bilan":"b","recherches":[],"refus":false,"phrases":[{"forme":"puce","titre":"A","texte":"un","preuve":"p","sourceIds":["s1"],"incertain":false},{"forme":"puce","titre":"B","texte":"de';
+    expect(parseAgentTurn(cut)?.phrases.map((p) => p.titre)).toEqual(['A']);
+  });
+});

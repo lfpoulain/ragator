@@ -13,7 +13,7 @@ const written = JSON.stringify({ refus: false, claims: [{ text: 'Le module Pelti
 
 /** Première source du dossier montré à l'agent : son alias et ses premiers mots, à recopier comme preuve. */
 function firstSource(dossier: string): { alias: string; words: string } {
-  const line = /^\[(s\d+) [^\]]*\] (.+)$/m.exec(dossier)!;
+  const line = /^\s*\[(s\d+) [^\]]*\] (.+)$/m.exec(dossier)!;
   return { alias: line[1]!, words: line[2]!.split(/\s+/).slice(0, 5).join(' ') };
 }
 

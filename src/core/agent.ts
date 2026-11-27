@@ -3,11 +3,12 @@ import { repondre, type AnswerInput, type AnswerOptions, type AnswerResult } fro
 import { SURE_RELEVANCE, sourceContainsProof, type Claim } from './citations.js';
 import { corpusLine } from './collections.js';
 import { mapConcurrent } from './concurrent.js';
-import { evidenceBudgetChars } from './passages.js';
+import { requestContextTokens } from './passages.js';
 import { lireContexte } from './read-context.js';
 import { entrySource, groupSources, reference, type AnswerSource } from './sources.js';
 import { foldAccents } from '../norm/normalize.js';
-import { AGENT_FINAL_NOTE, AGENT_PROMPT, agentSchema, parseAgentTurn, type AgentPhrase } from '../prompts/agent.js';
+import { AGENT_FINAL_NOTE, AGENT_PART_NOTE, AGENT_PROMPT, agentSchema, parseAgentTurn, type AgentPhrase } from '../prompts/agent.js';
+import { getConfig } from '../config.js';
 import { llmFromConfig } from '../providers/llm.js';
 import { formatTimestamp } from '../windows/format.js';
 
@@ -28,8 +29,9 @@ const MAX_ACTIONS = 3;
 const OUTPUT_TOKENS = 4000;
 /** Sources gardées par recherche, et longueur d'un extrait montré au modèle. */
 const MAX_SOURCES_PER_FINDING = 200;
-const EXCERPT_CHARS = 420;
-const MIN_EXCERPT_CHARS = 140;
+const EXCERPT_CHARS = 320;
+/** Caractères par token, comme pour les passages (estimation prudente du français). */
+const CHARS_PER_TOKEN = 2.4;
 /** Scène relue autour d'une source : assez pour une explication, sans noyer le dossier. */
 const READ_BEFORE_S = 60;
 const READ_AFTER_S = 120;
@@ -131,44 +133,62 @@ class Dossier {
     return citing.length > 0 && citing.every((c) => c.flag === 'incertain' || c.flag?.startsWith('détail non confirmé') === true);
   }
 
-  render(budgetChars: number): string {
-    const cap = Math.max(MIN_EXCERPT_CHARS, Math.min(EXCERPT_CHARS, Math.floor(budgetChars / Math.max(1, this.sources.size)) - 90));
+  /**
+   * Dossier rendu en parties qui tiennent chacune dans le contexte du modèle : une seule le plus souvent,
+   * plusieurs quand une question générale a retenu des dizaines de vidéos. Chaque affirmation est suivie
+   * de ses sources, pour qu'une partie se lise seule.
+   */
+  parts(budgetChars: number): string[] {
     const line = (key: string) => {
       const s = this.sources.get(key)!;
       const at = s.startS === null ? '' : ` ${formatTimestamp(s.startS)}`;
-      const excerpt = s.excerpt.length > cap ? `${s.excerpt.slice(0, cap)}…` : s.excerpt;
-      return `[${this.aliasOf.get(key)}${at} ${KIND_LABEL[s.kind]} « ${s.title.replace(/[«»]/g, '')} » ${s.publishedAt ?? 'date inconnue'}] ${excerpt.replace(/\s*\n\s*/g, ' ')}`;
+      const excerpt = s.excerpt.length > EXCERPT_CHARS ? `${s.excerpt.slice(0, EXCERPT_CHARS)}…` : s.excerpt;
+      return `  [${this.aliasOf.get(key)}${at} ${KIND_LABEL[s.kind]} « ${s.title.replace(/[«»]/g, '')} » ${s.publishedAt ?? 'date inconnue'}] ${excerpt.replace(/\s*\n\s*/g, ' ')}`;
     };
-    const shown = new Set<string>();
-    const blocks: string[] = [];
+    const parts: string[] = [];
+    let lines: string[] = [];
     let used = 0;
+    let shown = new Set<string>();
+    const flush = () => {
+      if (lines.length) parts.push(lines.join('\n'));
+      lines = [];
+      used = 0;
+      shown = new Set();
+    };
     for (const [index, finding] of this.findings.entries()) {
-      const fresh = finding.keys.filter((key) => !shown.has(key));
-      const lines: string[] = [];
-      if (finding.kind === 'lecture') {
-        lines.push(`<lecture n="${index + 1}" scene="${finding.label.replace(/"/g, '’')}">`);
-      } else {
-        lines.push(`<recherche n="${index + 1}" question="${finding.label.replace(/"/g, '’')}" issue="${finding.refused ? 'rien trouvé' : 'réponse'}">`);
-        if (finding.claims.length) {
-          lines.push('Affirmations validées :');
-          for (const claim of finding.claims) {
-            lines.push(`- ${claim.text} ${claim.keys.map((key) => `[${this.aliasOf.get(key)}]`).join('')}${claim.flag ? ` (${claim.flag})` : ''}`);
-          }
-        }
-        if (finding.summary) lines.push('Réponse calculée par le code :', finding.summary);
-        if (fresh.length) lines.push('Sources :');
+      const label = finding.label.replace(/"/g, '’');
+      const open = finding.kind === 'lecture' ? `<lecture n="${index + 1}" scene="${label}">`
+        : `<recherche n="${index + 1}" question="${label}" issue="${finding.refused ? 'rien trouvé' : 'réponse'}">`;
+      const close = finding.kind === 'lecture' ? '</lecture>' : '</recherche>';
+      const cited = new Set(finding.claims.flatMap((c) => c.keys));
+      // Une unité ne se coupe pas : une affirmation avec ses sources, ou une source que rien ne cite.
+      const units: Array<{ text: string | null; keys: string[] }> = [
+        ...finding.claims.map((c) => ({ text: `- ${c.text} ${c.keys.map((key) => `[${this.aliasOf.get(key)}]`).join('')}${c.flag ? ` (${c.flag})` : ''}`, keys: c.keys })),
+        ...finding.keys.filter((key) => !cited.has(key)).map((key) => ({ text: null, keys: [key] })),
+      ];
+      let opened = false;
+      let summary = finding.summary;
+      const start = () => {
+        lines.push(open);
+        used += open.length;
+        if (summary) { lines.push('Réponse calculée par le code :', summary); used += summary.length; summary = null; }
+        opened = true;
+      };
+      for (const unit of units) {
+        const fresh = unit.keys.filter((key) => !shown.has(key)).map(line);
+        const cost = (unit.text?.length ?? 0) + fresh.reduce((n, text) => n + text.length, 0);
+        if (opened && used + cost > budgetChars) { lines.push(close); flush(); opened = false; }
+        if (!opened) start();
+        if (unit.text) lines.push(unit.text);
+        lines.push(...fresh);
+        for (const key of unit.keys) shown.add(key);
+        used += cost;
       }
-      for (const key of fresh) {
-        const text = line(key);
-        if (used + text.length > budgetChars) break;
-        used += text.length;
-        shown.add(key);
-        lines.push(text);
-      }
-      lines.push(finding.kind === 'lecture' ? '</lecture>' : '</recherche>');
-      blocks.push(lines.join('\n'));
+      if (!opened) start();
+      lines.push(close);
     }
-    return blocks.join('\n\n');
+    flush();
+    return parts.length ? parts : [''];
   }
 }
 
@@ -224,6 +244,25 @@ export function validatePhrases(phrases: AgentPhrase[], dossier: Pick<Dossier, '
   return { written, invalid };
 }
 
+/** Réunit les puces qui portent le même nom (rédaction par parties, ou doublon du modèle) : une puce, toutes ses sources. */
+export function mergeWritten(written: Written[]): Written[] {
+  const byName = new Map<string, Written>();
+  const merged: Written[] = [];
+  for (const w of written) {
+    const name = w.phrase.forme === 'puce' && w.phrase.titre ? sameQuestion(w.phrase.titre) : '';
+    const known = name ? byName.get(name) : undefined;
+    if (!known) {
+      const copy = { ...w, keys: [...w.keys] };
+      if (name) byName.set(name, copy);
+      merged.push(copy);
+      continue;
+    }
+    for (const key of w.keys) if (!known.keys.includes(key) && known.keys.length < MAX_REFERENCES) known.keys.push(key);
+    known.uncertain = known.uncertain && w.uncertain;
+  }
+  return merged;
+}
+
 /** Texte de la réponse : paragraphes et puces, chaque phrase suivie de ses références. */
 export function renderWritten(written: Written[], sources: ReadonlyMap<string, AnswerSource>): string {
   const refs = (keys: string[]) => groupSources(keys.map((key) => sources.get(key)!)).map(reference).join(' ');
@@ -262,7 +301,14 @@ export async function repondreAgent(pool: Pool, input: AnswerInput, options: Ans
   const steps: AgentStep[] = [];
   const considered = new Set(first.consideredVideoIds);
   const corpus = await corpusLine(pool, input.collection);
-  const budget = evidenceBudgetChars(OUTPUT_TOKENS);
+  // Budget propre à cet appel : sa consigne est plus longue que celle d'une réponse ordinaire.
+  const context = requestContextTokens();
+  const promptTokens = Math.ceil(AGENT_PROMPT.length / CHARS_PER_TOKEN) + 400;
+  const outputTokens = Math.max(1200, Math.min(OUTPUT_TOKENS, Math.floor((context - promptTokens) * 0.45)));
+  const budget = Math.max(3000, Math.floor((context - promptTokens - outputTokens) * CHARS_PER_TOKEN));
+  const chat = (dossierText: string, note: string) => llm.chat(AGENT_PROMPT, [
+    ...(corpus ? [corpus] : []), `Question : ${first.resolvedQuestion}`, '', 'Dossier :', dossierText, '', note,
+  ].join('\n'), { maxTokens: outputTokens, jsonSchema: agentSchema(dossier.aliases()), temperature: 0 });
   let written: Written[] = [];
   let invalid: string[] = [];
   let failure: string | null = null;
@@ -271,16 +317,18 @@ export async function repondreAgent(pool: Pool, input: AnswerInput, options: Ans
     for (let round = 0; ; round++) {
       const final = round >= MAX_ROUNDS;
       progress({ étape: 'synthèse' });
-      const user = [
-        ...(corpus ? [corpus] : []),
-        `Question : ${first.resolvedQuestion}`,
-        '',
-        'Dossier :',
-        dossier.render(budget),
-        '',
-        final ? AGENT_FINAL_NOTE : `Recherches encore permises : ${MAX_ROUNDS - round} tour(s) de ${MAX_ACTIONS} au plus.`,
-      ].join('\n');
-      const turn = parseAgentTurn(await llm.chat(AGENT_PROMPT, user, { maxTokens: OUTPUT_TOKENS, jsonSchema: agentSchema(dossier.aliases()), temperature: 0 }));
+      const parts = dossier.parts(budget);
+      if (parts.length > 1) {
+        // Dossier plus grand que le contexte : chaque partie est rédigée à part, puis les éléments de même nom sont réunis.
+        const drafts = await mapConcurrent(parts, Math.min(4, getConfig().llm?.parallel ?? 4), async (part) => {
+          const turn = parseAgentTurn(await chat(part, AGENT_PART_NOTE));
+          return turn && !turn.refus ? validatePhrases(turn.phrases, dossier) : { written: [], invalid: [] };
+        });
+        written = mergeWritten(drafts.flatMap((d) => d.written));
+        invalid = drafts.flatMap((d) => d.invalid);
+        break;
+      }
+      const turn = parseAgentTurn(await chat(parts[0]!, final ? AGENT_FINAL_NOTE : `Recherches encore permises : ${MAX_ROUNDS - round} tour(s) de ${MAX_ACTIONS} au plus.`));
       if (!turn) { failure = 'synthèse hors du format imposé'; break; }
       const seen = new Set<string>();
       const actions: Action[] = final ? [] : turn.recherches.flatMap((action): Action[] => {
@@ -298,6 +346,7 @@ export async function repondreAgent(pool: Pool, input: AnswerInput, options: Ans
       }).slice(0, MAX_ACTIONS);
       if (!actions.length) {
         ({ written, invalid } = turn.refus ? { written: [], invalid: [] } : validatePhrases(turn.phrases, dossier));
+        written = mergeWritten(written);
         break;
       }
       const found = await mapConcurrent(actions, MAX_ACTIONS, async (action) => {
