@@ -25,9 +25,9 @@ import { formatTimestamp } from '../windows/format.js';
 /** Tours de recherche complémentaire au plus, et actions par tour. */
 const MAX_ROUNDS = 2;
 const MAX_ACTIONS = 3;
-const OUTPUT_TOKENS = 2600;
+const OUTPUT_TOKENS = 4000;
 /** Sources gardées par recherche, et longueur d'un extrait montré au modèle. */
-const MAX_SOURCES_PER_FINDING = 60;
+const MAX_SOURCES_PER_FINDING = 200;
 const EXCERPT_CHARS = 420;
 const MIN_EXCERPT_CHARS = 140;
 /** Scène relue autour d'une source : assez pour une explication, sans noyer le dossier. */
