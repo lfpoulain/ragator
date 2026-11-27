@@ -253,10 +253,9 @@ export async function repondreAgent(pool: Pool, input: AnswerInput, options: Ans
   const progress = options.onProgress ?? (() => {});
   const first = await repondre(pool, { ...input, mode: 'détaillé' }, options);
   const llm = options.llm !== undefined ? options.llm : llmFromConfig(pool);
-  // Décompte exact, liste vérifiée et demande de précision sont déjà la réponse : rien à approfondir.
-  // Sans modèle (repli extractif), rien pour juger ni rédiger.
-  if (!llm || first.route === 'lister' || first.route === 'inventorier' || first.route === 'clarifier' || (!first.refused && first.model === null)) return first;
-  if (!(await llm.available())) return first;
+  // Une demande de précision attend la réponse de la personne. Sans modèle, rien pour juger ni rédiger.
+  // Tout le reste passe par la rédaction, décompte exact et repli extractif compris.
+  if (!llm || first.route === 'clarifier' || !(await llm.available())) return first;
 
   const dossier = new Dossier();
   dossier.addAnswer(first.resolvedQuestion, first);
@@ -337,9 +336,13 @@ export async function repondreAgent(pool: Pool, input: AnswerInput, options: Ans
     return { ...first, agent, ...(failure ? { degraded: true, degradedReason: [first.degradedReason, failure].filter(Boolean).join(' ; ') } : {}),
       timings: { ...first.timings, llmMs: totalMs - first.timings.searchMs, totalMs } };
   }
-  const answer = renderWritten(written, dossier.sources);
   const citedKeys = [...new Set(written.flatMap((w) => w.keys))];
-  const sources = groupSources(citedKeys.map((key) => dossier.sources.get(key)!));
+  const cited = groupSources(citedKeys.map((key) => dossier.sources.get(key)!));
+  // Décompte exact : la rédaction l'introduit, la liste complète calculée par le code reste dessous, intacte.
+  const counted = first.route === 'lister' && !first.refused;
+  const answer = counted ? `${renderWritten(written, dossier.sources)}\n\n${first.answer}` : renderWritten(written, dossier.sources);
+  const listed = new Set(first.sources.flatMap((s) => s.sourceIds));
+  const sources = counted ? [...first.sources, ...cited.filter((s) => !s.sourceIds.some((id) => listed.has(id)))] : cited;
   const { sceneAnchors: _sceneAnchors, offeredEpisodeSearch: _offered, ...base } = first;
   return {
     ...base,

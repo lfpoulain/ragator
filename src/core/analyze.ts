@@ -169,6 +169,17 @@ export async function analyzeQuestion(
     route = 'chercher';
     downgraded = true;
   }
+  // Un décompte répond en vidéos et en occurrences. Une question qui ne nomme aucune de ces unités attend
+  // autre chose (un nom, une manière, une raison), même si elle porte sur un objet concret : le LLM
+  // l'envoyait au décompte du mot, et la réponse listait des vidéos au lieu de ce qui était demandé.
+  const namesCountUnit = /(?<!\p{L})(?:combien|vidéos?|épisodes?|fois|mentions?|occurrences?|apparitions?|citations?|passages?|extraits?|moments?|partout)(?!\p{L})/iu.test(question);
+  let listedInstead = false;
+  if (route === 'lister' && rules.route !== 'lister' && !rules.order && !analysis.ordre && !namesCountUnit) {
+    notes.push('décompte proposé pour une question qui ne demande ni vidéos ni occurrences : recherche générale');
+    route = 'chercher';
+    downgraded = true;
+    listedInstead = true;
+  }
   if ((route === 'plan' || route === 'infos' || route === 'clarifier') && rules.route !== route) {
     notes.push(`route « ${route} » proposée sans accord des règles : recherche classée`);
     route = 'chercher';
@@ -176,7 +187,8 @@ export async function analyzeQuestion(
   }
   // Une question que les règles reconnaissent comme générale (« quand parlent-ils de… », « qu'est-ce qu'ils
   // pensent de… ») le reste : le LLM la classait « précise » de façon constante (mesuré sur 3 passages).
-  let general = route === 'inventorier' || route === 'chercher' && (rules.general || (analysis.generale && !quantityMisrouted));
+  // Le modèle voulait toutes les occurrences : la réponse couvre plusieurs vidéos.
+  let general = route === 'inventorier' || route === 'chercher' && (rules.general || listedInstead || (analysis.generale && !quantityMisrouted));
   let term: string | null = rules.order && rules.term ? rules.term : analysis.terme ? normalized(analysis.terme) : null;
   // Un sigle de moins de 3 lettres se confond avec un mot court ou une interjection (« ha » pour Home
   // Assistant comptait une enceinte de 2018) : écarté des variantes.

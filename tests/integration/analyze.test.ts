@@ -116,6 +116,16 @@ function analyst(analysis: Record<string, unknown>): LlmClient & { calls: number
     expect(a.routed).toMatchObject({ route: 'chercher', general: true, term: null });
   });
 
+  it('un décompte ne répond qu’à une question qui demande des vidéos ou des occurrences', async () => {
+    const model = analyst({ route: 'lister', terme: 'module', ordre: 'aucun' });
+    // La question attend des noms : compter le mot « module » listerait des vidéos à la place.
+    const named = await analyzeQuestion(pool, 'Quelles marques de module utilisent-ils ?', model);
+    expect(named.routed).toMatchObject({ route: 'chercher', general: true, term: null });
+    expect(named.note).toContain('ni vidéos ni occurrences');
+    const counted = await analyzeQuestion(pool, 'Quelles vidéos citent le module ?', model);
+    expect(counted.routed).toMatchObject({ route: 'lister', term: 'module' });
+  });
+
   it('l’aiguillage demande une réponse stable (température 0)', async () => {
     const seen: Array<number | undefined> = [];
     const llm = analyst({ route: 'chercher', generale: true, ordre: 'aucun' });

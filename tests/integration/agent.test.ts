@@ -91,12 +91,22 @@ function scripted(turns: Array<(dossier: string) => unknown>): LlmClient & { age
     expect(broken.degradedReason).toContain('synthèse');
   });
 
-  it('ne passe pas par le modèle pour un décompte exact, ni sans modèle', async () => {
-    const llm = scripted([]);
-    const counted = await repondreAgent(pool, { question: 'Toutes les vidéos où on parle de NordVPN' }, { llm, embedder: null, analyzer: null });
+  it('rédige aussi l’introduction d’un décompte exact et garde sa liste complète ; rien sans modèle', async () => {
+    const question = 'Toutes les vidéos où on parle de NordVPN';
+    const exact = await repondre(pool, { question }, { llm: null, embedder: null, analyzer: null });
+    const llm = scripted([(dossier) => {
+      const { alias, words } = firstSource(dossier);
+      return { bilan: 'décompte fait', recherches: [], refus: false, phrases: [
+        { forme: 'paragraphe', titre: '', texte: 'NordVPN revient comme partenaire.', preuve: words, sourceIds: [alias], incertain: false }] };
+    }]);
+    const counted = await repondreAgent(pool, { question }, { llm, embedder: null, analyzer: null });
     expect(counted.route).toBe('lister');
-    expect(counted.agent).toBeUndefined();
-    expect(llm.agentCalls).toEqual([]);
+    expect(llm.agentCalls[0]).toContain('Réponse calculée par le code');
+    expect(counted.agent).toEqual({ steps: [], composed: true });
+    expect(counted.answer.startsWith('NordVPN revient comme partenaire. [')).toBe(true);
+    expect(counted.answer.endsWith(exact.answer)).toBe(true);
+    expect(counted.sources.map((s) => s.sourceId)).toEqual(exact.sources.map((s) => s.sourceId));
+    expect(counted.exhaustive).toEqual(exact.exhaustive);
     const none = await repondreAgent(pool, { question: QUESTION }, { llm: null, embedder: null, analyzer: null });
     expect(none.agent).toBeUndefined();
     expect(none.model).toBeNull();

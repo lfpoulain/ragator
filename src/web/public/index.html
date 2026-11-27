@@ -730,7 +730,7 @@ function renderAnswer(box, data) {
   const short = (model) => String(model).replace(/^.*\//, '');
   const routed = GUEST ? '' : data.analysis?.source === 'llm' ? 'analyse par LLM' : 'aiguillage par règles';
   const produced =
-    data.route === 'lister' ? 'décompte exact, sans LLM'
+    data.route === 'lister' ? (data.agent?.composed ? 'décompte exact' : 'décompte exact, sans LLM')
     : data.route === 'clarifier' ? 'demande de précision'
     : data.model ? 'rédigé par ' + short(data.model)
     : GUEST ? (data.mode === 'extractif' ? 'extraits bruts' : null)
