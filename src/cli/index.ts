@@ -29,7 +29,7 @@ Base et corpus
   npm run stats [-- --json]                   état du corpus indexé
 
 Questions
-  npm run ask -- "question" [--court|--extractif] [--sources N] [--collection clé] [--json]
+  npm run ask -- "question" [--approfondi|--court|--extractif] [--sources N] [--collection clé] [--json]
   npm run chat [-- --detaille --collection clé] conversation avec relances (« et dans cette vidéo ? »)
   npm run collections                         chaînes du corpus (--collection limite une question à l'une d'elles)
   npm run journal [-- --echecs --jours N]     questions posées (web, ligne de commande) ; --echecs : refus, rien de cité, erreurs

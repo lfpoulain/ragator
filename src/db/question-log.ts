@@ -3,10 +3,11 @@ import type { AnswerInput, AnswerResult } from '../core/answer.js';
 import { LEXICAL_WITHOUT_ENCODER } from '../core/search.js';
 
 /**
- * Journal des questions posées (migration 0009) : interface web et ligne de commande.
+ * Journal des questions posées (migrations 0009 et 0011) : interface web, invités et ligne de commande.
  * Sert à repérer les vrais échecs (`npm run journal`).
  */
-export type QuestionOrigin = 'web' | 'cli';
+/** `invite` : question d'un invité de la passerelle (src/web/gateway.ts). */
+export type QuestionOrigin = 'web' | 'cli' | 'invite';
 
 /**
  * Durée de conservation : au-delà, les questions sont effacées à chaque écriture (rapide : index sur

@@ -96,6 +96,21 @@ import { dbAvailable, FIXTURES_DIR, getTestPool, resetDatabase, setupDatabase } 
     for (const path of ['/api/settings', '/api/admin/videos', '/api/collections', '/api/gateway', '/healthz']) {
       expect(await guest(path)).toEqual({ status: 404, text: '' });
     }
+    // La réponse d'un invité ne porte que des champs choisis : ni extrait brut, ni motif interne, ni modèle.
+    const shown = JSON.parse(allowed.text);
+    expect(Object.keys(shown.sources[0]).sort()).toEqual(['endS', 'kind', 'link', 'publishedAt', 'sourceId', 'sourceIds', 'startS', 'title', 'videoId']);
+    expect(shown).toMatchObject({ model: null, analysis: null });
+    // Un repère d'historique d'une autre collection n'est ni relu ni cité.
+    headers['remote-groups'] = 'ragator-collection-l-atelier-test';
+    const foreign = await guest('/api/guest/ask', { question: 'À quel moment exactement ?', collection: 'l-atelier-test', mode: 'extractif',
+      history: [shown.turn] });
+    expect(foreign.status).toBe(200);
+    expect(foreign.text).not.toContain('Gu8bnHQaG5s');
+    headers['remote-groups'] = 'ragator-collection-les-freres-poulain';
+    const streamed = await guest('/api/guest/ask', { question, collection: 'les-freres-poulain', mode: 'extractif', stream: true });
+    const last = JSON.parse(streamed.text.trim().split('\n').at(-1)!);
+    expect(last.type).toBe('résultat');
+    expect(last.data.sources[0].videoId).toBe('Gu8bnHQaG5s');
     headers.origin = 'https://autre.example';
     expect((await guest('/api/guest/ask', { question, collection: 'les-freres-poulain' })).status).toBe(403);
     headers['remote-groups'] = 'ragator-invites';

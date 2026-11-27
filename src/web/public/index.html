@@ -39,6 +39,14 @@ header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, va
 nav { display: flex; flex-shrink: 0; background: var(--chip); border-radius: 999px; padding: 3px; }
 nav a { text-decoration: none; color: var(--muted); padding: 6px 16px; border-radius: 999px; font-size: 14px; font-weight: 500; }
 nav a.on { background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
+/* Invité : son nom et la déconnexion à la place des onglets. */
+.who { display: none; align-items: center; gap: 10px; flex-shrink: 0; font-size: 13.5px; color: var(--muted); min-width: 0; }
+[data-guest] .who { display: flex; }
+.who b { display: inline-flex; align-items: center; gap: 7px; font-weight: 500; color: var(--text); background: var(--chip); border-radius: 999px; padding: 4px 12px 4px 5px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who b::before { content: attr(data-initial); flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; font-weight: 600; display: grid; place-items: center; text-transform: uppercase; }
+.who a { color: var(--muted); text-decoration: none; white-space: nowrap; }
+.who a:hover { color: var(--accent); }
+@media (max-width: 460px) { .who b { max-width: 120px; } }
 
 main { flex: 1; width: 100%; max-width: 1080px; margin: 0 auto; padding: 24px 20px 32px; }
 .view[hidden] { display: none; }
@@ -96,13 +104,23 @@ main { flex: 1; width: 100%; max-width: 1080px; margin: 0 auto; padding: 24px 20
 
 /* Fil de questions et réponses */
 .turn { margin: 8px 0 26px; scroll-margin-top: 72px; }
-.q { font-size: 19px; font-weight: 600; letter-spacing: -.01em; margin: 0 0 4px; }
+.q { font-size: 19px; font-weight: 600; letter-spacing: -.01em; margin: 0 0 4px; padding-left: 12px; border-left: 3px solid var(--accent); }
 .q small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; margin-top: 10px; }
 .answer p { margin: 0 0 10px; }
 .answer ul { margin: 0; padding-left: 20px; }
 .answer li { margin: 8px 0; }
 .answer li::marker { color: var(--accent); }
+.answer p + ul { margin-top: -2px; }
+.answer ul + p { margin-top: 12px; }
+.answer strong { font-weight: 650; }
+/* Liste d'éléments nommés (réponse approfondie) : le nom en tête, ce que le corpus en dit ensuite. */
+.answer ul.named { list-style: none; padding: 0; margin: 4px 0 0; display: grid; gap: 4px; }
+.answer ul.named li { margin: 0; padding: 9px 12px; border-radius: 10px; border-left: 3px solid var(--line-2); background: color-mix(in srgb, var(--chip) 45%, transparent); }
+.answer ul.named li:hover { border-left-color: var(--accent); }
+.answer ul.named li > strong:first-child { display: block; font-size: 15.5px; letter-spacing: -.005em; }
+.trail { margin: 10px 0 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; }
+.trail li::before { content: "↳ "; color: var(--accent); }
 .unsure { margin-top: 14px; background: var(--warn-soft); border-radius: 12px; padding: 8px 14px 10px; }
 .unsure h4 { margin: 4px 0; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--warn); }
 a.cite { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; text-decoration: none; font-size: 12.5px; font-variant-numeric: tabular-nums; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 1px 9px; margin: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: 1px; }
@@ -250,11 +268,12 @@ a.cite:hover { background: var(--accent); color: #fff; }
 <header>
   <div class="bar">
     <div class="brand"><b>Rag<span>ator</span></b><small id="corpus">Corpus</small></div>
-    <nav aria-label="Sections">
+    <!--admin--><nav aria-label="Sections">
       <a href="#recherche" id="tab-search" class="on">Rechercher</a>
       <a href="#admin" id="tab-admin">Administration</a>
       <a href="#reglages" id="tab-settings">Réglages</a>
-    </nav>
+    </nav><!--/admin-->
+    <div class="who"><b id="who" data-initial="?"></b><a href="/outpost.goauthentik.io/sign_out">Se déconnecter</a></div>
   </div>
 </header>
 
@@ -264,7 +283,8 @@ a.cite:hover { background: var(--accent); color: #fff; }
       <h1 id="search-title">Que voulez-vous retrouver&nbsp;?</h1>
       <p>Posez une question sur les vidéos : la réponse cite l’instant exact qui la prouve.</p>
     </div>
-    <p class="notice" id="setup-notice" hidden><span id="setup-text">Aucun modèle configuré : seule la recherche par mots fonctionne.</span> <a href="#reglages">Réglages</a></p>
+    <!--admin--><p class="notice" id="setup-notice" hidden><span id="setup-text">Aucun modèle configuré : seule la recherche par mots fonctionne.</span> <a href="#reglages">Réglages</a></p><!--/admin-->
+    <p class="notice" id="access-notice" role="status" hidden></p>
     <div id="thread" aria-live="polite"></div>
     <div class="dock">
       <form id="ask" class="composer">
@@ -272,7 +292,8 @@ a.cite:hover { background: var(--accent); color: #fff; }
         <textarea id="question" rows="1" placeholder="Ex. : quand utilisent-ils une imprimante 3D ?" required></textarea>
         <div class="row">
           <div class="seg" role="radiogroup" aria-label="Forme de la réponse">
-            <label title="Réponse rédigée, avec les instants cités"><input type="radio" name="mode" value="détaillé" checked><span>Détaillée</span></label>
+            <label title="Ragator complète lui-même sa recherche (autres questions, relecture des scènes), puis rédige une réponse construite : liste, explication, oui ou non"><input type="radio" name="mode" value="approfondi" checked><span>Approfondie</span></label>
+            <label title="Une seule recherche : une affirmation par passage, avec les instants cités"><input type="radio" name="mode" value="détaillé"><span>Directe</span></label>
             <label title="Réponse rédigée en quelques lignes"><input type="radio" name="mode" value="court"><span>Courte</span></label>
             <label title="Ni analyse ni rédaction par un LLM : aiguillage par règles, extraits bruts"><input type="radio" name="mode" value="extractif"><span>Extraits, sans LLM</span></label>
           </div>
@@ -287,7 +308,7 @@ a.cite:hover { background: var(--accent); color: #fff; }
     </div>
   </section>
 
-  <section id="admin" class="view" hidden aria-labelledby="admin-title">
+  <!--admin--><section id="admin" class="view" hidden aria-labelledby="admin-title">
     <h1 id="admin-title" class="sr">Administration</h1>
     <div class="adminbar">
       <h2 id="admin-scope">Tout le corpus</h2>
@@ -425,16 +446,23 @@ a.cite:hover { background: var(--accent); color: #fff; }
     <div class="card" id="gateway-card" hidden>
       <h2>Accès invité</h2>
       <p id="gateway-state" class="hint"></p>
-      <ul id="gateway-groups"></ul>
+      <p class="hint">Groupe authentik à donner pour chaque collection :</p>
+      <ul id="gateway-groups" class="servers"></ul>
+      <p id="gateway-peer" class="hint" style="margin-top:10px"></p>
     </div>
     <p class="hint" id="settings-msg" role="status" style="margin-top:12px"></p>
-  </section>
+  </section><!--/admin-->
 </main>
 
 <script>
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
-const thumb = (videoId) => '/api/videos/' + encodeURIComponent(videoId) + '/miniature';
+// Page des invités : la même, sans administration ; ses seules routes sont /api/guest/session et /api/guest/ask.
+const GUEST = document.documentElement.hasAttribute('data-guest');
+let guest = null;
+const NO_THUMB = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 36"><path fill="#898781" d="M28 11v14l11-7z"/></svg>');
+const thumb = (videoId) => !GUEST ? '/api/videos/' + encodeURIComponent(videoId) + '/miniature'
+  : guest?.thumbnails ? 'https://i.ytimg.com/vi/' + encodeURIComponent(videoId) + '/mqdefault.jpg' : NO_THUMB;
 const watch = (videoId) => 'https://www.youtube.com/watch?v=' + encodeURIComponent(videoId);
 const ts = (s) => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = String(s % 60).padStart(2, '0'); return h ? h + ':' + String(m).padStart(2, '0') + ':' + x : m + ':' + x; };
 const num = (n) => Number(n).toLocaleString('fr-FR');
@@ -448,6 +476,7 @@ async function api(path, body) {
   return data;
 }
 
+/*admin*/
 /* ---------- Onglets ---------- */
 const VIEWS = [['search', 'tab-search', ''], ['admin', 'tab-admin', '#admin'], ['settings', 'tab-settings', '#reglages']];
 function route() {
@@ -463,6 +492,7 @@ function route() {
   else $('question').focus();
 }
 window.addEventListener('hashchange', route);
+/*/admin*/
 
 /* ---------- Recherche ---------- */
 // Un exemple par chemin de recherche, pour montrer ce que l'outil sait faire.
@@ -473,11 +503,11 @@ const EXAMPLES = [
   ['Décompte', 'Toutes les vidéos où on parle de Raspberry Pi'],
 ];
 let history = [];
-for (const [kind, q] of EXAMPLES) {
+if (!GUEST) for (const [kind, q] of EXAMPLES) {
   const b = el('button'); b.type = 'button'; b.append(el('small', null, kind), q); b.onclick = () => ask(q); $('examples').append(b);
 }
-try { const saved = localStorage.getItem('ragator-mode'); if (saved) document.querySelector('input[name=mode][value="' + saved + '"]')?.click(); } catch {}
-document.querySelectorAll('input[name=mode]').forEach((r) => r.addEventListener('change', () => { try { localStorage.setItem('ragator-mode', r.value); } catch {} }));
+try { const saved = localStorage.getItem('ragator-forme'); if (saved) document.querySelector('input[name=mode][value="' + saved + '"]')?.click(); } catch {}
+document.querySelectorAll('input[name=mode]').forEach((r) => r.addEventListener('change', () => { try { localStorage.setItem('ragator-forme', r.value); } catch {} }));
 
 // Références « [id @ mm:ss] » et liens bruts de la réponse.
 const REF = /\[([A-Za-z0-9_-]{11}(?::[tvd]\d{5})?)(?: @ ([\d:]+)[^\]]*)?\]|https?:\/\/\S+/g;
@@ -500,11 +530,17 @@ function videosIn(text, urls = []) {
 /** Pastille vers un instant ; `compact` : l'instant seul (la vidéo est déjà nommée à côté). */
 function citePill(href, label, title) { const a = newTab(el('a', 'cite', '▶ ' + label)); a.href = href; if (title) a.title = title; return a; }
 function urlPill(u, label) { const t = urlTime(u); return citePill(u, label || (t !== null ? ts(t) : 'ouvrir')); }
+/** Texte courant : « **nom** » en gras (nom d'un élément dans une réponse approfondie). */
+function rich(text) {
+  const frag = document.createDocumentFragment();
+  text.split(/\*\*(.+?)\*\*/g).forEach((part, i) => { if (part) frag.append(i % 2 ? el('strong', null, part) : part); });
+  return frag;
+}
 function linkify(text, byId, compact) {
   const frag = document.createDocumentFragment();
   let last = 0;
   for (const m of text.matchAll(REF)) {
-    frag.append(text.slice(last, m.index));
+    frag.append(rich(text.slice(last, m.index)));
     last = m.index + m[0].length;
     if (m[0].startsWith('http')) {
       if (urlVideo(m[0])) { frag.append(urlPill(m[0])); continue; }
@@ -515,7 +551,7 @@ function linkify(text, byId, compact) {
     const label = compact ? (m[2] || name) : name + (m[2] ? ' · ' + m[2] : '');
     frag.append(citePill(s ? s.link : watch(m[1].slice(0, 11)), label, s ? s.title + (s.publishedAt ? ' (' + s.publishedAt + ')' : '') : ''));
   }
-  frag.append(text.slice(last));
+  frag.append(rich(text.slice(last)));
   return frag;
 }
 
@@ -563,7 +599,7 @@ function videoRow(item, videoId, ctx) {
     for (const u of item.urls) text.append(' ', urlPill(u));
   }
   body.append(head, text);
-  if (ctx.nearBox) {
+  if (ctx.nearBox && !GUEST) {
     const tools = el('div', 'vtools'); const near = el('button', 'linkbtn', '≈ vidéos proches'); near.type = 'button';
     near.onclick = () => showNearby(ctx.nearBox, videoId, title); tools.append(near); body.append(tools);
   }
@@ -578,6 +614,17 @@ function plainItem(item, ctx, tag = 'li') {
 }
 /** Remplit une liste : en lignes de vidéos si chaque puce parle d'une seule vidéo, toutes différentes. */
 function fillList(ul, items, ctx, perItem = false) {
+  // Éléments nommés (« **nom** : … ») : la liste est celle des éléments, pas celle des vidéos.
+  if (items.every((item) => /^\*\*.+?\*\*/.test(item.text))) {
+    ul.classList.add('named');
+    for (const item of items) {
+      const name = /^\*\*(.+?)\*\*\s*:?\s*/.exec(item.text);
+      const li = el('li'); li.append(el('strong', null, name[1]), linkify(item.text.slice(name[0].length), ctx.byId, false));
+      for (const u of item.urls) li.append(' ', urlPill(u));
+      ul.append(li);
+    }
+    return;
+  }
   if (ctx.models) { items.forEach(item => ul.append(plainItem(item, ctx))); return; }
   const ids = items.map((it) => { const set = videosIn(it.text, it.urls); return set.size === 1 ? [...set][0] : null; });
   const rows = perItem ? null : items.length >= 2 && ids.every(Boolean) && new Set(ids).size === ids.length;
@@ -613,10 +660,12 @@ function videoCard(s, nearBox) {
   if (s.startS !== null) t.append(el('b', null, ts(s.startS)));
   const info = el('div', 't'); info.append(el('strong', null, s.title), el('small', null, s.publishedAt || 'date inconnue'));
   a.append(t, info);
+  wrap.append(a);
+  if (GUEST || !nearBox) return wrap;
   const near = el('button', 'near', '≈ proches'); near.type = 'button';
   near.title = 'Vidéos proches'; near.setAttribute('aria-label', 'Vidéos proches de « ' + s.title + ' »');
   near.onclick = () => showNearby(nearBox, s.videoId, s.title);
-  wrap.append(a, near); return wrap;
+  wrap.append(near); return wrap;
 }
 async function showNearby(box, videoId, title) {
   box.textContent = '';
@@ -679,11 +728,12 @@ function renderAnswer(box, data) {
   // Ce qui a réellement servi : qui a aiguillé la question, qui a produit la réponse, où l'on a cherché.
   const meta = el('div', 'meta');
   const short = (model) => String(model).replace(/^.*\//, '');
-  const routed = data.analysis?.source === 'llm' ? 'analyse par LLM' : 'aiguillage par règles';
+  const routed = GUEST ? '' : data.analysis?.source === 'llm' ? 'analyse par LLM' : 'aiguillage par règles';
   const produced =
     data.route === 'lister' ? 'décompte exact, sans LLM'
     : data.route === 'clarifier' ? 'demande de précision'
     : data.model ? 'rédigé par ' + short(data.model)
+    : GUEST ? (data.mode === 'extractif' ? 'extraits bruts' : null)
     : 'extraits bruts, sans LLM';
   const RETRIEVAL = {
     vecteurs: 'mots + vecteurs',
@@ -694,7 +744,9 @@ function renderAnswer(box, data) {
     'scènes citées': 'relecture des scènes citées',
     inventaire: 'modèles vérifiés dans les épisodes',
   };
-  const parts = [produced, RETRIEVAL[data.retrieval], data.claims?.some((c) => c.relevance !== undefined) ? 'vidéos triées par ' + (data.judge || 'JEV') : null, (data.timings.totalMs / 1000).toFixed(1).replace('.', ',') + ' s'];
+  const extra = data.agent?.steps.length || 0;
+  const deepened = data.agent?.composed ? 'synthèse' + (extra ? ' après ' + plural(extra, 'recherche') + ' complémentaire' + (extra > 1 ? 's' : '') : '') : null;
+  const parts = [produced, deepened, RETRIEVAL[data.retrieval], data.claims?.some((c) => c.relevance !== undefined) ? 'vidéos triées par ' + (data.judge || 'JEV') : null, (data.timings.totalMs / 1000).toFixed(1).replace('.', ',') + ' s'];
   for (const p of parts) if (p) meta.append(el('span', null, p));
   meta.title = routed + (data.model ? ' (' + short(data.model) + ')' : '');
   meta.append(el('div', 'spacer'));
@@ -710,8 +762,10 @@ function renderAnswer(box, data) {
 
 /** Question au fil de l'eau : une ligne JSON par étape, puis la réponse ; null si le serveur ne le propose pas. */
 async function askStream(payload, onProgress) {
-  const response = await fetch('/api/ask/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-  if (response.status === 404) return null;
+  const response = await fetch(GUEST ? '/api/guest/ask' : '/api/ask/stream', { method: 'POST', redirect: GUEST ? 'error' : 'follow',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(GUEST ? { ...payload, stream: true } : payload) });
+  if (response.status === 404 && !GUEST) return null;
+  if (GUEST && (response.status === 401 || response.status === 403)) { denied(); throw new Error('accès refusé ou session expirée'); }
   if (!response.ok || !response.body) { const data = await response.json().catch(() => ({})); throw new Error(data.error || response.statusText); }
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -738,7 +792,7 @@ async function askStream(payload, onProgress) {
 const atBottom = () => window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 160;
 function following(change) { const follow = atBottom(); change(); if (follow) window.scrollTo({ top: document.documentElement.scrollHeight }); }
 
-const STEPS = { analyse: 'Analyse de la question…', recherche: 'Recherche dans les vidéos…', réponse: 'Rédaction de la réponse…' };
+const STEPS = { analyse: 'Analyse de la question…', recherche: 'Recherche dans les vidéos…', réponse: 'Rédaction de la réponse…', synthèse: 'Examen de ce qui a été trouvé…' };
 
 async function ask(question) {
   $('search').classList.add('started');
@@ -755,12 +809,18 @@ async function ask(question) {
   const timer = setInterval(tick, 1000);
   // Lignes déjà rédigées (questions générales), affichées avant la réponse finale qui les remplace, triée.
   const partial = el('div', 'answer partial');
+  // Recherches complémentaires de la réponse approfondie, montrées pendant qu'elles tournent.
+  const trail = el('ul', 'trail');
   const written = new Set();
   const onProgress = (event) => {
     if (STEPS[event.étape]) step = STEPS[event.étape];
     else if (event.étape === 'jugement') step = 'Tri de ' + event.vidéos + ' vidéos candidates…';
     else if (event.étape === 'catalogue') step = 'Recherche des essais dans ' + event.vidéos + ' vidéos…';
     else if (event.étape === 'lecture') step = 'Vérification des modèles dans ' + event.vidéos + ' vidéos…';
+    else if (event.étape === 'approfondissement') {
+      step = event.outil === 'lire' ? 'Relecture d’une scène…' : 'Recherche complémentaire…';
+      following(() => { trail.append(el('li', null, event.requête ? (event.outil === 'lire' ? 'Relecture : ' : 'Recherche : ') + event.requête : step.slice(0, -1))); if (!trail.isConnected) loading.after(trail); });
+    }
     else if (event.étape === 'rédaction') step = 'Rédaction (' + plural(event.lots, 'lot') + ' de vidéos)…';
     else if (event.étape === 'lignes') {
       following(() => { renderBlocks(partial, parseAnswer(event.answer), contextOf(event.sources, null), true); if (!partial.isConnected) box.append(partial); });
@@ -772,6 +832,7 @@ async function ask(question) {
   $('send').disabled = true;
   try {
     const payload = { question, mode: document.querySelector('input[name=mode]:checked').value, history, collection: $('collection').value || undefined };
+    if (GUEST && !payload.collection) throw new Error('aucune collection autorisée');
     const data = (await askStream(payload, onProgress)) ?? (await api('/api/ask', payload));
     if (data.resolvedQuestion !== data.question) q.append(el('small', null, 'compris : ' + data.resolvedQuestion));
     renderAnswer(box, data);
@@ -798,6 +859,7 @@ document.addEventListener('keydown', (e) => {
   e.preventDefault(); $('question').focus();
 });
 
+/*admin*/
 /* ---------- Administration ---------- */
 let videos = [], shown = 50, polling = null, channels = [];
 const adminCollection = () => $('admin-collection').value;
@@ -1011,6 +1073,7 @@ $('update').onclick = async () => {
   refreshAdmin(false);
 };
 
+/*/admin*/
 // Collections : une par chaîne YouTube. Le choix n'apparaît qu'à partir de deux chaînes ; il est mémorisé.
 let stat = null;
 let collections = [];
@@ -1022,6 +1085,44 @@ function showCorpus() {
   $('corpus').textContent = name + (stat ? ' · ' + num(stat.videos) + ' vidéos' + years : '');
 }
 $('collection').onchange = () => { resetChat(); try { localStorage.setItem('ragator-collection', $('collection').value); } catch {} showCorpus(); };
+
+/* ---------- Invité : collections autorisées, relues régulièrement (un droit retiré ferme la page) ---------- */
+function denied() {
+  guest = null; collections = []; resetChat();
+  $('question').disabled = true; $('send').disabled = true; $('chan-wrap').hidden = true;
+  $('who').textContent = ''; $('corpus').textContent = '';
+  $('access-notice').textContent = 'Accès refusé ou session expirée. Rechargez la page pour vous reconnecter.';
+  $('access-notice').hidden = false;
+}
+async function refreshGuest() {
+  try {
+    const response = await fetch('/api/guest/session', { redirect: 'error', signal: AbortSignal.timeout(10000) });
+    if (!response.ok) return denied();
+    const first = !guest;
+    guest = await response.json();
+    collections = guest.collections;
+    const select = $('collection'), chosen = select.value;
+    select.replaceChildren(...collections.map((c) => new Option(c.name + ' (' + num(c.videos) + ')', c.key)));
+    let wanted = chosen;
+    if (first) { try { wanted = localStorage.getItem('ragator-collection') || ''; } catch {} }
+    if (collections.some((c) => c.key === wanted)) select.value = wanted;
+    // La collection consultée n'est plus autorisée : le fil qui en parle disparaît avec elle.
+    else if (!first) resetChat();
+    $('chan-wrap').hidden = collections.length < 2;
+    $('who').textContent = guest.label; $('who').dataset.initial = [...guest.label][0] || '?';
+    $('access-notice').hidden = true;
+    if ($('question').disabled) { $('question').disabled = false; $('send').disabled = false; }
+    showCorpus();
+    if (first) $('question').focus();
+  } catch { denied(); }
+}
+if (GUEST) {
+  $('collection').replaceChildren();
+  $('question').placeholder = 'Posez votre question sur les vidéos…';
+  refreshGuest();
+  setInterval(refreshGuest, 15000);
+}
+/*admin*/
 api('/api/stats').then((s) => { stat = s; showCorpus(); }).catch(() => {});
 api('/api/collections').then((r) => {
   collections = r.collections;
@@ -1089,12 +1190,16 @@ async function loadSettings() {
     if (!st.guestGateway) return;
   } catch (err) { $('settings-msg').textContent = err.message; return; }
   api('/api/gateway').then(g => {
-    $('gateway-state').textContent = g.origin && g.trusted && g.secretSet ? g.origin : 'Accès invité désactivé.';
+    const on = g.origin && g.trusted && g.secretSet;
+    $('gateway-state').textContent = on ? 'Ouvert sur ' + g.origin + ' : chaque invité ne voit que les collections de ses groupes.' : 'Accès invité désactivé' + (g.origin && !g.secretSet ? ' : secret de passerelle absent.' : '.');
     $('gateway-groups').replaceChildren(...g.groups.map(({collection, group}) => {
-      const li = document.createElement('li');
-      li.textContent = collection + ' · ' + group;
+      const li = el('li');
+      li.append(el('span', 'name', collection), el('code', null, group));
       return li;
     }));
+    $('gateway-peer').textContent = g.peersSet ? 'Seule la machine de la passerelle (RAGATOR_GATEWAY_PEERS) peut se présenter comme telle, et elle n’atteint jamais l’administration.'
+      : g.lastPeer ? 'La passerelle se connecte depuis ' + g.lastPeer + '. Pour n’accepter qu’elle et lui fermer l’administration : RAGATOR_GATEWAY_PEERS=' + g.lastPeer + ' (si cette adresse est bien celle du VPS sur Tailscale, et non celle du pont Docker).'
+      : 'Aucune requête de la passerelle depuis le démarrage.';
   }).catch(() => { $('gateway-state').textContent = 'État de la passerelle indisponible.'; $('gateway-groups').replaceChildren(); });
 }
 async function saveSetting(patch, done) {
@@ -1120,6 +1225,7 @@ $('pw-form').onsubmit = (e) => { e.preventDefault(); const v = $('pw').value; if
 $('pw-clear').onclick = () => saveSetting({ password: '' }, 'Mot de passe retiré.');
 api('/api/settings').then(showSettings).catch(() => {});
 route();
+/*/admin*/
 </script>
 </body>
 </html>

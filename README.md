@@ -243,13 +243,23 @@ Le site Caddy conserve le Host public, efface les en-têtes d’identité reçus
 
 **Réglages → Accès invité** liste le groupe `ragator-collection-<clé>` de chaque collection. Chaque question invitée porte sur une seule collection autorisée. Pour couper l’accès invité, appliquez `RAGATOR_GATEWAY_TRUST=0` dans le déploiement Ragator. Si vous ouvrez l’administration par un nom DNS privé, ajoutez-le à `RAGATOR_HOSTS`.
 
+Les invités utilisent la même interface que vous, sans les onglets Administration et Réglages : la page qu’ils reçoivent est la page principale privée de ce code. Garde-fous de cet accès :
+
+- chaque invité pose une question à la fois et 30 par heure (`RAGATOR_GUEST_HOURLY`) ; les invités n’occupent jamais plus de deux des quatre places de réponse ;
+- la réponse qu’ils reçoivent est une liste fermée de champs (ni modèle, ni motif interne d’une réponse partielle) ; leurs questions sont journalisées à part (`npm run journal`, origine `invite`), sans le compte ;
+- `RAGATOR_GATEWAY_PEERS` (adresse Tailscale du VPS, ou plage CIDR) : seule cette machine peut se présenter comme la passerelle, et aucune de ses requêtes n’atteint l’administration, même avec le mot de passe. **Réglages → Accès invité** affiche l’adresse d’où la passerelle se connecte : ne renseignez la variable que si c’est bien celle du VPS (derrière certains réseaux Docker, Ragator ne voit que l’adresse du pont) ;
+- un mauvais mot de passe d’administration répété depuis une même adresse reçoit des réponses de plus en plus tardives, puis `429` ;
+- les pages partent avec une politique de contenu stricte (`Content-Security-Policy`) : seul leur propre script s’exécute. Si Caddy pose son propre en-tête, écrivez-le `?Content-Security-Policy` pour garder celui de Ragator.
+
+Pour voir la progression d’une réponse au fil de l’eau derrière Caddy, ajoutez `flush_interval -1` au `reverse_proxy` de Ragator ; sans cela la réponse arrive d’un bloc.
+
 | Onglet | Rôle |
 |---|---|
-| **Rechercher** | questions, réponses détaillées, courtes ou faites d'extraits ; filtre par chaîne ; vidéos proches de chaque vidéo citée |
+| **Rechercher** | questions, réponses approfondies, directes, courtes ou faites d'extraits ; filtre par chaîne ; vidéos proches de chaque vidéo citée |
 | **Administration** | dépôt de vidéos, mise à jour de l'index, état du corpus et de chaque vidéo, bilan par chaîne |
 | **Réglages** | mode local ou OpenRouter, état des serveurs locaux, jeton Hugging Face, clé et modèle OpenRouter, mot de passe |
 
-Dans **Rechercher**, choisissez votre chaîne et le mode **Courte** ou **Détaillée**. Le chat garde les références des cinq derniers échanges. Par exemple, après « Quelles imprimantes 3D avons-nous testées dans nos vidéos ? », cette relance sur la chaîne des Frères Poulain a donné la réponse suivante.
+Dans **Rechercher**, choisissez votre chaîne et la forme de la réponse. **Approfondie** (par défaut) : Ragator lit sa première réponse, pose lui-même d’autres questions au corpus ou relit une scène quand un détail manque (deux tours au plus), puis rédige une réponse construite — une liste d’éléments nommés, une explication, un oui ou un non. Chaque phrase cite ses sources et recopie une preuve que le code retrouve dans l’une d’elles ; une phrase sans preuve est retirée, et si rien ne tient la réponse directe est rendue. **Directe** : une seule recherche, une affirmation par passage. **Courte** : quelques lignes. Le chat garde les références des cinq derniers échanges. Par exemple, après « Quelles imprimantes 3D avons-nous testées dans nos vidéos ? », cette relance sur la chaîne des Frères Poulain a donné la réponse suivante.
 
 > **Vous** — Et chez Bambu Lab ?
 >
@@ -268,7 +278,7 @@ docker exec -it ragator ragator journal --echecs # questions posées sans répon
 
 | Commande | Rôle |
 |---|---|
-| `ask "question"` | réponse citée ; `--court`, `--extractif`, `--sources N`, `--collection clé`, `--json` |
+| `ask "question"` | réponse citée ; `--approfondi`, `--court`, `--extractif`, `--sources N`, `--collection clé`, `--json` |
 | `chat` | conversation avec relances ; `/reset` efface l'historique |
 | `update [--surveiller N]` | indexe les vidéos nouvelles ou modifiées (toutes les N minutes avec `--surveiller`) |
 | `collections` | chaînes du corpus, avec leur clé et leur nombre de vidéos |

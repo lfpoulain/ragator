@@ -1,6 +1,7 @@
 import type { Pool } from 'pg';
 import { logQuestion } from '../db/question-log.js';
 import { repondre, type AnswerInput, type AnswerResult } from '../core/answer.js';
+import { repondreAgent } from '../core/agent.js';
 import { resolveCollection } from '../core/collections.js';
 import { formatTimestamp } from '../windows/format.js';
 import type { Args } from './args.js';
@@ -16,7 +17,7 @@ export async function ask(pool: Pool, question: string, args: Args): Promise<num
   const sources = args.int('--sources');
   if (sources !== undefined) input.maxEvidence = sources;
 
-  const result = await repondre(pool, input);
+  const result = await (args.has('--approfondi') ? repondreAgent : repondre)(pool, input);
   await logQuestion(pool, 'cli', input, { result });
   if (args.has('--json')) {
     console.log(JSON.stringify(result, null, 2));
@@ -43,6 +44,7 @@ export function printAnswer(result: AnswerResult): void {
       console.log(`  ${source.link}`);
     }
   }
+  if (result.agent?.steps.length) console.log(`\n[approfondi : ${result.agent.steps.map((s) => `${s.outil} « ${s.requête} »`).join(' ; ')}]`);
   const t = result.timings;
   console.log(
     `\n[route ${result.route}, mode ${result.mode}, preuves : ${result.retrieval ?? 'aucune'}, recherche ${t.searchMs} ms, LLM ${t.llmMs} ms, total ${t.totalMs} ms, prompt v${result.promptVersion}]`,

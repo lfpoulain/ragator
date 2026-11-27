@@ -38,6 +38,8 @@ services:
       RAGATOR_PUBLIC_URL: '${RAGATOR_PUBLIC_URL:-}'
       RAGATOR_GATEWAY_SECRET: '${RAGATOR_GATEWAY_SECRET:-}'
       RAGATOR_GATEWAY_TRUST: '${RAGATOR_GATEWAY_TRUST:-1}'
+      RAGATOR_GATEWAY_PEERS: '${RAGATOR_GATEWAY_PEERS:-}'
+      RAGATOR_GUEST_HOURLY: '${RAGATOR_GUEST_HOURLY:-}'
     volumes:
       - ragator-data:/data
       # Facultatif : un dossier de fichiers video--<id>.json (yt2md : son dossier outputs/), lu à chaque mise à jour.

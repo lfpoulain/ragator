@@ -76,6 +76,8 @@ export interface AnswerResult {
   /** Une relance peut accepter de consulter les autres épisodes du projet. */
   offeredEpisodeSearch?: boolean;
   inventoryId?: string;
+  /** Réponse approfondie (src/core/agent.ts) : recherches complémentaires faites, et si la synthèse a tenu. */
+  agent?: { steps: Array<{ outil: 'chercher' | 'lire'; requête: string; sources: number }>; composed: boolean };
   /** Vidéos dont des passages ont été transmis au LLM (ou listés), dans l'ordre de pertinence. */
   consideredVideoIds: string[];
   /** Comment les preuves ont été trouvées ; `null` sans recherche (demande de précision). */
@@ -132,6 +134,8 @@ export type AnswerProgress =
   | { étape: 'catalogue' | 'lecture'; vidéos: number }
   | { étape: 'rédaction'; lots: number }
   | { étape: 'réponse' }
+  | { étape: 'approfondissement'; outil: 'chercher' | 'lire'; requête: string }
+  | { étape: 'synthèse' }
   | { étape: 'lignes'; answer: string; sources: AnswerSource[] };
 
 /**

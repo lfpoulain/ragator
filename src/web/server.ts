@@ -1,10 +1,11 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { join } from 'node:path';
 import type { Pool } from 'pg';
 import { logQuestion } from '../db/question-log.js';
-import { repondre, turnOf, type AnswerMode, type AnswerResult } from '../core/answer.js';
+import { repondre, turnOf, type AnswerInput, type AnswerMode, type AnswerProgress, type AnswerResult, type AnswerSource } from '../core/answer.js';
+import { repondreAgent } from '../core/agent.js';
 import { MAX_HISTORY_TURNS, MAX_TURN_SCENES, type Turn, type SceneRef } from '../core/followup.js';
 import { channelStats, stats } from '../core/stats.js';
 import { listCollections, resolveCollection } from '../core/collections.js';
@@ -12,11 +13,51 @@ import { nearbyVideos } from '../core/nearby-videos.js';
 import { getConfig, loadConfig, MODES, PROJECT_ROOT, type Mode } from '../config.js';
 import { checkOpenRouterKey, localStatus, publicSettings, readStoredSettings, saveSettings, type SettingKey } from '../settings.js';
 import { createAdmin } from './admin.js';
-import { gatewayConfig, groupPrefix, guestIdentity, isGatewayRequest } from './gateway.js';
+import { gatewayConfig, groupPrefix, guestIdentity, isGatewayRequest, peerAddress } from './gateway.js';
+import { createAuthThrottle, createGuestLimiter } from './limits.js';
 
 /** Page de l'interface (recherche et administration), autonome : HTML, CSS et JS dans un seul fichier. */
 const PAGE = join(PROJECT_ROOT, 'src', 'web', 'public', 'index.html');
-const GUEST_PAGE = join(PROJECT_ROOT, 'src', 'web', 'public', 'guest.html');
+
+/**
+ * Les deux pages servies viennent du même fichier : la page des invités est la page principale privée
+ * de ses blocs d'administration : balises de commentaire `admin` et `/admin`, en commentaire HTML dans
+ * le balisage et en commentaire de bloc dans le script et le style. L'interface reste donc la même par construction, et un invité ne reçoit
+ * ni le code ni le balisage de l'administration.
+ * Chaque page part avec une politique de contenu stricte : seuls son script et son style, reconnus par
+ * leur empreinte, s'exécutent ; aucune ressource tierce hormis les miniatures YouTube.
+ */
+export function buildPages(html: string): Record<'main' | 'guest', { html: string; csp: string }> {
+  const page = (source: string) => {
+    const hash = (tag: string) => {
+      const body = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`).exec(source)?.[1] ?? '';
+      return `'sha256-${createHash('sha256').update(body).digest('base64')}'`;
+    };
+    const csp = [
+      "default-src 'none'", `script-src ${hash('script')}`, `style-src ${hash('style')}`, "style-src-attr 'unsafe-inline'",
+      "img-src 'self' data: https://i.ytimg.com", "connect-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
+    ].join('; ');
+    return { html: source, csp };
+  };
+  const guest = html
+    .replace(/<!--admin-->[\s\S]*?<!--\/admin-->/g, '')
+    .replace(/\/\*admin\*\/[\s\S]*?\/\*\/admin\*\//g, '')
+    .replace('<html lang="fr">', '<html lang="fr" data-guest>');
+  return { main: page(html), guest: page(guest) };
+}
+
+let pagesCache: { mtimeMs: number; pages: ReturnType<typeof buildPages> } | null = null;
+function pages(): ReturnType<typeof buildPages> {
+  const { mtimeMs } = statSync(PAGE);
+  if (pagesCache?.mtimeMs !== mtimeMs) pagesCache = { mtimeMs, pages: buildPages(readFileSync(PAGE, 'utf8')) };
+  return pagesCache.pages;
+}
+
+function sendPage(res: ServerResponse, page: { html: string; csp: string }): void {
+  send(res, 200, page.html, 'text/html; charset=utf-8', {
+    'Content-Security-Policy': page.csp, 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY', 'Cross-Origin-Opener-Policy': 'same-origin',
+  });
+}
 
 
 /** Corps accepté au plus : une question et son historique court ; un fichier de vidéo pour le dépôt. */
@@ -29,6 +70,10 @@ const MAX_QUESTION_CHARS = 1000;
  * des dizaines d'appels modèles en parallèle. Au-delà, 429 plutôt qu'une file.
  */
 const MAX_CONCURRENT_ASKS = 4;
+/** Places que les invités peuvent occuper ensemble : l'administration garde toujours les siennes. */
+const MAX_GUEST_ASKS = 2;
+/** Questions par heure et par invité, sauf `RAGATOR_GUEST_HOURLY`. */
+const GUEST_HOURLY = 30;
 
 function send(
   res: ServerResponse,
@@ -156,8 +201,47 @@ function answerPayload(result: AnswerResult) {
     // Comment les preuves ont été trouvées : recherche classée (vecteurs ou mots) ou lecture du corpus.
     retrieval: result.retrieval,
     timings: result.timings,
+    // Réponse approfondie : recherches complémentaires faites avant la synthèse.
+    agent: result.agent ?? null,
     turn: turnOf(result),
   };
+}
+
+/** Ce que la page affiche d'une source : ni extrait ni liens de description, inutiles à l'écran. */
+function shownSource({ sourceId, sourceIds, videoId, title, publishedAt, kind, startS, endS, link }: AnswerSource) {
+  return { sourceId, sourceIds, videoId, title, publishedAt, kind, startS, endS, link };
+}
+
+/**
+ * Réponse envoyée à un invité : liste fermée de champs. Jamais le motif détaillé d'une réponse dégradée
+ * (il peut porter l'état de tout le corpus ou un message du fournisseur), ni l'analyse, ni les modèles.
+ */
+function guestPayload(result: AnswerResult) {
+  return {
+    question: result.question,
+    resolvedQuestion: result.resolvedQuestion,
+    route: result.route,
+    mode: result.mode,
+    analysis: null,
+    answer: result.answer,
+    refused: result.refused,
+    claims: result.claims.some((c) => c.relevance !== undefined) ? [{ relevance: 1 }] : [],
+    sources: result.sources.map(shownSource),
+    degradedReason: result.degraded ? 'Réponse partielle : une étape de la recherche ou de la rédaction n’a pas abouti.' : null,
+    model: null,
+    judge: null,
+    retrieval: result.retrieval,
+    timings: { totalMs: result.timings.totalMs },
+    agent: result.agent ? { steps: result.agent.steps.map(({ outil }) => ({ outil })), composed: result.agent.composed } : null,
+    turn: turnOf(result),
+  };
+}
+
+type AskMode = AnswerMode | 'approfondi';
+/** Forme demandée par la page ; `approfondi` : réponse détaillée, complétée et rédigée par l'agent. */
+function askMode(value: unknown): { mode: AnswerMode; deep: boolean } {
+  const wanted: AskMode = value === 'court' || value === 'extractif' || value === 'approfondi' ? value : 'détaillé';
+  return wanted === 'approfondi' ? { mode: 'détaillé', deep: true } : { mode: wanted, deep: false };
 }
 
 /**
@@ -188,6 +272,40 @@ export function createWebServer(
   let asking = 0;
   const gateway = gatewayConfig(process.env);
   const settingsView = () => gateway.origin ? { ...publicSettings(), guestGateway: true } : publicSettings();
+  const hourly = Number(process.env.RAGATOR_GUEST_HOURLY ?? '');
+  const guests = createGuestLimiter({ perHour: Number.isInteger(hourly) && hourly > 0 ? hourly : GUEST_HOURLY, concurrent: MAX_GUEST_ASKS });
+  const throttle = createAuthThrottle();
+  /** Dernière adresse d'où la passerelle s'est présentée avec le bon secret (réglage de RAGATOR_GATEWAY_PEERS). */
+  let gatewayPeer: string | null = null;
+  /** Question, puis réponse complète ou au fil de l'eau (une ligne JSON par étape). */
+  const answer = async (res: ServerResponse, input: AnswerInput, deep: boolean, stream: boolean, origin: 'web' | 'invite',
+    payload: (result: AnswerResult) => unknown, shown: (progress: AnswerProgress) => unknown) => {
+    const run = deep ? repondreAgent : repondre;
+    if (!stream) {
+      try {
+        const result = await run(pool, input);
+        void logQuestion(pool, origin, input, { result });
+        return send(res, 200, payload(result));
+      } catch (err) {
+        void logQuestion(pool, origin, input, { error: err });
+        throw err;
+      }
+    }
+    // X-Accel-Buffering : un proxy nginx ne retient pas le flux ; Caddy : « flush_interval -1 ».
+    res.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'X-Accel-Buffering': 'no' });
+    const emit = (event: unknown) => {
+      if (!res.writableEnded) res.write(`${JSON.stringify(event)}\n`);
+    };
+    try {
+      const result = await run(pool, input, { onProgress: (progress) => emit({ type: 'progrès', ...(shown(progress) as object) }) });
+      void logQuestion(pool, origin, input, { result });
+      emit({ type: 'résultat', data: payload(result) });
+    } catch (err) {
+      void logQuestion(pool, origin, input, { error: err });
+      emit({ type: 'erreur', error: origin === 'invite' ? 'Recherche temporairement indisponible.' : err instanceof Error ? err.message : String(err) });
+    }
+    return res.end();
+  };
   return createServer((req, res) => {
     void (async () => {
       let external = false;
@@ -202,27 +320,46 @@ export function createWebServer(
           if (!page && !session && !ask) return send(res, 404, '', 'text/plain');
           const identity = guestIdentity(req, gateway);
           if (!identity) return send(res, 403, 'Accès refusé.', 'text/plain; charset=utf-8');
+          gatewayPeer = peerAddress(req);
           if (page) {
             if (path === '/') return send(res, 302, '', 'text/plain', { Location: '/invite' });
-            return send(res, 200, readFileSync(GUEST_PAGE, 'utf8'), 'text/html; charset=utf-8');
+            return sendPage(res, pages().guest);
           }
           if (ask && req.headers.origin !== gateway.origin) return send(res, 403, { error: 'Origine refusée.' });
           const collections = (await listCollections(pool)).filter(c => identity.keys.has(c.key));
           if (!collections.length) return send(res, 403, { error: 'Accès refusé.' });
-          if (session) return send(res, 200, { authenticated: true, label: identity.label, collections: collections.map(({ key, name }) => ({ key, name })) });
+          if (session) {
+            return send(res, 200, { authenticated: true, label: identity.label, remaining: guests.remaining(identity.user),
+              // Miniatures YouTube seulement quand les modèles passent déjà par Internet (comme l'interface principale).
+              thumbnails: getConfig().mode === 'openrouter',
+              collections: collections.map(({ key, name, videos }) => ({ key, name, videos })) });
+          }
           if (req.headers['content-type']?.split(';')[0]?.trim() !== 'application/json') return send(res, 415, { error: 'JSON attendu' });
           if (asking >= MAX_CONCURRENT_ASKS) return send(res, 429, { error: 'Trop de questions en cours.' }, undefined, { 'Retry-After': '5' });
+          const release = guests.start(identity.user);
+          if (typeof release !== 'function') {
+            const wait = release.reason === 'quota'
+              ? `Limite de questions atteinte : réessayez dans ${Math.ceil(release.retryAfterS / 60)} min.`
+              : 'Une question est déjà en cours : attendez sa réponse.';
+            req.resume();
+            return send(res, 429, { error: wait }, undefined, { 'Retry-After': String(release.retryAfterS) });
+          }
           asking++;
           try {
-            const body = await readJson(req) as { collection?: unknown; question?: unknown } | null;
+            const body = await readJson(req) as { collection?: unknown; question?: unknown; mode?: unknown; history?: unknown; stream?: unknown } | null;
             const collection = collections.find(c => c.key === body?.collection);
             if (!collection) return send(res, 403, { error: 'Collection non autorisée.' });
             const question = typeof body?.question === 'string' ? body.question.trim() : '';
             if (!question || question.length > MAX_QUESTION_CHARS) return send(res, 400, { error: 'Saisissez une question de 1 à 1 000 caractères.' });
-            const result = await repondre(pool, { question, collection: collection.key });
-            return send(res, 200, { answer: result.answer, sources: result.sources.map(({ title, link, excerpt }) => ({ title, link, excerpt })) });
+            const { mode, deep } = askMode(body?.mode);
+            // L'historique vient du navigateur : chaque repère est relu dans la collection autorisée, jamais cru.
+            const input = { question, mode, history: parseHistory(body?.history), collection: collection.key };
+            return await answer(res, input, deep, body?.stream === true, 'invite', guestPayload,
+              (progress) => progress.étape === 'lignes' ? { ...progress, sources: progress.sources.map(shownSource) }
+                : progress.étape === 'approfondissement' ? { étape: progress.étape, outil: progress.outil } : progress);
           } finally {
             asking--;
+            release();
           }
         }
         const password = passwordNow();
@@ -237,13 +374,23 @@ export function createWebServer(
           return send(res, ok ? 200 : 503, { ok });
         }
         if (password && !passwordOk(req.headers.authorization, password)) {
+          // Un mauvais mot de passe (pas une simple absence) : réponse de plus en plus tardive pour cette adresse.
+          if (req.headers.authorization !== undefined) {
+            const address = peerAddress(req);
+            const delay = throttle.failed(address);
+            if (delay === null) return send(res, 429, { error: 'Trop d’essais : patientez.' }, undefined, { 'Retry-After': '5' });
+            if (delay > 0) {
+              await new Promise((resolve) => setTimeout(resolve, delay));
+              throttle.released(address);
+            }
+          }
           res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="Ragator", charset="UTF-8"', 'Content-Type': 'text/plain; charset=utf-8' });
           return res.end('Mot de passe requis.');
         }
         if (req.method === 'POST' && !(req.headers['content-type'] ?? '').startsWith('application/json')) {
           return send(res, 415, { error: 'JSON attendu' });
         }
-        if (req.method === 'GET' && url.pathname === '/') return send(res, 200, readFileSync(PAGE, 'utf8'), 'text/html; charset=utf-8');
+        if (req.method === 'GET' && url.pathname === '/') return sendPage(res, pages().main);
         // La destination est décidée ici, y compris pour une ancienne page encore ouverte après une bascule.
         const thumbnail = req.method === 'GET' && /^\/api\/videos\/([A-Za-z0-9_-]{11})\/miniature$/.exec(url.pathname);
         if (thumbnail) {
@@ -283,7 +430,7 @@ export function createWebServer(
             const body = (await readJson(req)) as { question?: unknown; mode?: unknown; history?: unknown; collection?: unknown };
             const question = typeof body.question === 'string' ? body.question.trim().slice(0, MAX_QUESTION_CHARS) : '';
             if (!question) return send(res, 400, { error: 'question vide' });
-            const mode: AnswerMode = body.mode === 'court' || body.mode === 'extractif' ? body.mode : 'détaillé';
+            const { mode, deep } = askMode(body.mode);
             // Collection : une chaîne du corpus, ou toutes (absente ou vide).
             let collection: string | undefined;
             if (typeof body.collection === 'string' && body.collection !== '') {
@@ -294,29 +441,7 @@ export function createWebServer(
               }
             }
             const input = { question, mode, history: parseHistory(body.history), ...(collection ? { collection } : {}) };
-            if (url.pathname === '/api/ask') {
-              try {
-                const result = await repondre(pool, input);
-                void logQuestion(pool, 'web', input, { result });
-                return send(res, 200, answerPayload(result));
-              } catch (err) {
-                void logQuestion(pool, 'web', input, { error: err });
-                throw err;
-              }
-            }
-            res.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'X-Accel-Buffering': 'no' });
-            const emit = (event: unknown) => {
-              if (!res.writableEnded) res.write(`${JSON.stringify(event)}\n`);
-            };
-            try {
-              const result = await repondre(pool, input, { onProgress: (progress) => emit({ type: 'progrès', ...progress }) });
-              void logQuestion(pool, 'web', input, { result });
-              emit({ type: 'résultat', data: answerPayload(result) });
-            } catch (err) {
-              void logQuestion(pool, 'web', input, { error: err });
-              emit({ type: 'erreur', error: err instanceof Error ? err.message : String(err) });
-            }
-            return res.end();
+            return await answer(res, input, deep, url.pathname === '/api/ask/stream', 'web', answerPayload, (progress) => progress);
           } finally {
             asking -= 1;
           }
@@ -363,6 +488,7 @@ export function createWebServer(
         if (req.method === 'GET' && url.pathname === '/api/settings') return send(res, 200, settingsView());
         if (gateway.origin && req.method === 'GET' && url.pathname === '/api/gateway') {
           return send(res, 200, { origin: gateway.origin ?? null, secretSet: !!gateway.secret, trusted: gateway.trusted,
+            peersSet: gateway.peers !== null, lastPeer: gatewayPeer,
             groups: (await listCollections(pool)).map(c => ({ collection: c.name, group: groupPrefix + c.key })) });
         }
         if (req.method === 'GET' && url.pathname === '/api/settings/local') return send(res, 200, await localStatus());
