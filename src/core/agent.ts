@@ -24,7 +24,7 @@ import { formatTimestamp } from '../windows/format.js';
  */
 
 /** Tours de recherche complémentaire au plus, et actions par tour. */
-const MAX_ROUNDS = 2;
+const MAX_ROUNDS = 1;
 const MAX_ACTIONS = 3;
 const OUTPUT_TOKENS = 4000;
 /** Sources gardées par recherche, et longueur d'un extrait montré au modèle. */
@@ -295,6 +295,9 @@ export async function repondreAgent(pool: Pool, input: AnswerInput, options: Ans
   // Une demande de précision attend la réponse de la personne. Sans modèle, rien pour juger ni rédiger.
   // Tout le reste passe par la rédaction, décompte exact et repli extractif compris.
   if (!llm || first.route === 'clarifier' || !(await llm.available())) return first;
+  // Un refus de la recherche reste un refus. Mesuré : relancé sur une question sans réponse dans le corpus,
+  // le modèle cherchait autour puis rédigeait une réponse sur un sujet voisin.
+  if (first.refused) return first;
 
   const dossier = new Dossier();
   dossier.addAnswer(first.resolvedQuestion, first);
