@@ -1,8 +1,8 @@
 import type { Scope } from './page.js';
-import { foldAccents, tokenizeText } from '../norm/normalize.js';
+import { tokenizeText } from '../norm/normalize.js';
 import { STOPWORDS } from '../norm/stopwords.js';
 
-export type Route = 'lister' | 'inventorier' | 'chercher' | 'plan' | 'infos' | 'clarifier';
+export type Route = 'lister' | 'chercher' | 'plan' | 'infos' | 'clarifier';
 /** Décompte trié par date : la première ou la dernière vidéo qui mentionne le terme. */
 export type Order = 'premiere' | 'derniere';
 
@@ -40,17 +40,6 @@ const EXHAUSTIVE_PATTERNS = [
   /tous les passages/i,
   /liste (?:complète|exhaustive|toutes)/i,
 ];
-
-/** L’objet demandé est un produit essayé. « Quelles vidéos… » garde pour unité la vidéo. */
-function asksForTestedModels(question: string): boolean {
-  const text = foldAccents(question).replace(/[’'-]/g, ' ');
-  const list = /\b(?:liste(?:r|z)?|enumer\w*|quels|quelles|tous les|tout les|toutes les)\b/.exec(text);
-  if (!list) return false;
-  if (/\bcombien (?:de|d)\b/.test(text.slice(0, list.index))) return false;
-  const object = text.slice(list.index + list[0].length).replace(/^(?:\s+(?:sont|moi|nous|complete|exhaustive|de|du|des|d|l|tout|tous|toutes|les|leurs|ces|differents|differentes)\b)+/u, '').trimStart();
-  if (/^(?:videos?|episodes?|moments?|fois|passages?|extraits?|mentions?|occurrences?|liens?|fichiers?|adresses?|tests?|essais?|projets?|materiaux|reglages?|techniques?|etapes?|fonctions?|parametres?|vitesses?|methodes?|differences?|defauts?|problemes?|resultats?|points?|performances?|avantages?|inconvenients?)\b/.test(object)) return false;
-  return /\b(?:test(?:e|es|ee|ees|ent|ez)|essay(?:e|es|ee|ees|ent|ez)|evalu(?:e|es|ee|ees|ent|ez))\b/.test(text);
-}
 
 /**
  * « Première mention », « pour la première fois », « la dernière vidéo où… » :
@@ -236,8 +225,7 @@ export function classify(question: string): RoutedQuery {
     : GENERAL_PATTERN.test(question));
   const base = { term, alternatives, scope, videoId, general, order: null };
 
-  const inventory = asksForTestedModels(question);
-  if (matches(INFOS_PATTERNS, question) && !inventory) {
+  if (matches(INFOS_PATTERNS, question)) {
     return { ...base, route: 'infos', reason: 'demande de lien, fichier ou référence en description' };
   }
   // Une demande de « première fois » sans terme de mention identifiable reste chronologique,
@@ -248,9 +236,6 @@ export function classify(question: string): RoutedQuery {
   }
   if (order && term !== null) {
     return { ...base, order, route: 'lister', reason: `${order === 'premiere' ? 'première' : 'dernière'} mention demandée : décompte trié par date` };
-  }
-  if (inventory) {
-    return { ...base, route: 'inventorier', general: true, reason: 'liste des modèles essayés' };
   }
   if (matches(EXHAUSTIVE_PATTERNS, question)) {
     return term === null

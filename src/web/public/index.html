@@ -608,7 +608,7 @@ function videoRow(item, videoId, ctx) {
 }
 function plainItem(item, ctx, tag = 'li') {
   const node = el(tag);
-  node.append(linkify(item.text, ctx.byId, ctx.single || ctx.models));
+  node.append(linkify(item.text, ctx.byId, ctx.single));
   for (const u of item.urls) node.append(' ', urlPill(u));
   return node;
 }
@@ -625,7 +625,6 @@ function fillList(ul, items, ctx, perItem = false) {
     }
     return;
   }
-  if (ctx.models) { items.forEach(item => ul.append(plainItem(item, ctx))); return; }
   const ids = items.map((it) => { const set = videosIn(it.text, it.urls); return set.size === 1 ? [...set][0] : null; });
   const rows = perItem ? null : items.length >= 2 && ids.every(Boolean) && new Set(ids).size === ids.length;
   items.forEach((it, i) => {
@@ -717,13 +716,12 @@ function renderAnswer(box, data) {
   box.textContent = '';
   const nearBox = el('div', 'nearby');
   const ctx = contextOf(data.sources, nearBox);
-  ctx.models = data.route === 'inventorier';
   const answer = el('div', 'answer');
   renderBlocks(answer, parseAnswer(data.answer), ctx);
   box.append(answer);
   if (data.degradedReason) box.append(el('div', 'warn', '⚠ ' + data.degradedReason));
   const rest = [...ctx.byVideo.values()].filter((s) => !ctx.rowVideos.has(s.videoId));
-  if (!ctx.models && (data.route !== 'lister' || rest.length <= 60)) renderSources(box, rest, nearBox);
+  if (data.route !== 'lister' || rest.length <= 60) renderSources(box, rest, nearBox);
   box.append(nearBox);
   // Ce qui a réellement servi : qui a aiguillé la question, qui a produit la réponse, où l'on a cherché.
   const meta = el('div', 'meta');
@@ -742,7 +740,6 @@ function renderAnswer(box, data) {
     chronologique: 'lecture du corpus, puis juge moment par moment',
     'série': 'vidéos de la série lues en entier',
     'scènes citées': 'relecture des scènes citées',
-    inventaire: 'modèles vérifiés dans les épisodes',
   };
   const extra = data.agent?.steps.length || 0;
   const deepened = data.agent?.composed ? 'synthèse' + (extra ? ' après ' + plural(extra, 'recherche') + ' complémentaire' + (extra > 1 ? 's' : '') : '') : null;
@@ -815,8 +812,6 @@ async function ask(question) {
   const onProgress = (event) => {
     if (STEPS[event.étape]) step = STEPS[event.étape];
     else if (event.étape === 'jugement') step = 'Tri de ' + event.vidéos + ' vidéos candidates…';
-    else if (event.étape === 'catalogue') step = 'Recherche des essais dans ' + event.vidéos + ' vidéos…';
-    else if (event.étape === 'lecture') step = 'Vérification des modèles dans ' + event.vidéos + ' vidéos…';
     else if (event.étape === 'approfondissement') {
       step = event.outil === 'lire' ? 'Relecture d’une scène…' : 'Recherche complémentaire…';
       following(() => { trail.append(el('li', null, event.requête ? (event.outil === 'lire' ? 'Relecture : ' : 'Recherche : ') + event.requête : step.slice(0, -1))); if (!trail.isConnected) loading.after(trail); });

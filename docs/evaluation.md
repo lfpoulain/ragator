@@ -45,7 +45,11 @@ Un contrôle séparé a fourni au chat des citations réelles de chacune des 404
 
 Les cas de chevauchement, de changement de sujet et de citation périmée se rejouent sur une base de test avec `npm test -- tests/integration/followup.test.ts`.
 
-## Inventaire des imprimantes 3D testées
+## Inventaire des imprimantes 3D testées (chemin retiré)
+
+Ces mesures décrivent l'inventaire des essais, retiré depuis : les listes d'éléments nommés passent par le
+chemin général et la réponse approfondie, qui n'ont pas encore été mesurés sur cette question. Elles
+restent ici comme point de comparaison.
 
 Le 26 novembre 2026, deux conversations ont interrogé le même index local de 404 vidéos des Frères Poulain. Sur la version publiée `0c732cc`, « Fais moi la liste de tout les imprimante 3d qu'ils ont téstés » déclenchait un décompte de 474 extraits dans 177 vidéos. À la relance « Non, je veux les modèles qu’ils ont testés, pas les extraits », Ragator répondait avec des lasers Atomstack X20 et X30.
 

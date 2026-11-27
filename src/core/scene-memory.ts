@@ -36,7 +36,6 @@ const shortDetail = (text: string) => /^(?:(?:a|avec|de|en) )?(?:quelle?s?|quels
 
 function sceneQuestion(question: string, text: string, history: Turn[], timeOnly: boolean): boolean {
   if (!history.some(t => t.scenes?.length) || extractVideoReference(question)) return false;
-  if (classify(question).route === 'inventorier') return false;
   if (/\b(?:autre sujet|nouvelle question|autres videos|ailleurs dans|tout le (?:corpus|catalogue)|toute la chaine|(?:laquelle|lequel|lesquelles|lesquels) de (?:leurs|toutes les|tous les) (?:videos|episodes|projets))\b/.test(text)) return false;
   if (timeOnly || SCENE_REFERENCE.test(text) || ORDINAL.test(text) || TIMECODE.test(text) ||
     history.at(-1)?.choosingScene && choiceReply(text)) return true;

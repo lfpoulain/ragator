@@ -142,8 +142,6 @@ export async function analyzeQuestion(
   const notes: string[] = [];
 
   let route = analysis.route;
-  if (rules.route === 'inventorier') route = 'inventorier';
-  if (route === 'inventorier' && (rules.route === 'lister' || rules.route === 'infos' || rules.route === 'plan')) route = rules.route;
   // Première / dernière fois repérée par les règles : elles l'emportent sur le LLM (route, ordre, terme).
   // Mention → décompte trié par date ; action → question générale jugée par JEV, triée par date.
   if (rules.order) route = rules.route === 'lister' ? 'lister' : 'chercher';
@@ -180,15 +178,6 @@ export async function analyzeQuestion(
     downgraded = true;
     listedInstead = true;
   }
-  // L'inventaire ne retient que des modèles dont l'ESSAI est prouvé. Une question qui ne parle pas d'essai
-  // (« quelles marques utilisent-ils ») y perdait toute réponse : il faut l'accord des règles, comme pour
-  // les autres routes étroites. Sinon, recherche générale : la réponse couvre plusieurs vidéos.
-  if (route === 'inventorier' && rules.route !== 'inventorier') {
-    notes.push('inventaire d’essais proposé pour une question qui ne parle pas d’essai : recherche générale');
-    route = 'chercher';
-    downgraded = true;
-    listedInstead = true;
-  }
   if ((route === 'plan' || route === 'infos' || route === 'clarifier') && rules.route !== route) {
     notes.push(`route « ${route} » proposée sans accord des règles : recherche classée`);
     route = 'chercher';
@@ -197,7 +186,7 @@ export async function analyzeQuestion(
   // Une question que les règles reconnaissent comme générale (« quand parlent-ils de… », « qu'est-ce qu'ils
   // pensent de… ») le reste : le LLM la classait « précise » de façon constante (mesuré sur 3 passages).
   // Le modèle voulait toutes les occurrences : la réponse couvre plusieurs vidéos.
-  let general = route === 'inventorier' || route === 'chercher' && (rules.general || listedInstead || (analysis.generale && !quantityMisrouted));
+  let general = route === 'chercher' && (rules.general || listedInstead || (analysis.generale && !quantityMisrouted));
   let term: string | null = rules.order && rules.term ? rules.term : analysis.terme ? normalized(analysis.terme) : null;
   // Un sigle de moins de 3 lettres se confond avec un mot court ou une interjection (« ha » pour Home
   // Assistant comptait une enceinte de 2018) : écarté des variantes.
@@ -216,10 +205,7 @@ export async function analyzeQuestion(
       [term = null, ...alternatives] = present;
     }
   }
-  if (route === 'inventorier') {
-    term = term && inCorpus(term, words) ? term : null;
-    alternatives = [];
-  } else if (route !== 'lister' && route !== 'plan') {
+  if (route !== 'lister' && route !== 'plan') {
     term = null;
     alternatives = [];
   }
@@ -248,7 +234,7 @@ export async function analyzeQuestion(
   ).filter((group) => group.length > 0) : [];
   // Sujet d'une « première / dernière fois » : seulement s'il existe dans le corpus (sinon, chemin général).
   const subject = analysis.sujet ? ((await resolveRequired(pool, [analysis.sujet], corpusVersion, notes, collection))[0] ?? null) : null;
-  const order = rules.order ?? (route !== 'inventorier' && (route === 'lister' || general) ? analysis.ordre : null);
+  const order = rules.order ?? (route === 'lister' || general ? analysis.ordre : null);
   // Série nommée par la question : un filtre sur des vidéos, jamais un mot à chercher. Une vidéo citée par
   // son identifiant reste plus précise.
   const found = rules.videoId ? null : await findSeries(pool, analysis.serie, notes, collection);

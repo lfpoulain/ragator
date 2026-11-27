@@ -32,7 +32,6 @@ flowchart TD
   Q[Question] --> F{Relance ?<br/>« et dans cette vidéo ? »}
   F --> A[Aiguillage<br/>règles + analyse LLM]
   A -->|lister| L{ordre ?}
-  A -->|inventorier| E[Modèles vérifiés<br/>et scènes de leurs essais]
   L -->|non| D[Décompte exact]
   L -->|première / dernière| M[Première / dernière mention]
   A -->|chercher, précise| P[Réponse citée]
@@ -50,7 +49,6 @@ flowchart TD
 | [Tri par le juge](#3-tri-par-le-juge-puis-rédaction) | « Quand utilisent-ils de la résine époxy ? » | juge + LLM | ~12 s |
 | [Parcours chronologique](#4-parcours-chronologique) | « La première fois qu'ils utilisent une scie circulaire Einhell » | juge + LLM | ~4 s |
 | [Décompte exact](#5-décompte-exact) | « Toutes les vidéos où on parle de NordVPN » | aucun | ~2 s |
-| [Inventaire des modèles essayés](#inventaire-des-modèles-essayés) | « Quelles caméras avons-nous testées ? » | recherche hybride et LLM | 1 min 44 s à 2 min 15 s dans les deux dialogues sur les imprimantes |
 | [Première / dernière mention](#6-première--dernière-mention) | « La première mention du PLA » | aucun | ~2 s |
 | [Plans visuels](#7-plans-visuels) | « À quel moment voit-on un tournevis ? » | LLM | — |
 | [Descriptions YouTube](#8-descriptions-youtube) | « Le lien du firmware de la caméra » | LLM | — |
@@ -263,11 +261,17 @@ d’occurrence confirmée, la réponse le précise.
 
 **Garantie** : le compte est exact. C'est une requête, pas une estimation d'un modèle.
 
-## Inventaire des modèles essayés
+## Listes d'éléments nommés
 
-La route `inventorier` examine les titres de la collection et des extraits repérés par les mots de la question et la recherche hybride. Le modèle de discussion sélectionne les épisodes à relire, puis cherche les références précises dans les paroles, les plans et le texte affiché, selon la portée demandée. Chaque référence retenue renvoie à la scène de l’essai et, si nécessaire, à celle où le modèle est nommé.
+« Quels outils ont-ils testés ? », « quelles marques utilisent-ils ? » n'ont pas de chemin à part : ce sont
+des questions générales. La recherche hybride ramène les vidéos, le juge les trie, le rédacteur écrit pour
+chacune une affirmation qui porte le nom exact lu dans ses lignes. En réponse **approfondie**
+(`src/core/agent.ts`), un modèle relit ce dossier, pose au besoin d'autres questions au corpus ou relit une
+scène, puis rédige la liste : une puce par élément distinct, citant chaque vidéo qui le prouve. Chaque
+puce recopie une preuve que le code retrouve dans une source citée.
 
-Une seconde lecture vérifie la catégorie de l’appareil et ce que les auteurs ont essayé. Le code contrôle que la référence figure dans les sources. Deux noms commerciaux peuvent partager une entrée quand l’épisode établit qu’ils désignent le même appareil. L’inventaire peut manquer un modèle, notamment si le titre et les paroles emploient des désignations différentes. [Résultats sur les 404 vidéos](evaluation.md#inventaire-des-imprimantes-3d-testées)
+Un ancien chemin, l'inventaire des essais, relisait le catalogue entier avec des règles propres aux essais
+de produits. Il a été retiré : ses règles ne valaient que pour cette famille de questions.
 
 ## 6. Première / dernière mention
 
@@ -335,7 +339,6 @@ Ils se choisissent dans l'interface :
 | **Courte** | une phrase pour une simple confirmation, généralement 1 à 3 affirmations pour une question précise |
 | **Extraits seuls, sans analyse LLM** | ni analyse ni rédaction par un LLM : aiguillage par règles, meilleurs extraits cités tels quels ; décomptes et premières mentions inchangés |
 
-En mode court ou détaillé, un inventaire conserve les modèles identifiés et leurs citations. « Et chez… ? » filtre les modèles d’une marque. « En une phrase ? » ou « Sous forme de liste ? » change leur présentation dans le même chat.
 
 ## Replis
 
